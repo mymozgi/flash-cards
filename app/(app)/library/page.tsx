@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getTags, getTopicTree } from "@/lib/data";
+import { publicUrl } from "@/lib/storage";
 import { CardList, type LibraryCard } from "./card-list";
 
 const PAGE_SIZE = 100;
@@ -31,7 +32,7 @@ export default async function LibraryPage(props: {
 
   let query = supabase
     .from("cards")
-    .select("id,front_md,back_md,topic_id,suspended, card_tags(tags(name)), scheduling(state)")
+    .select("id,front_md,back_md,topic_id,suspended, card_tags(tags(name)), scheduling(state), media(thumb_path,position)")
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(PAGE_SIZE);
@@ -54,6 +55,7 @@ export default async function LibraryPage(props: {
       suspended: boolean;
       card_tags: { tags: { name: string } }[];
       scheduling: { state: string } | { state: string }[] | null;
+      media: { thumb_path: string; position: number }[];
     }[]
   ).map((row) => ({
     id: row.id,
@@ -63,6 +65,10 @@ export default async function LibraryPage(props: {
     tags: (row.card_tags ?? []).map((t) => t.tags.name),
     suspended: row.suspended,
     state: (Array.isArray(row.scheduling) ? row.scheduling[0]?.state : row.scheduling?.state) ?? "new",
+    thumbUrl:
+      (row.media ?? []).length > 0
+        ? publicUrl([...row.media].sort((a, b) => a.position - b.position)[0].thumb_path)
+        : null,
   }));
 
   return (

@@ -92,6 +92,87 @@ async function syncCardTags(
     .insert(tagIds.map((tagId) => ({ card_id: cardId, tag_id: tagId, user_id: userId })));
 }
 
+
+type IncomingImage = {
+  storagePath: string;
+  thumbPath: string;
+  width: number;
+  height: number;
+  bytes: number;
+  caption: string;
+};
+
+/**
+ * Пути приходят с клиента, поэтому проверяем, что они лежат в папке владельца:
+ * политика хранилища устроена так же, но полагаться на один слой не стоит.
+ */
+function parseImages(raw: string, userId: string): IncomingImage[] {
+  if (!raw) return [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed)) return [];
+
+  return parsed
+    .filter((item): item is IncomingImage => {
+      if (!item || typeof item !== "object") return false;
+      const image = item as Partial<IncomingImage>;
+      return (
+        typeof image.storagePath === "string" &&
+        typeof image.thumbPath === "string" &&
+        image.storagePath.startsWith(`${userId}/`) &&
+        image.thumbPath.startsWith(`${userId}/`) &&
+        Number.isFinite(image.width) &&
+        Number.isFinite(image.height)
+      );
+    })
+    .slice(0, 4);
+}
+
+/**
+ * Полная замена набора изображений стороны. Старые строки удаляются, и триггер
+ * помечает их файлы к уборке; уборка пропускает пути, на которые ещё есть
+ * ссылки в media, поэтому пересохранение той же карточки ничего не сносит.
+ */
+async function syncMedia(
+  supabase: SupabaseClient,
+  userId: string,
+  cardId: string,
+  side: "front" | "back",
+  images: IncomingImage[],
+) {
+  await supabase.from("media").delete().eq("card_id", cardId).eq("side", side);
+
+  if (images.length > 0) {
+    await supabase.from("media").insert(
+      images.map((image, index) => ({
+        user_id: userId,
+        card_id: cardId,
+        side,
+        storage_path: image.storagePath,
+        thumb_path: image.thumbPath,
+        width: Math.round(image.width),
+        height: Math.round(image.height),
+        bytes: Math.round(image.bytes ?? 0),
+        caption: image.caption?.trim() || null,
+        position: index,
+      })),
+    );
+
+    // файлы прикреплены к карточке — снимаем пометку сироты
+    await supabase
+      .from("media_orphans")
+      .delete()
+      .in(
+        "storage_path",
+        images.flatMap((image) => [image.storagePath, image.thumbPath]),
+      );
+  }
+}
+
 export async function saveCard(
   _prev: CardFormState,
   formData: FormData,
@@ -100,12 +181,15 @@ export async function saveCard(
   const supabase = await createClient();
 
   const id = String(formData.get("id") ?? "").trim();
+  const newId = String(formData.get("new_id") ?? "").trim();
   const front = String(formData.get("front_md") ?? "").trim();
   const back = String(formData.get("back_md") ?? "").trim();
   const note = String(formData.get("note_md") ?? "").trim();
   const topicPath = String(formData.get("topic_path") ?? "");
   const tagsRaw = String(formData.get("tags") ?? "");
   const reversed = formData.get("reversed") === "on";
+  const frontImages = parseImages(String(formData.get("images_front") ?? ""), user.id);
+  const backImages = parseImages(String(formData.get("images_back") ?? ""), user.id);
   const another = formData.get("intent") === "save_and_new";
 
   if (!front || !back) {
@@ -138,16 +222,22 @@ export async function saveCard(
       .eq("user_id", user.id);
     if (error) return { error: `Не удалось сохранить: ${error.message}` };
     await syncCardTags(supabase, user.id, id, tagIds);
+    await syncMedia(supabase, user.id, id, "front", frontImages);
+    await syncMedia(supabase, user.id, id, "back", backImages);
   } else {
+    // id мог быть выбран клиентом заранее: из него уже построены пути
+    // загруженных изображений
     const { data: created, error } = await supabase
       .from("cards")
-      .insert({ ...payload, user_id: user.id })
+      .insert({ ...payload, user_id: user.id, ...(newId ? { id: newId } : {}) })
       .select("id")
       .single();
     if (error) return { error: `Не удалось создать карточку: ${error.message}` };
 
     const cardId = created.id as string;
     await syncCardTags(supabase, user.id, cardId, tagIds);
+    await syncMedia(supabase, user.id, cardId, "front", frontImages);
+    await syncMedia(supabase, user.id, cardId, "back", backImages);
 
     if (reversed) {
       const { data: back2 } = await supabase
@@ -163,7 +253,13 @@ export async function saveCard(
         })
         .select("id")
         .single();
-      if (back2) await syncCardTags(supabase, user.id, back2.id as string, tagIds);
+      if (back2) {
+        const reverseId = back2.id as string;
+        await syncCardTags(supabase, user.id, reverseId, tagIds);
+        // стороны меняются местами вместе с текстом; файлы те же самые
+        await syncMedia(supabase, user.id, reverseId, "front", backImages);
+        await syncMedia(supabase, user.id, reverseId, "back", frontImages);
+      }
     }
   }
 

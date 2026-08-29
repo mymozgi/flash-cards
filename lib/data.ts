@@ -1,8 +1,10 @@
 import "server-only";
 import { createClient, requireUser } from "./supabase/server";
 import { startOfDay } from "./day";
+import { publicUrl } from "./storage";
 import type {
   CardRow,
+  MediaItem,
   QueueCard,
   SchedulingRow,
   SettingsRow,
@@ -201,9 +203,11 @@ export async function getQueue(
 
   if (rows.length === 0) return [];
 
-  const [topics, tagsByCard] = await Promise.all([
+  const cardIds = rows.map((r) => r.card_id);
+  const [topics, tagsByCard, mediaByCard] = await Promise.all([
     getTopicTree(),
-    tagsForCards(rows.map((r) => r.card_id)),
+    tagsForCards(cardIds),
+    mediaForCards(cardIds),
   ]);
   const pathById = new Map(topics.map((t) => [t.id, t.path]));
 
@@ -214,10 +218,50 @@ export async function getQueue(
       scheduling: scheduling as SchedulingRow,
       topicPath: cards.topic_id ? (pathById.get(cards.topic_id) ?? null) : null,
       tags: tagsByCard.get(row.card_id) ?? [],
+      media: mediaByCard.get(row.card_id) ?? [],
     };
   });
 
   return shuffle(queue);
+}
+
+
+export async function mediaForCards(cardIds: string[]): Promise<Map<string, MediaItem[]>> {
+  const map = new Map<string, MediaItem[]>();
+  if (cardIds.length === 0) return map;
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("media")
+    .select("id,card_id,side,storage_path,thumb_path,width,height,caption,position")
+    .in("card_id", cardIds)
+    .order("position");
+
+  for (const row of (data ?? []) as {
+    id: string;
+    card_id: string;
+    side: "front" | "back";
+    storage_path: string;
+    thumb_path: string;
+    width: number;
+    height: number;
+    caption: string | null;
+    position: number;
+  }[]) {
+    const list = map.get(row.card_id) ?? [];
+    list.push({
+      id: row.id,
+      side: row.side,
+      url: publicUrl(row.storage_path),
+      thumbUrl: publicUrl(row.thumb_path),
+      width: row.width,
+      height: row.height,
+      caption: row.caption,
+      position: row.position,
+    });
+    map.set(row.card_id, list);
+  }
+  return map;
 }
 
 async function tagsForCards(cardIds: string[]): Promise<Map<string, string[]>> {

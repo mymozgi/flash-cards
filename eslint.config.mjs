@@ -13,6 +13,13 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    // Изображения карточек отдаём обычным <img>. Файлы уже сжаты на клиенте
+    // (WebP, до 1600 px), а оптимизация next/image на тарифе Vercel Hobby
+    // лимитирована и платна сверх лимита. См. CLAUDE.md.
+    files: ["app/**/*.tsx", "components/**/*.tsx"],
+    rules: { "@next/next/no-img-element": "off" },
+  },
 ]);
 
 export default eslintConfig;

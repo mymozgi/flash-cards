@@ -1,11 +1,13 @@
 import { getTags, getTopicTree } from "@/lib/data";
+import { requireUser } from "@/lib/supabase/server";
 import { CardEditor } from "../editor";
 
 export default async function NewCardPage(props: {
   searchParams: Promise<{ saved?: string }>;
 }) {
-  const [{ saved }, topics, tags] = await Promise.all([
+  const [{ saved }, user, topics, tags] = await Promise.all([
     props.searchParams,
+    requireUser(),
     getTopicTree(),
     getTags(),
   ]);
@@ -19,7 +21,11 @@ export default async function NewCardPage(props: {
         )}
       </header>
       <div className="mt-6">
-        <CardEditor topicPaths={topics.map((t) => t.path)} knownTags={tags.map((t) => t.name)} />
+        <CardEditor
+          userId={user.id}
+          topicPaths={topics.map((t) => t.path)}
+          knownTags={tags.map((t) => t.name)}
+        />
       </div>
     </>
   );

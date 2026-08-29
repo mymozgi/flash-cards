@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, requireUser } from "@/lib/supabase/server";
 import { getTags, getTopicTree } from "@/lib/data";
 import { humanInterval } from "@/lib/fsrs";
+import { publicUrl } from "@/lib/storage";
 import { CardEditor } from "../editor";
 import { deleteCard, setSuspended } from "../actions";
+import type { EditorImage } from "../editor-types";
 
 const STATE_LABELS: Record<string, string> = {
   new: "новая",
@@ -12,18 +14,30 @@ const STATE_LABELS: Record<string, string> = {
   relearning: "переучивание",
 };
 
+type MediaRow = {
+  side: "front" | "back";
+  storage_path: string;
+  thumb_path: string;
+  width: number;
+  height: number;
+  bytes: number;
+  caption: string | null;
+  position: number;
+};
+
 export default async function EditCardPage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;
   const supabase = await createClient();
 
-  const [{ data: card }, topics, allTags] = await Promise.all([
+  const [{ data: card }, user, topics, allTags] = await Promise.all([
     supabase
       .from("cards")
       .select(
-        "id,topic_id,front_md,back_md,note_md,suspended,deleted_at, card_tags(tags(name)), scheduling(state,due,reps,lapses)",
+        "id,topic_id,front_md,back_md,note_md,suspended,deleted_at, card_tags(tags(name)), scheduling(state,due,reps,lapses), media(side,storage_path,thumb_path,width,height,bytes,caption,position)",
       )
       .eq("id", id)
       .maybeSingle(),
+    requireUser(),
     getTopicTree(),
     getTags(),
   ]);
@@ -37,6 +51,21 @@ export default async function EditCardPage(props: { params: Promise<{ id: string
     | { state: string; due: string; reps: number; lapses: number }
     | undefined;
   const topicPath = topics.find((t) => t.id === card.topic_id)?.path ?? "";
+
+  const toEditorImage = (row: MediaRow): EditorImage => ({
+    storagePath: row.storage_path,
+    thumbPath: row.thumb_path,
+    url: publicUrl(row.storage_path),
+    thumbUrl: publicUrl(row.thumb_path),
+    width: row.width,
+    height: row.height,
+    bytes: row.bytes,
+    caption: row.caption ?? "",
+  });
+
+  const media = ((card.media ?? []) as unknown as MediaRow[]).sort(
+    (a, b) => a.position - b.position,
+  );
 
   const suspendAction = async () => {
     "use server";
@@ -62,6 +91,7 @@ export default async function EditCardPage(props: { params: Promise<{ id: string
 
       <div className="mt-6">
         <CardEditor
+          userId={user.id}
           card={{
             id: card.id as string,
             front_md: card.front_md as string,
@@ -69,6 +99,8 @@ export default async function EditCardPage(props: { params: Promise<{ id: string
             note_md: (card.note_md as string) ?? "",
             topicPath,
             tags: tagNames,
+            frontImages: media.filter((m) => m.side === "front").map(toEditorImage),
+            backImages: media.filter((m) => m.side === "back").map(toEditorImage),
           }}
           topicPaths={topics.map((t) => t.path)}
           knownTags={allTags.map((t) => t.name)}

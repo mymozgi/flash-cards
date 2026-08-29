@@ -3,19 +3,14 @@
 import { useActionState, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { renderMarkdown } from "@/lib/markdown";
+import { ImageError, MAX_IMAGES_PER_SIDE, imagesFromClipboard } from "@/lib/image";
+import { discardUpload, uploadImage } from "@/lib/upload";
 import { saveCard, type CardFormState } from "./actions";
+import { ImageStrip } from "./image-strip";
+import type { EditorCard, EditorImage } from "./editor-types";
 
 const DRAFT_KEY = "kartoteka:draft";
 const initial: CardFormState = { error: null };
-
-export type EditorCard = {
-  id: string;
-  front_md: string;
-  back_md: string;
-  note_md: string;
-  topicPath: string;
-  tags: string[];
-};
 
 type Draft = { front_md: string; back_md: string; note_md: string; topicPath: string; tags: string };
 
@@ -42,10 +37,12 @@ function clearDraft() {
 
 export function CardEditor({
   card,
+  userId,
   topicPaths,
   knownTags,
 }: {
   card?: EditorCard;
+  userId: string;
   topicPaths: string[];
   knownTags: string[];
 }) {
@@ -58,8 +55,17 @@ export function CardEditor({
   const [topicPath, setTopicPath] = useState(card?.topicPath ?? "");
   const [tags, setTags] = useState(card?.tags.join(", ") ?? "");
 
-  // Черновик читается как внешнее хранилище: на сервере его нет, на клиенте есть,
-  // и подставляется он не молча, а по кнопке — чтобы не затирать начатый ввод.
+  const [frontImages, setFrontImages] = useState<EditorImage[]>(card?.frontImages ?? []);
+  const [backImages, setBackImages] = useState<EditorImage[]>(card?.backImages ?? []);
+  const [uploading, setUploading] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+
+  // Идентификатор новой карточки нужен раньше вставки в базу — из него строится
+  // путь в хранилище. Генерируем в обработчике, а не в рендере: рендер должен
+  // оставаться чистым.
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const cardId = card?.id ?? draftId;
+
   const stored = useSyncExternalStore(subscribeDraft, readDraft, () => null);
   const [draftHandled, setDraftHandled] = useState(false);
 
@@ -105,9 +111,70 @@ export function CardEditor({
     setDraftHandled(true);
   };
 
+  const addImages = async (side: "front" | "back", files: File[]) => {
+    if (files.length === 0) return;
+    const setter = side === "front" ? setFrontImages : setBackImages;
+    const existing = side === "front" ? frontImages : backImages;
+    const room = MAX_IMAGES_PER_SIDE - existing.length;
+
+    if (room <= 0) {
+      setImageError(`На одной стороне не больше ${MAX_IMAGES_PER_SIDE} изображений`);
+      return;
+    }
+
+    const targetId = cardId ?? crypto.randomUUID();
+    if (!cardId) setDraftId(targetId);
+
+    setUploading(true);
+    setImageError(null);
+    try {
+      for (const file of files.slice(0, room)) {
+        const uploaded = await uploadImage(userId, targetId, file);
+        setter((prev) => [...prev, uploaded]);
+      }
+      if (files.length > room) {
+        setImageError(`Взято ${room} из ${files.length}: предел — ${MAX_IMAGES_PER_SIDE} на сторону`);
+      }
+    } catch (e) {
+      setImageError(
+        e instanceof ImageError || e instanceof Error ? e.message : "Не удалось добавить изображение",
+      );
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeImage = (side: "front" | "back", index: number) => {
+    const setter = side === "front" ? setFrontImages : setBackImages;
+    const list = side === "front" ? frontImages : backImages;
+    const image = list[index];
+    setter((prev) => prev.filter((_, i) => i !== index));
+    // файл уже помечен сиротой при загрузке; убираем его сразу, чтобы не ждать уборки
+    void discardUpload(image);
+  };
+
+  const captionImage = (side: "front" | "back", index: number, caption: string) => {
+    const setter = side === "front" ? setFrontImages : setBackImages;
+    setter((prev) => prev.map((img, i) => (i === index ? { ...img, caption } : img)));
+  };
+
+  const moveImage = (side: "front" | "back", index: number, delta: number) => {
+    const setter = side === "front" ? setFrontImages : setBackImages;
+    setter((prev) => {
+      const next = [...prev];
+      const target = index + delta;
+      if (target < 0 || target >= next.length) return prev;
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  };
+
   return (
     <form action={formAction} onSubmit={clearDraft} className="flex flex-col gap-5">
       {card && <input type="hidden" name="id" value={card.id} />}
+      {!card && draftId && <input type="hidden" name="new_id" value={draftId} />}
+      <input type="hidden" name="images_front" value={JSON.stringify(frontImages)} />
+      <input type="hidden" name="images_back" value={JSON.stringify(backImages)} />
 
       {offerDraft && (
         <div className="flex flex-wrap items-center gap-3 rounded border-l-[3px] border-accent bg-surface px-4 py-3 text-sm">
@@ -121,9 +188,48 @@ export function CardEditor({
         </div>
       )}
 
+      {imageError && (
+        <p role="alert" className="rounded border-l-[3px] border-rust bg-rust-soft px-3 py-2 text-sm">
+          {imageError}
+        </p>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2">
-        <Side label="Вопрос" name="front_md" value={front} onChange={setFront} required />
-        <Side label="Ответ" name="back_md" value={back} onChange={setBack} required />
+        <Side
+          label="Вопрос"
+          name="front_md"
+          value={front}
+          onChange={setFront}
+          onPasteFiles={(files) => void addImages("front", files)}
+          required
+        >
+          <ImageStrip
+            images={frontImages}
+            busy={uploading}
+            onAdd={(files) => void addImages("front", files)}
+            onRemove={(i) => removeImage("front", i)}
+            onCaption={(i, c) => captionImage("front", i, c)}
+            onMove={(i, d) => moveImage("front", i, d)}
+          />
+        </Side>
+
+        <Side
+          label="Ответ"
+          name="back_md"
+          value={back}
+          onChange={setBack}
+          onPasteFiles={(files) => void addImages("back", files)}
+          required
+        >
+          <ImageStrip
+            images={backImages}
+            busy={uploading}
+            onAdd={(files) => void addImages("back", files)}
+            onRemove={(i) => removeImage("back", i)}
+            onCaption={(i, c) => captionImage("back", i, c)}
+            onMove={(i, d) => moveImage("back", i, d)}
+          />
+        </Side>
       </div>
 
       <Field label="Заметка — видна только после ответа">
@@ -188,7 +294,7 @@ export function CardEditor({
           type="submit"
           name="intent"
           value="save"
-          disabled={pending}
+          disabled={pending || uploading}
           className="min-h-11 rounded bg-accent px-5 text-sm font-medium text-accent-ink disabled:opacity-60"
         >
           {pending ? "Сохраняем…" : "Сохранить"}
@@ -198,7 +304,7 @@ export function CardEditor({
             type="submit"
             name="intent"
             value="save_and_new"
-            disabled={pending}
+            disabled={pending || uploading}
             className="min-h-11 rounded border border-line px-5 text-sm disabled:opacity-60"
           >
             Сохранить и создать ещё
@@ -226,13 +332,17 @@ function Side({
   name,
   value,
   onChange,
+  onPasteFiles,
   required,
+  children,
 }: {
   label: string;
   name: string;
   value: string;
   onChange: (v: string) => void;
+  onPasteFiles: (files: File[]) => void;
   required?: boolean;
+  children: React.ReactNode;
 }) {
   const [preview, setPreview] = useState(false);
 
@@ -262,10 +372,18 @@ function Side({
           value={value}
           required={required}
           onChange={(e) => onChange(e.target.value)}
+          onPaste={(e) => {
+            const files = imagesFromClipboard(e.clipboardData?.items ?? null);
+            if (files.length > 0) {
+              e.preventDefault();
+              onPasteFiles(files);
+            }
+          }}
           rows={6}
           className="min-h-32 w-full resize-y rounded border border-line bg-surface px-3 py-2 font-sans text-sm"
         />
       )}
+      {children}
     </div>
   );
 }

@@ -5,7 +5,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Grade } from "ts-fsrs";
 import { fromFsrsCard, previewIntervals, RATINGS, scheduler, toFsrsCard } from "@/lib/fsrs";
 import { renderMarkdown } from "@/lib/markdown";
-import type { QueueCard } from "@/lib/types";
+import type { MediaItem, QueueCard } from "@/lib/types";
+import { CardMedia, Lightbox } from "@/components/card-media";
 import { gradeCard, undoReview, type GradeResult } from "./actions";
 
 /** Карточка, провалившаяся сейчас, возвращается в этой же сессии (§8.1). */
@@ -27,6 +28,7 @@ export function ReviewSession({
   const [revealed, setRevealed] = useState(false);
   const [done, setDone] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [zoomed, setZoomed] = useState<MediaItem | null>(null);
   const history = useRef<HistoryEntry[]>([]);
   // заполняется эффектом при показе карточки: Date.now() в теле рендера — нечистый вызов
   const shownAt = useRef(0);
@@ -51,6 +53,26 @@ export function ReviewSession({
     () => (current?.card.note_md ? renderMarkdown(current.card.note_md) : ""),
     [current],
   );
+
+  const frontMedia = useMemo(
+    () => (current?.media ?? []).filter((m) => m.side === "front"),
+    [current],
+  );
+  const backMedia = useMemo(
+    () => (current?.media ?? []).filter((m) => m.side === "back"),
+    [current],
+  );
+
+  // Изображения двух следующих карточек подгружаются заранее (NFR-3),
+  // иначе после оценки экран моргает пустым местом
+  useEffect(() => {
+    for (const next of queue.slice(1, 3)) {
+      for (const image of next.media) {
+        const preload = new Image();
+        preload.src = image.url;
+      }
+    }
+  }, [queue]);
 
   const grade = useCallback(
     (rating: Grade) => {
@@ -109,6 +131,11 @@ export function ReviewSession({
     const onKey = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLElement && ["INPUT", "TEXTAREA"].includes(event.target.tagName))
         return;
+      if (zoomed) {
+        // во весь экран оценки не ставим — иначе слепое нажатие пробела
+        if (event.key === "Escape") setZoomed(null);
+        return;
+      }
       if (event.key === " " || event.key === "Enter") {
         event.preventDefault();
         if (!revealed) setRevealed(true);
@@ -129,7 +156,7 @@ export function ReviewSession({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [grade, revealed, undo]);
+  }, [grade, revealed, undo, zoomed]);
 
   // Свайп: влево — «Снова», вправо — «Хорошо» (§11)
   const touchStart = useRef<{ x: number; y: number } | null>(null);
@@ -139,7 +166,7 @@ export function ReviewSession({
   };
   const onTouchEnd = (event: React.TouchEvent) => {
     const start = touchStart.current;
-    if (!start || !revealed) return;
+    if (!start || !revealed || zoomed) return;
     const t = event.changedTouches[0];
     const dx = t.clientX - start.x;
     const dy = t.clientY - start.y;
@@ -174,6 +201,7 @@ export function ReviewSession({
 
   return (
     <div className="flex min-h-[calc(100dvh-8rem)] flex-col" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      {zoomed && <Lightbox image={zoomed} onClose={() => setZoomed(null)} />}
       <div className="flex items-center justify-between gap-4 border-b border-line pb-3 font-mono text-[11px] uppercase tracking-[0.13em] text-faint">
         <span className="truncate">{current.topicPath ?? "Без темы"}</span>
         <span className="tabular-nums">
@@ -192,6 +220,7 @@ export function ReviewSession({
           className="prose-card text-lg sm:text-xl"
           dangerouslySetInnerHTML={{ __html: frontHtml }}
         />
+        <CardMedia images={frontMedia} onOpen={setZoomed} />
 
         {revealed && (
           <>
@@ -200,6 +229,7 @@ export function ReviewSession({
               className="prose-card text-lg sm:text-xl"
               dangerouslySetInnerHTML={{ __html: backHtml }}
             />
+            <CardMedia images={backMedia} onOpen={setZoomed} />
             {noteHtml && (
               <div
                 className="prose-card mt-5 border-l-[3px] border-line-strong pl-4 text-sm text-muted"

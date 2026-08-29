@@ -1,4 +1,5 @@
 export type CardState = "new" | "learning" | "review" | "relearning";
+export type CardSide = "front" | "back";
 export type CardKind = "basic" | "reversed_of";
 
 export type TopicRow = {
@@ -53,10 +54,22 @@ export type SettingsRow = {
   timezone: string;
 };
 
+export type MediaItem = {
+  id: string;
+  side: CardSide;
+  url: string;
+  thumbUrl: string;
+  width: number;
+  height: number;
+  caption: string | null;
+  position: number;
+};
+
 /** Карточка в очереди повторения — всё, что нужно экрану сессии. */
 export type QueueCard = {
   card: CardRow;
   scheduling: SchedulingRow;
   topicPath: string | null;
   tags: string[];
+  media: MediaItem[];
 };

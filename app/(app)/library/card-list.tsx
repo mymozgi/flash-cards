@@ -13,6 +13,7 @@ export type LibraryCard = {
   tags: string[];
   suspended: boolean;
   state: string;
+  thumbUrl: string | null;
 };
 
 const STATE_LABELS: Record<string, string> = {
@@ -111,6 +112,15 @@ export function CardList({ cards }: { cards: LibraryCard[] }) {
               aria-label="Выбрать карточку"
               className="mt-1 size-4 shrink-0 accent-[var(--accent)]"
             />
+            {card.thumbUrl && (
+              <img
+                src={card.thumbUrl}
+                alt=""
+                width={40}
+                height={40}
+                className="mt-0.5 size-10 shrink-0 rounded border border-line object-cover"
+              />
+            )}
             <Link href={`/cards/${card.id}`} className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">{card.front}</p>
               <p className="truncate text-sm text-muted">{card.back}</p>

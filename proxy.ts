@@ -2,7 +2,8 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { supabaseEnv } from "@/lib/supabase/env";
 
-const PUBLIC_PATHS = ["/login", "/auth"];
+// /api/cron защищён своим секретом, сессия ему не нужна
+const PUBLIC_PATHS = ["/login", "/auth", "/api/cron"];
 
 /**
  * В Next 16 middleware переименован в proxy (см. docs/01-app/01-getting-started/16-proxy.md).
