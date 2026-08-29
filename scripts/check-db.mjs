@@ -35,18 +35,21 @@ console.log(`\nПроект: ${url}\n`);
 console.log("Схема:");
 
 for (const name of [...TABLES, ...VIEWS]) {
-  const { error } = await supabase.from(name).select("*", { head: true, count: "exact" });
+  // без head: при 401 PostgREST возвращает код ошибки только в теле ответа
+  const { error, count } = await supabase.from(name).select("*", { count: "exact" }).limit(1);
 
-  if (!error) {
-    warn(`${name} — читается без входа; проверьте GRANT и политики RLS`);
+  if (!error && (count ?? 0) > 0) {
+    bad(`${name} — гость видит ${count} строк; RLS не защищает таблицу`);
     failures++;
+  } else if (!error) {
+    warn(`${name} — гостю выдан select, но строк он не видит; примените 0002_revoke_anon.sql`);
   } else if (error.code === "42501") {
     ok(`${name} — есть, доступ закрыт для гостя`);
   } else if (error.code === "42P01" || error.code === "PGRST205") {
     bad(`${name} — не найдена; выполните supabase/migrations/0001_init.sql`);
     failures++;
   } else {
-    bad(`${name} — ${error.code ?? "?"}: ${error.message}`);
+    bad(`${name} — ${error.code || `HTTP ${error.status ?? "?"}`}: ${error.message || "без описания"}`);
     failures++;
   }
 }
