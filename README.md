@@ -1,36 +1,42 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Картотека
 
-## Getting Started
+Личный тренажёр интервального повторения: карточки с текстом и изображениями,
+батч-импорт из CSV, темы и теги, планирование по FSRS.
 
-First, run the development server:
+Спецификация: https://claude.ai/code/artifact/84853df6-1a8b-4f60-9652-0fe0eb510c6c
+Проектные договорённости и скилы: [CLAUDE.md](CLAUDE.md)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Что уже работает (этап 1 — ядро)
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- Вход по email и паролю, единственный аккаунт, гость отправляется на `/login`
+- Карточки: создание, правка, приостановка, мягкое удаление, обратная карточка
+- Темы — дерево до трёх уровней, теги — плоские и независимые
+- Повторение по FSRS: четыре оценки с подписанными интервалами, отмена, свайпы, клавиши
+- Библиотека: фильтры по теме и тегу, полнотекстовый поиск, массовые операции
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Изображения — этап 2, импорт CSV — этап 3.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Запуск
 
-## Learn More
+1. Создайте проект на [supabase.com](https://supabase.com) (регион поближе, тариф Free).
+2. SQL Editor → выполните `supabase/migrations/0001_init.sql`.
+3. Authentication → Sign In / Providers → **выключите** «Allow new users to sign up».
+4. Authentication → Users → Add user: свою почту и пароль. Это единственный аккаунт.
+5. Project Settings → API: скопируйте URL и публичный ключ в `.env.local`
+   (шаблон — `.env.example`).
+6. `npm install && npm run dev` → http://localhost:3000
 
-To learn more about Next.js, take a look at the following resources:
+## Деплой на Vercel
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Импортировать репозиторий, добавить те же две переменные окружения
+(`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) и задеплоить.
+Тариф Hobby — только некоммерческое использование.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Клавиатура
 
-## Deploy on Vercel
+`Пробел` — показать ответ · `1`–`4` — оценка · `Z` — отменить последнюю оценку
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Стек
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Next.js 16 (App Router, server actions) · Supabase (Postgres + Auth, RLS) ·
+Tailwind CSS 4 · ts-fsrs · TypeScript
