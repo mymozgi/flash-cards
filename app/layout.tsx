@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans, Literata } from "next/font/google";
 import "./globals.css";
+import { RegisterServiceWorker } from "@/components/register-sw";
 
 const plexSans = IBM_Plex_Sans({
   variable: "--font-plex-sans",
@@ -26,6 +27,8 @@ const literata = Literata({
 export const metadata: Metadata = {
   title: "Картотека",
   description: "Личный тренажёр интервального повторения",
+  applicationName: "Картотека",
+  appleWebApp: { capable: true, title: "Картотека", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {
@@ -43,6 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         className={`${plexSans.variable} ${plexMono.variable} ${literata.variable} font-sans antialiased`}
       >
         {children}
+        <RegisterServiceWorker />
       </body>
     </html>
   );

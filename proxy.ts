@@ -55,6 +55,8 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
+// sw.js и offline.html обязаны отдаваться как есть: редирект на /login
+// сломал бы регистрацию сервис-воркера — браузер получил бы неверный MIME-тип
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|offline.html|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)"],
 };

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Картотека — нет сети</title>
+    <style>
+      :root { color-scheme: light dark; --paper:#f1f4f2; --ink:#14201c; --muted:#5b6b65; --accent:#0e6e5b; }
+      @media (prefers-color-scheme: dark) {
+        :root { --paper:#0e1412; --ink:#e2e9e6; --muted:#9aa8a2; --accent:#4fcfae; }
+      }
+      body {
+        margin: 0; min-height: 100dvh; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 12px; padding: 24px;
+        background: var(--paper); color: var(--ink); text-align: center;
+        font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+      }
+      h1 { font-size: 24px; margin: 0; font-weight: 600; }
+      p { margin: 0; color: var(--muted); max-width: 34ch; line-height: 1.6; font-size: 15px; }
+      button {
+        margin-top: 12px; padding: 12px 20px; border: 0; border-radius: 4px;
+        background: var(--accent); color: var(--paper); font: inherit; font-weight: 500;
+      }
+    </style>
+  </head>
+  <body>
+    <img src="/icon-192.png" alt="" width="64" height="64" style="border-radius: 12px" />
+    <h1>Нет сети</h1>
+    <p>
+      Картотека держит карточки на сервере, поэтому очередь сейчас не загрузится.
+      Откройте страницу снова, когда связь вернётся.
+    </p>
+    <button onclick="location.reload()">Повторить</button>
+  </body>
+</html>
