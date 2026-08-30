@@ -3,6 +3,9 @@ import { IBM_Plex_Mono, IBM_Plex_Sans, Literata } from "next/font/google";
 import "./globals.css";
 import { RegisterServiceWorker } from "@/components/register-sw";
 
+// Тему ставим до первой отрисовки, иначе на тёмной системе мелькает вспышка
+const THEME_BOOT = `try{document.documentElement.dataset.theme=localStorage.getItem("kartoteka:theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}`;
+
 const plexSans = IBM_Plex_Sans({
   variable: "--font-plex-sans",
   subsets: ["latin", "cyrillic"],
@@ -41,7 +44,10 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
+      </head>
       <body
         className={`${plexSans.variable} ${plexMono.variable} ${literata.variable} font-sans antialiased`}
       >

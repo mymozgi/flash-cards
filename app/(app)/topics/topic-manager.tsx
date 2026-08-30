@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createTopic, deleteTopic, renameTopic, type TopicState } from "./actions";
@@ -73,9 +74,12 @@ Cancel — move cards and subtopics up to the parent.`,
               className="flex items-center gap-3 py-2.5 pr-3 text-sm"
               style={{ paddingLeft: `${12 + topic.depth * 18}px` }}
             >
-              <span className={`min-w-0 flex-1 truncate ${topic.depth === 0 ? "font-medium" : "text-muted"}`}>
+              <Link
+                href={`/decks/${topic.id}`}
+                className={`min-w-0 flex-1 truncate hover:text-accent ${topic.depth === 0 ? "font-medium" : "text-muted"}`}
+              >
                 {topic.name}
-              </span>
+              </Link>
               <span className="font-mono text-xs tabular-nums text-faint">{topic.cardCount}</span>
               <button type="button" onClick={() => rename(topic)} className="text-faint hover:text-ink">
                 Rename

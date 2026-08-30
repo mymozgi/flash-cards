@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ThemeToggle } from "./theme-toggle";
 
 const ITEMS = [
   { href: "/", label: "Today" },
@@ -37,7 +38,10 @@ export function Nav({ signOutAction }: { signOutAction: () => Promise<void> }) {
             {item.label}
           </Link>
         ))}
-        <form action={signOutAction} className="hidden sm:block sm:ml-auto">
+        <div className="hidden sm:ml-auto sm:block">
+          <ThemeToggle />
+        </div>
+        <form action={signOutAction} className="hidden sm:block">
           <button type="submit" className="px-2 py-4 text-sm text-faint hover:text-ink">
             Sign out
           </button>
