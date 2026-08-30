@@ -25,10 +25,10 @@ const literata = Literata({
 });
 
 export const metadata: Metadata = {
-  title: "Картотека",
-  description: "Личный тренажёр интервального повторения",
-  applicationName: "Картотека",
-  appleWebApp: { capable: true, title: "Картотека", statusBarStyle: "default" },
+  title: "Kartoteka",
+  description: "A personal spaced-repetition trainer",
+  applicationName: "Kartoteka",
+  appleWebApp: { capable: true, title: "Kartoteka", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {
@@ -41,7 +41,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru">
+    <html lang="en">
       <body
         className={`${plexSans.variable} ${plexMono.variable} ${literata.variable} font-sans antialiased`}
       >

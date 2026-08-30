@@ -62,7 +62,7 @@ export function ImageStrip({
                 <input
                   value={image.caption}
                   onChange={(e) => onCaption(index, e.target.value)}
-                  placeholder="Подпись — необязательно"
+                  placeholder="Caption — optional"
                   className="w-full rounded border border-line bg-surface px-2 py-1 text-xs"
                 />
                 <span className="font-mono text-[10px] text-faint">
@@ -74,7 +74,7 @@ export function ImageStrip({
                   type="button"
                   onClick={() => onMove(index, -1)}
                   disabled={index === 0}
-                  aria-label="Выше"
+                  aria-label="Move up"
                   className="px-1.5 text-faint hover:text-ink disabled:opacity-30"
                 >
                   ↑
@@ -83,7 +83,7 @@ export function ImageStrip({
                   type="button"
                   onClick={() => onMove(index, 1)}
                   disabled={index === images.length - 1}
-                  aria-label="Ниже"
+                  aria-label="Move down"
                   className="px-1.5 text-faint hover:text-ink disabled:opacity-30"
                 >
                   ↓
@@ -91,7 +91,7 @@ export function ImageStrip({
                 <button
                   type="button"
                   onClick={() => onRemove(index)}
-                  aria-label="Удалить изображение"
+                  aria-label="Remove image"
                   className="px-1.5 text-faint hover:text-rust"
                 >
                   ✕
@@ -118,12 +118,12 @@ export function ImageStrip({
           disabled={busy || full}
           className="text-accent disabled:opacity-40"
         >
-          {busy ? "Загружаем…" : "Добавить изображение"}
+          {busy ? "Uploading…" : "Add image"}
         </button>
         <span>
           {full
-            ? `Предел — ${MAX_IMAGES_PER_SIDE} на сторону`
-            : "или перетащите файл, или вставьте из буфера"}
+            ? `Limit: ${MAX_IMAGES_PER_SIDE} per side`
+            : "or drop a file, or paste from the clipboard"}
         </span>
       </div>
     </div>

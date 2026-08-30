@@ -74,25 +74,25 @@ export default async function LibraryPage(props: {
   return (
     <>
       <header className="border-b border-line-strong pb-4">
-        <h1 className="font-display text-3xl font-semibold tracking-tight">Библиотека</h1>
+        <h1 className="font-display text-3xl font-semibold tracking-tight">Library</h1>
         <form className="mt-4 flex gap-2">
           {params.topic && <input type="hidden" name="topic" value={params.topic} />}
           {params.tag && <input type="hidden" name="tag" value={params.tag} />}
           <input
             name="q"
             defaultValue={params.q ?? ""}
-            placeholder="Поиск по тексту карточек"
+            placeholder="Search card text"
             className="min-w-0 flex-1 rounded border border-line bg-surface px-3 py-2 text-sm"
           />
           <button type="submit" className="rounded border border-line px-4 py-2 text-sm">
-            Найти
+            Search
           </button>
         </form>
       </header>
 
       <div className="mt-4 flex flex-wrap gap-1.5 text-xs">
         <Filter href="/library" active={!params.topic && !params.tag}>
-          Все
+          All
         </Filter>
         {topics.map((topic) => (
           <Filter key={topic.id} href={`/library?topic=${topic.id}`} active={params.topic === topic.id}>
@@ -109,13 +109,13 @@ export default async function LibraryPage(props: {
       <div className="mt-5">
         {error ? (
           <p role="alert" className="rounded border-l-[3px] border-rust bg-rust-soft px-3 py-2 text-sm">
-            Не удалось загрузить карточки: {error.message}
+            Could not load cards: {error.message}
           </p>
         ) : cards.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted">
-            Ничего не найдено.{" "}
+            Nothing found.{" "}
             <Link href="/cards/new" className="text-accent underline underline-offset-4">
-              Создать карточку
+              Create a card
             </Link>
           </p>
         ) : (

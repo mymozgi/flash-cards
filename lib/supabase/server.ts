@@ -41,6 +41,6 @@ export async function currentUser() {
  */
 export async function requireUser() {
   const user = await currentUser();
-  if (!user) throw new Error("Требуется вход");
+  if (!user) throw new Error("Sign-in required");
   return user;
 }

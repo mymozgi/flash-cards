@@ -20,14 +20,14 @@ const BATCH = 100;
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
   if (secret && request.headers.get("authorization") !== `Bearer ${secret}`) {
-    return Response.json({ error: "Не авторизовано" }, { status: 401 });
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !serviceKey) {
     return Response.json(
-      { error: "Не задан SUPABASE_SERVICE_ROLE_KEY — уборка отключена" },
+      { error: "SUPABASE_SERVICE_ROLE_KEY is not set — the sweep is disabled" },
       { status: 501 },
     );
   }
@@ -79,9 +79,9 @@ export async function GET(request: Request) {
 
   return Response.json({
     ok: true,
-    проверено: candidates.length,
-    удалено: deleted.length,
-    сохранено: candidates.length - deleted.length,
-    карточек: count ?? 0,
+    checked: candidates.length,
+    deleted: deleted.length,
+    kept: candidates.length - deleted.length,
+    cards: count ?? 0,
   });
 }

@@ -47,7 +47,7 @@ export async function uploadImage(
   ]);
 
   const failure = full.error ?? thumb.error;
-  if (failure) throw new Error(`Не удалось загрузить изображение: ${failure.message}`);
+  if (failure) throw new Error(`Upload failed: ${failure.message}`);
 
   return {
     storagePath,

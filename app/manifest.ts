@@ -2,14 +2,14 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Картотека",
-    short_name: "Картотека",
-    description: "Личный тренажёр интервального повторения",
+    name: "Kartoteka",
+    short_name: "Kartoteka",
+    description: "A personal spaced-repetition trainer",
     start_url: "/",
     scope: "/",
     display: "standalone",
     orientation: "portrait",
-    lang: "ru",
+    lang: "en",
     background_color: "#0e1412",
     theme_color: "#0e6e5b",
     categories: ["education", "productivity"],
@@ -20,8 +20,8 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: "/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
     shortcuts: [
-      { name: "Повторение", short_name: "Повторять", url: "/review" },
-      { name: "Новая карточка", short_name: "Новая", url: "/cards/new" },
+      { name: "Review", short_name: "Review", url: "/review" },
+      { name: "New card", short_name: "New", url: "/cards/new" },
     ],
   };
 }

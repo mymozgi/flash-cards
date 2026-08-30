@@ -14,7 +14,7 @@ export function TopicManager({ topics }: { topics: TopicNode[] }) {
   const router = useRouter();
 
   const rename = (topic: TopicNode) => {
-    const name = prompt("Новое имя темы", topic.name);
+    const name = prompt("New topic name", topic.name);
     if (!name || name === topic.name) return;
     startTransition(async () => {
       const res = await renameTopic(topic.id, name);
@@ -25,7 +25,10 @@ export function TopicManager({ topics }: { topics: TopicNode[] }) {
 
   const remove = (topic: TopicNode) => {
     const withCards = confirm(
-      `Удалить «${topic.name}».\n\nOK — удалить вместе с карточками поддерева.\nОтмена — поднять карточки и подтемы к родителю.`,
+      `Delete “${topic.name}”.
+
+OK — delete it with the cards in this branch.
+Cancel — move cards and subtopics up to the parent.`,
     );
     startTransition(async () => {
       const res = await deleteTopic(topic.id, withCards ? "cascade" : "reparent");
@@ -39,7 +42,7 @@ export function TopicManager({ topics }: { topics: TopicNode[] }) {
       <form action={formAction} className="mt-6 flex flex-col gap-2 sm:flex-row">
         <input
           name="path"
-          placeholder="Медицина / Анатомия / Верхняя конечность"
+          placeholder="Medicine / Anatomy / Upper limb"
           className="min-w-0 flex-1 rounded border border-line bg-surface px-3 py-2 text-sm"
         />
         <button
@@ -47,11 +50,11 @@ export function TopicManager({ topics }: { topics: TopicNode[] }) {
           disabled={pending}
           className="rounded bg-accent px-4 py-2 text-sm font-medium text-accent-ink disabled:opacity-60"
         >
-          Создать
+          Create
         </button>
       </form>
       <p className="mt-2 text-xs text-faint">
-        Недостающие уровни создаются автоматически. Глубина — до трёх уровней.
+        Missing levels are created automatically. Depth is limited to three levels.
       </p>
 
       {(state.error || error) && (
@@ -61,7 +64,7 @@ export function TopicManager({ topics }: { topics: TopicNode[] }) {
       )}
 
       {topics.length === 0 ? (
-        <p className="mt-8 text-sm text-muted">Тем пока нет.</p>
+        <p className="mt-8 text-sm text-muted">No topics yet.</p>
       ) : (
         <ul className={`mt-6 divide-y divide-line rounded border border-line bg-surface ${busy ? "opacity-60" : ""}`}>
           {topics.map((topic) => (
@@ -75,10 +78,10 @@ export function TopicManager({ topics }: { topics: TopicNode[] }) {
               </span>
               <span className="font-mono text-xs tabular-nums text-faint">{topic.cardCount}</span>
               <button type="button" onClick={() => rename(topic)} className="text-faint hover:text-ink">
-                Переименовать
+                Rename
               </button>
               <button type="button" onClick={() => remove(topic)} className="text-faint hover:text-rust">
-                Удалить
+                Delete
               </button>
             </li>
           ))}

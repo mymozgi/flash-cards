@@ -7,9 +7,9 @@ export default async function LoginPage(props: {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6 py-12">
-      <h1 className="font-display text-4xl font-semibold tracking-tight">Картотека</h1>
+      <h1 className="font-display text-4xl font-semibold tracking-tight">Kartoteka</h1>
       <p className="mt-2 text-sm text-muted">
-        Личный тренажёр интервального повторения. Вход только для владельца.
+        A personal spaced-repetition trainer. Owner access only.
       </p>
       <LoginForm next={next ?? "/"} />
     </main>

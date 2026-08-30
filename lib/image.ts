@@ -33,23 +33,23 @@ async function toWebp(bitmap: ImageBitmap, longSide: number): Promise<Blob> {
   canvas.height = size.height;
 
   const context = canvas.getContext("2d");
-  if (!context) throw new ImageError("Браузер не дал холст для обработки изображения");
+  if (!context) throw new ImageError("The browser refused a canvas for image processing");
   context.drawImage(bitmap, 0, 0, size.width, size.height);
 
   const blob = await new Promise<Blob | null>((resolve) =>
     canvas.toBlob(resolve, "image/webp", WEBP_QUALITY),
   );
-  if (!blob) throw new ImageError("Не удалось сжать изображение в WebP");
+  if (!blob) throw new ImageError("Could not encode the image as WebP");
   return blob;
 }
 
 export async function processImage(file: File): Promise<ProcessedImage> {
   if (!file.type.startsWith("image/")) {
-    throw new ImageError(`«${file.name}» — это не изображение`);
+    throw new ImageError(`“${file.name}” is not an image`);
   }
   if (file.size > MAX_SOURCE_BYTES) {
     throw new ImageError(
-      `«${file.name}» весит ${Math.round(file.size / 1024 / 1024)} МБ — больше предела в 15 МБ`,
+      `“${file.name}” is ${Math.round(file.size / 1024 / 1024)} MB — over the 15 MB limit`,
     );
   }
 
@@ -59,8 +59,8 @@ export async function processImage(file: File): Promise<ProcessedImage> {
   } catch {
     // HEIC с айфона декодируется в Safari, но не в Chrome на десктопе
     throw new ImageError(
-      `Браузер не умеет открывать формат «${file.type || "неизвестный"}». ` +
-        "Пересохраните файл в JPEG или PNG.",
+      `This browser cannot decode “${file.type || "unknown"}”. ` +
+        "Re-save the file as JPEG or PNG.",
     );
   }
 
@@ -90,6 +90,6 @@ export function imagesFromClipboard(items: DataTransferItemList | null): File[] 
 
 export function formatBytes(bytes: number): string {
   return bytes < 1024 * 1024
-    ? `${Math.round(bytes / 1024)} КБ`
-    : `${(bytes / 1024 / 1024).toFixed(1)} МБ`;
+    ? `${Math.round(bytes / 1024)} KB`
+    : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }

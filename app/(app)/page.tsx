@@ -10,14 +10,14 @@ export default async function TodayPage() {
   return (
     <>
       <header className="border-b border-line-strong pb-5">
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-faint">Сегодня</p>
+        <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-faint">Today</p>
         <h1 className="mt-2 font-display text-5xl font-semibold tracking-tight tabular-nums">
           {counts.total}
         </h1>
         <p className="mt-1 text-sm text-muted">
           {counts.total === 0
-            ? "Очередь пуста. Возвращайтесь завтра или потренируйтесь свободно."
-            : `${plural(counts.total, "карточка ждёт", "карточки ждут", "карточек ждут")} повторения`}
+            ? "Nothing due. Come back tomorrow, or run a free practice round."
+            : `${plural(counts.total, "card is", "cards are")} waiting for review`}
         </p>
       </header>
 
@@ -27,23 +27,23 @@ export default async function TodayPage() {
             href="/review"
             className="rounded bg-accent px-5 py-4 text-center text-base font-medium text-accent-ink"
           >
-            Начать
+            Start
           </Link>
         )}
         <Link
           href="/review?free=1"
           className="rounded border border-line px-5 py-3 text-center text-sm text-muted hover:text-ink"
         >
-          Свободная тренировка
+          Free practice
         </Link>
       </div>
 
       <dl className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded border border-line bg-line sm:grid-cols-4">
         {[
-          { label: "К повторению", value: counts.due },
-          { label: "Новых", value: counts.newAvailable },
-          { label: "Сделано сегодня", value: done },
-          { label: "Лимит новых", value: settings.daily_new_limit },
+          { label: "Due", value: counts.due },
+          { label: "New", value: counts.newAvailable },
+          { label: "Done today", value: done },
+          { label: "New limit", value: settings.daily_new_limit },
         ].map((stat) => (
           <div key={stat.label} className="bg-surface px-4 py-3">
             <dt className="font-mono text-[10px] uppercase tracking-[0.13em] text-faint">
@@ -55,14 +55,14 @@ export default async function TodayPage() {
       </dl>
 
       <section className="mt-10">
-        <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-faint">Темы</h2>
+        <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-faint">Topics</h2>
         {topics.length === 0 ? (
           <p className="mt-3 text-sm text-muted">
-            Тем пока нет.{" "}
+            No topics yet.{" "}
             <Link href="/cards/new" className="text-accent underline underline-offset-4">
-              Создайте первую карточку
+              Create your first card
             </Link>{" "}
-            — тему можно завести прямо в редакторе.
+            — you can add a topic right in the editor.
           </p>
         ) : (
           <ul className="mt-3 divide-y divide-line rounded border border-line bg-surface">

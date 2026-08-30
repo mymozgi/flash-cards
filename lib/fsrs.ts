@@ -10,10 +10,10 @@ import {
 import type { CardState, SchedulingRow } from "./types";
 
 export const RATINGS = [
-  { grade: Rating.Again as Grade, key: "1", label: "Снова", hint: "не вспомнил" },
-  { grade: Rating.Hard as Grade, key: "2", label: "Трудно", hint: "с усилием" },
-  { grade: Rating.Good as Grade, key: "3", label: "Хорошо", hint: "нормально" },
-  { grade: Rating.Easy as Grade, key: "4", label: "Легко", hint: "мгновенно" },
+  { grade: Rating.Again as Grade, key: "1", label: "Again", hint: "no recall" },
+  { grade: Rating.Hard as Grade, key: "2", label: "Hard", hint: "with effort" },
+  { grade: Rating.Good as Grade, key: "3", label: "Good", hint: "as expected" },
+  { grade: Rating.Easy as Grade, key: "4", label: "Easy", hint: "instant" },
 ] as const;
 
 const STATE_TO_DB: Record<State, CardState> = {
@@ -91,13 +91,13 @@ export function previewIntervals(
 
 export function humanInterval(due: Date, from: Date = new Date()): string {
   const minutes = Math.round((due.getTime() - from.getTime()) / 60000);
-  if (minutes < 1) return "сейчас";
-  if (minutes < 60) return `${minutes} мин`;
+  if (minutes < 1) return "now";
+  if (minutes < 60) return `${minutes} min`;
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours} ч`;
+  if (hours < 24) return `${hours} h`;
   const days = Math.round(hours / 24);
-  if (days < 31) return `${days} дн`;
+  if (days < 31) return `${days} d`;
   const months = Math.round(days / 30.4);
-  if (months < 24) return `${months} мес`;
-  return `${(days / 365).toFixed(1)} г`;
+  if (months < 24) return `${months} mo`;
+  return `${(days / 365).toFixed(1)} y`;
 }

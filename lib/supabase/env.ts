@@ -4,8 +4,8 @@ export function supabaseEnv() {
 
   if (!url || !key) {
     throw new Error(
-      "Не заданы NEXT_PUBLIC_SUPABASE_URL и NEXT_PUBLIC_SUPABASE_ANON_KEY. " +
-        "Скопируйте .env.example в .env.local и подставьте значения из Supabase → Project Settings → API.",
+      "NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are not set. " +
+        "Copy .env.example to .env.local and fill in the values from Supabase → Project Settings → API.",
     );
   }
   return { url, key };

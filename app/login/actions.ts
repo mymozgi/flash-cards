@@ -12,7 +12,7 @@ export async function signIn(_prev: LoginState, formData: FormData): Promise<Log
   const next = String(formData.get("next") ?? "/");
 
   if (!email || !password) {
-    return { error: "Введите почту и пароль" };
+    return { error: "Enter your email and password" };
   }
 
   const supabase = await createClient();
@@ -22,8 +22,8 @@ export async function signIn(_prev: LoginState, formData: FormData): Promise<Log
     return {
       error:
         error.message === "Invalid login credentials"
-          ? "Неверная почта или пароль"
-          : `Не удалось войти: ${error.message}`,
+          ? "Wrong email or password"
+          : `Sign-in failed: ${error.message}`,
     };
   }
 

@@ -39,7 +39,7 @@ export async function gradeCard(
       .maybeSingle(),
   ]);
 
-  if (!current) return { ok: false, error: "Карточка не найдена" };
+  if (!current) return { ok: false, error: "Card not found" };
 
   const row = current as SchedulingRow;
   const retention = settings?.request_retention ?? 0.9;
@@ -93,7 +93,7 @@ export async function undoReview(reviewId: number): Promise<{ ok: boolean; error
     .eq("user_id", user.id)
     .single();
 
-  if (!review) return { ok: false, error: "Оценка не найдена" };
+  if (!review) return { ok: false, error: "Review not found" };
 
   const before = review.state_before as SchedulingRow;
   const { error } = await supabase

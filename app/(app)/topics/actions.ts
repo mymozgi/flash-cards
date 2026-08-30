@@ -14,7 +14,7 @@ export async function createTopic(_prev: TopicState, formData: FormData): Promis
     .map((p) => p.trim())
     .filter(Boolean)
     .slice(0, 3);
-  if (parts.length === 0) return { error: "Введите путь темы" };
+  if (parts.length === 0) return { error: "Enter a topic path" };
 
   let parentId: string | null = null;
   for (const name of parts) {
@@ -44,7 +44,7 @@ export async function renameTopic(topicId: string, name: string): Promise<TopicS
   const user = await requireUser();
   const supabase = await createClient();
   const trimmed = name.trim();
-  if (!trimmed) return { error: "Имя не может быть пустым" };
+  if (!trimmed) return { error: "Name cannot be empty" };
 
   const { error } = await supabase
     .from("topics")
@@ -54,7 +54,7 @@ export async function renameTopic(topicId: string, name: string): Promise<TopicS
 
   if (error) {
     return {
-      error: error.code === "23505" ? "У соседней темы уже такое имя" : error.message,
+      error: error.code === "23505" ? "A sibling topic already has this name" : error.message,
     };
   }
   revalidatePath("/", "layout");
@@ -79,7 +79,7 @@ export async function deleteTopic(
     .eq("id", topicId)
     .eq("user_id", user.id)
     .maybeSingle();
-  if (!node) return { error: "Тема не найдена" };
+  if (!node) return { error: "Topic not found" };
 
   if (strategy === "reparent") {
     const { error: liftTopics } = await supabase
@@ -91,7 +91,7 @@ export async function deleteTopic(
       return {
         error:
           liftTopics.code === "23505"
-            ? "У родителя уже есть подтема с таким именем — переименуйте её сначала"
+            ? "The parent already has a subtopic with this name — rename it first"
             : liftTopics.message,
       };
     }

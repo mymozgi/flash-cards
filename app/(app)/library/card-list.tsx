@@ -17,10 +17,10 @@ export type LibraryCard = {
 };
 
 const STATE_LABELS: Record<string, string> = {
-  new: "новая",
-  learning: "изучение",
-  review: "повторение",
-  relearning: "переучивание",
+  new: "new",
+  learning: "learning",
+  review: "review",
+  relearning: "relearning",
 };
 
 export function CardList({ cards }: { cards: LibraryCard[] }) {
@@ -40,12 +40,12 @@ export function CardList({ cards }: { cards: LibraryCard[] }) {
   const run = (op: Omit<BulkOp, "cardIds">) => {
     const cardIds = [...selected];
     if (cardIds.length === 0) return;
-    if (op.action === "delete" && !confirm(`Удалить карточек: ${cardIds.length}?`)) return;
+    if (op.action === "delete" && !confirm(`Delete ${cardIds.length} card(s)?`)) return;
 
     startTransition(async () => {
       const res = await bulkUpdate({ ...op, cardIds });
       if (!res.ok) {
-        setError(res.error ?? "Операция не удалась");
+        setError(res.error ?? "The operation failed");
         return;
       }
       setSelected(new Set());
@@ -59,39 +59,39 @@ export function CardList({ cards }: { cards: LibraryCard[] }) {
       {selected.size > 0 && (
         <div className="sticky top-0 z-10 -mx-5 mb-3 flex flex-wrap items-center gap-2 border-b border-line bg-surface px-5 py-3 text-sm sm:mx-0 sm:rounded sm:border">
           <span className="font-mono text-xs tabular-nums text-faint">
-            выбрано {selected.size}
+            {selected.size} selected
           </span>
           <button type="button" onClick={() => run({ action: "suspend" })} className="rounded border border-line px-3 py-1.5">
-            Приостановить
+            Suspend
           </button>
           <button type="button" onClick={() => run({ action: "unsuspend" })} className="rounded border border-line px-3 py-1.5">
-            Вернуть
+            Resume
           </button>
           <button
             type="button"
             onClick={() => {
-              const tags = prompt("Теги через запятую");
+              const tags = prompt("Tags, comma separated");
               if (tags) run({ action: "add_tags", tags });
             }}
             className="rounded border border-line px-3 py-1.5"
           >
-            Добавить теги
+            Add tags
           </button>
           <button
             type="button"
             onClick={() => {
-              const topicPath = prompt("Новая тема — путь через /");
+              const topicPath = prompt("New topic — path separated by /");
               if (topicPath !== null) run({ action: "move_topic", topicPath });
             }}
             className="rounded border border-line px-3 py-1.5"
           >
-            Сменить тему
+            Move to topic
           </button>
           <button type="button" onClick={() => run({ action: "delete" })} className="rounded border border-line px-3 py-1.5 text-rust">
-            Удалить
+            Delete
           </button>
           <button type="button" onClick={() => setSelected(new Set())} className="ml-auto text-faint">
-            Снять выбор
+            Clear selection
           </button>
         </div>
       )}
@@ -109,7 +109,7 @@ export function CardList({ cards }: { cards: LibraryCard[] }) {
               type="checkbox"
               checked={selected.has(card.id)}
               onChange={() => toggle(card.id)}
-              aria-label="Выбрать карточку"
+              aria-label="Select card"
               className="mt-1 size-4 shrink-0 accent-[var(--accent)]"
             />
             {card.thumbUrl && (
@@ -125,10 +125,10 @@ export function CardList({ cards }: { cards: LibraryCard[] }) {
               <p className="truncate text-sm font-medium">{card.front}</p>
               <p className="truncate text-sm text-muted">{card.back}</p>
               <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] uppercase tracking-[0.12em] text-faint">
-                <span>{card.topicPath ?? "без темы"}</span>
+                <span>{card.topicPath ?? "no topic"}</span>
                 <span>·</span>
                 <span>{STATE_LABELS[card.state] ?? card.state}</span>
-                {card.suspended && <span className="text-rust">· приостановлена</span>}
+                {card.suspended && <span className="text-rust">· suspended</span>}
                 {card.tags.map((tag) => (
                   <span key={tag} className="normal-case tracking-normal">
                     #{tag}

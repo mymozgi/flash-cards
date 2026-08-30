@@ -25,7 +25,7 @@ export function CardMedia({
             type="button"
             onClick={() => onOpen(image)}
             className="block w-full overflow-hidden rounded border border-line bg-surface"
-            aria-label={image.caption ?? "Открыть изображение во весь экран"}
+            aria-label={image.caption ?? "Open image full screen"}
           >
             <img
               src={image.url}
@@ -50,7 +50,7 @@ export function Lightbox({ image, onClose }: { image: MediaItem; onClose: () => 
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={image.caption ?? "Изображение"}
+      aria-label={image.caption ?? "Image"}
       onClick={onClose}
       className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-paper/95 p-4"
     >
@@ -67,7 +67,7 @@ export function Lightbox({ image, onClose }: { image: MediaItem; onClose: () => 
         onClick={onClose}
         className="mt-4 rounded border border-line px-4 py-2 text-sm text-muted"
       >
-        Закрыть
+        Close
       </button>
     </div>
   );

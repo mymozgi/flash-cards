@@ -15,9 +15,9 @@ export default async function NewCardPage(props: {
   return (
     <>
       <header className="border-b border-line-strong pb-4">
-        <h1 className="font-display text-3xl font-semibold tracking-tight">Новая карточка</h1>
+        <h1 className="font-display text-3xl font-semibold tracking-tight">New card</h1>
         {saved === "1" && (
-          <p className="mt-2 text-sm text-accent">Сохранено. Можно вводить следующую.</p>
+          <p className="mt-2 text-sm text-accent">Saved. Ready for the next one.</p>
         )}
       </header>
       <div className="mt-6">

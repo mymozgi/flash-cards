@@ -8,10 +8,10 @@ import { deleteCard, setSuspended } from "../actions";
 import type { EditorImage } from "../editor-types";
 
 const STATE_LABELS: Record<string, string> = {
-  new: "новая",
-  learning: "изучение",
-  review: "повторение",
-  relearning: "переучивание",
+  new: "new",
+  learning: "learning",
+  review: "review",
+  relearning: "relearning",
 };
 
 type MediaRow = {
@@ -79,11 +79,11 @@ export default async function EditCardPage(props: { params: Promise<{ id: string
   return (
     <>
       <header className="border-b border-line-strong pb-4">
-        <h1 className="font-display text-3xl font-semibold tracking-tight">Карточка</h1>
+        <h1 className="font-display text-3xl font-semibold tracking-tight">Card</h1>
         {scheduling && (
           <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.13em] text-faint">
-            {STATE_LABELS[scheduling.state] ?? scheduling.state} · показ через{" "}
-            {humanInterval(new Date(scheduling.due))} · повторов {scheduling.reps} · провалов{" "}
+            {STATE_LABELS[scheduling.state] ?? scheduling.state} · due in{" "}
+            {humanInterval(new Date(scheduling.due))} · reps {scheduling.reps} · lapses{" "}
             {scheduling.lapses}
           </p>
         )}
@@ -110,12 +110,12 @@ export default async function EditCardPage(props: { params: Promise<{ id: string
       <div className="mt-10 flex flex-wrap gap-3 border-t border-line pt-5 text-sm">
         <form action={suspendAction}>
           <button type="submit" className="rounded border border-line px-4 py-2 text-muted hover:text-ink">
-            {card.suspended ? "Вернуть в очередь" : "Приостановить"}
+            {card.suspended ? "Resume" : "Suspend"}
           </button>
         </form>
         <form action={deleteAction}>
           <button type="submit" className="rounded border border-line px-4 py-2 text-rust">
-            Удалить
+            Delete
           </button>
         </form>
       </div>

@@ -47,7 +47,7 @@ async function resolveTopicPath(
       .insert({ user_id: userId, parent_id: parentId, name })
       .select("id")
       .single();
-    if (error) throw new Error(`Не удалось создать тему «${name}»: ${error.message}`);
+    if (error) throw new Error(`Could not create topic “${name}”: ${error.message}`);
     parentId = created.id as string;
   }
   return parentId;
@@ -75,7 +75,7 @@ async function resolveTags(
       { onConflict: "user_id,name" },
     )
     .select("id");
-  if (error) throw new Error(`Не удалось сохранить теги: ${error.message}`);
+  if (error) throw new Error(`Could not save tags: ${error.message}`);
   return (data ?? []).map((t) => t.id as string);
 }
 
@@ -193,7 +193,7 @@ export async function saveCard(
   const another = formData.get("intent") === "save_and_new";
 
   if (!front || !back) {
-    return { error: "Обе стороны карточки должны быть заполнены" };
+    return { error: "Both sides of the card must be filled in" };
   }
 
   let topicId: string | null;
@@ -204,7 +204,7 @@ export async function saveCard(
       resolveTags(supabase, user.id, tagsRaw),
     ]);
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "Ошибка сохранения" };
+    return { error: e instanceof Error ? e.message : "Could not save the card" };
   }
 
   const payload = {
@@ -220,7 +220,7 @@ export async function saveCard(
       .update(payload)
       .eq("id", id)
       .eq("user_id", user.id);
-    if (error) return { error: `Не удалось сохранить: ${error.message}` };
+    if (error) return { error: `Could not save: ${error.message}` };
     await syncCardTags(supabase, user.id, id, tagIds);
     await syncMedia(supabase, user.id, id, "front", frontImages);
     await syncMedia(supabase, user.id, id, "back", backImages);
@@ -232,7 +232,7 @@ export async function saveCard(
       .insert({ ...payload, user_id: user.id, ...(newId ? { id: newId } : {}) })
       .select("id")
       .single();
-    if (error) return { error: `Не удалось создать карточку: ${error.message}` };
+    if (error) return { error: `Could not create the card: ${error.message}` };
 
     const cardId = created.id as string;
     await syncCardTags(supabase, user.id, cardId, tagIds);
@@ -349,7 +349,7 @@ export async function bulkUpdate(op: BulkOp): Promise<{ ok: boolean; error?: str
       }
     }
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Операция не удалась" };
+    return { ok: false, error: e instanceof Error ? e.message : "The operation failed" };
   }
 
   revalidatePath("/", "layout");

@@ -118,7 +118,7 @@ export function ReviewSession({
     if (res.ok) {
       const undone = await undoReview(res.reviewId);
       if (!undone.ok) {
-        setError(undone.error ?? "Не удалось отменить");
+        setError(undone.error ?? "Could not undo");
         return;
       }
     }
@@ -177,13 +177,13 @@ export function ReviewSession({
   if (!current) {
     return (
       <div className="py-16 text-center">
-        <h1 className="font-display text-3xl font-semibold">Сессия закончена</h1>
+        <h1 className="font-display text-3xl font-semibold">Session finished</h1>
         <p className="mt-2 text-sm text-muted">
-          {done > 0 ? `Оценено карточек: ${done}` : "В очереди пока пусто"}
+          {done > 0 ? `Cards graded: ${done}` : "The queue is empty"}
         </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <Link href="/" className="rounded bg-accent px-5 py-3 text-sm font-medium text-accent-ink">
-            К началу
+            Back to Today
           </Link>
           {done > 0 && (
             <button
@@ -191,7 +191,7 @@ export function ReviewSession({
               onClick={() => void undo()}
               className="rounded border border-line px-5 py-3 text-sm text-muted hover:text-ink"
             >
-              Отменить последнюю оценку
+              Undo last grade
             </button>
           )}
         </div>
@@ -203,7 +203,7 @@ export function ReviewSession({
     <div className="flex min-h-[calc(100dvh-8rem)] flex-col" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       {zoomed && <Lightbox image={zoomed} onClose={() => setZoomed(null)} />}
       <div className="flex items-center justify-between gap-4 border-b border-line pb-3 font-mono text-[11px] uppercase tracking-[0.13em] text-faint">
-        <span className="truncate">{current.topicPath ?? "Без темы"}</span>
+        <span className="truncate">{current.topicPath ?? "No topic"}</span>
         <span className="tabular-nums">
           {done} / {done + queue.length}
         </span>
@@ -260,7 +260,7 @@ export function ReviewSession({
             onClick={() => setRevealed(true)}
             className="min-h-14 rounded bg-accent px-5 text-base font-medium text-accent-ink"
           >
-            Показать ответ
+            Show answer
           </button>
         ) : (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -287,10 +287,10 @@ export function ReviewSession({
             disabled={done === 0}
             className="py-2 disabled:opacity-40"
           >
-            Отменить
+            Undo
           </button>
           <Link href={`/cards/${current.card.id}`} className="py-2 hover:text-ink">
-            Редактировать
+            Edit
           </Link>
         </div>
       </div>

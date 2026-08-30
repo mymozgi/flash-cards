@@ -118,7 +118,7 @@ export function CardEditor({
     const room = MAX_IMAGES_PER_SIDE - existing.length;
 
     if (room <= 0) {
-      setImageError(`На одной стороне не больше ${MAX_IMAGES_PER_SIDE} изображений`);
+      setImageError(`At most ${MAX_IMAGES_PER_SIDE} images per side`);
       return;
     }
 
@@ -133,11 +133,11 @@ export function CardEditor({
         setter((prev) => [...prev, uploaded]);
       }
       if (files.length > room) {
-        setImageError(`Взято ${room} из ${files.length}: предел — ${MAX_IMAGES_PER_SIDE} на сторону`);
+        setImageError(`Took ${room} of ${files.length}: the limit is ${MAX_IMAGES_PER_SIDE} per side`);
       }
     } catch (e) {
       setImageError(
-        e instanceof ImageError || e instanceof Error ? e.message : "Не удалось добавить изображение",
+        e instanceof ImageError || e instanceof Error ? e.message : "Could not add the image",
       );
     } finally {
       setUploading(false);
@@ -178,12 +178,12 @@ export function CardEditor({
 
       {offerDraft && (
         <div className="flex flex-wrap items-center gap-3 rounded border-l-[3px] border-accent bg-surface px-4 py-3 text-sm">
-          <span className="text-muted">Остался несохранённый черновик.</span>
+          <span className="text-muted">You have an unsaved draft.</span>
           <button type="button" onClick={restoreDraft} className="font-medium text-accent">
-            Восстановить
+            Restore
           </button>
           <button type="button" onClick={dismissDraft} className="text-faint hover:text-ink">
-            Удалить
+            Delete
           </button>
         </div>
       )}
@@ -196,7 +196,7 @@ export function CardEditor({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Side
-          label="Вопрос"
+          label="Question"
           name="front_md"
           value={front}
           onChange={setFront}
@@ -214,7 +214,7 @@ export function CardEditor({
         </Side>
 
         <Side
-          label="Ответ"
+          label="Answer"
           name="back_md"
           value={back}
           onChange={setBack}
@@ -232,7 +232,7 @@ export function CardEditor({
         </Side>
       </div>
 
-      <Field label="Заметка — видна только после ответа">
+      <Field label="Note — shown only after the answer">
         <textarea
           name="note_md"
           value={note}
@@ -243,13 +243,13 @@ export function CardEditor({
       </Field>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Тема — путь через /">
+        <Field label="Topic — path separated by /">
           <input
             name="topic_path"
             value={topicPath}
             onChange={(e) => setTopicPath(e.target.value)}
             list="topic-paths"
-            placeholder="Английский / Грамматика / Времена"
+            placeholder="English / Grammar / Tenses"
             className="w-full rounded border border-line bg-surface px-3 py-2 text-sm"
           />
           <datalist id="topic-paths">
@@ -259,13 +259,13 @@ export function CardEditor({
           </datalist>
         </Field>
 
-        <Field label="Теги — через запятую">
+        <Field label="Tags — comma separated">
           <input
             name="tags"
             value={tags}
             onChange={(e) => setTags(e.target.value)}
             list="known-tags"
-            placeholder="слова, на-собеседование"
+            placeholder="vocabulary, interview-prep"
             className="w-full rounded border border-line bg-surface px-3 py-2 text-sm"
           />
           <datalist id="known-tags">
@@ -279,7 +279,7 @@ export function CardEditor({
       {isNew && (
         <label className="flex items-center gap-2 text-sm text-muted">
           <input type="checkbox" name="reversed" className="size-4 accent-[var(--accent)]" />
-          Создать и обратную карточку — со своим расписанием
+          Also create the reverse card — with its own schedule
         </label>
       )}
 
@@ -297,7 +297,7 @@ export function CardEditor({
           disabled={pending || uploading}
           className="min-h-11 rounded bg-accent px-5 text-sm font-medium text-accent-ink disabled:opacity-60"
         >
-          {pending ? "Сохраняем…" : "Сохранить"}
+          {pending ? "Saving…" : "Save"}
         </button>
         {isNew && (
           <button
@@ -307,11 +307,11 @@ export function CardEditor({
             disabled={pending || uploading}
             className="min-h-11 rounded border border-line px-5 text-sm disabled:opacity-60"
           >
-            Сохранить и создать ещё
+            Save and add another
           </button>
         )}
         <Link href="/library" className="ml-auto py-2 text-sm text-faint hover:text-ink">
-          Отмена
+          Cancel
         </Link>
       </div>
     </form>
@@ -355,7 +355,7 @@ function Side({
           onClick={() => setPreview((p) => !p)}
           className="text-[11px] text-faint hover:text-ink"
         >
-          {preview ? "Править" : "Превью"}
+          {preview ? "Edit" : "Preview"}
         </button>
       </div>
       {preview ? (

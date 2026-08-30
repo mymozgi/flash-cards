@@ -13,7 +13,7 @@ export function LoginForm({ next }: { next: string }) {
       <input type="hidden" name="next" value={next} />
 
       <label className="flex flex-col gap-1.5">
-        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-faint">Почта</span>
+        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-faint">Email</span>
         <input
           name="email"
           type="email"
@@ -24,7 +24,7 @@ export function LoginForm({ next }: { next: string }) {
       </label>
 
       <label className="flex flex-col gap-1.5">
-        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-faint">Пароль</span>
+        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-faint">Password</span>
         <input
           name="password"
           type="password"
@@ -45,7 +45,7 @@ export function LoginForm({ next }: { next: string }) {
         disabled={pending}
         className="mt-2 rounded bg-accent px-4 py-3 font-medium text-accent-ink disabled:opacity-60"
       >
-        {pending ? "Входим…" : "Войти"}
+        {pending ? "Signing in…" : "Sign in"}
       </button>
     </form>
   );

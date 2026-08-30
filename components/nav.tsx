@@ -4,10 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const ITEMS = [
-  { href: "/", label: "Сегодня" },
-  { href: "/library", label: "Библиотека" },
-  { href: "/topics", label: "Темы" },
-  { href: "/cards/new", label: "Новая" },
+  { href: "/", label: "Today" },
+  { href: "/library", label: "Library" },
+  { href: "/topics", label: "Topics" },
+  { href: "/cards/new", label: "New" },
 ] as const;
 
 function isActive(pathname: string, href: string) {
@@ -38,7 +38,7 @@ export function Nav({ signOutAction }: { signOutAction: () => Promise<void> }) {
         ))}
         <form action={signOutAction} className="hidden sm:block sm:ml-auto">
           <button type="submit" className="px-2 py-4 text-sm text-faint hover:text-ink">
-            Выйти
+            Sign out
           </button>
         </form>
       </div>
