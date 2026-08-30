@@ -2,91 +2,17 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient, requireUser } from "@/lib/supabase/server";
-import { parseTags, resolveTags, resolveTopicPath, syncCardTags } from "@/lib/cards";
+import {
+  parseImages,
+  parseTags,
+  resolveTags,
+  resolveTopicPath,
+  syncCardMedia,
+  syncCardTags,
+} from "@/lib/cards";
 
 export type CardFormState = { error: string | null };
-
-type IncomingImage = {
-  storagePath: string;
-  thumbPath: string;
-  width: number;
-  height: number;
-  bytes: number;
-  caption: string;
-};
-
-/**
- * Пути приходят с клиента, поэтому проверяем, что они лежат в папке владельца:
- * политика хранилища устроена так же, но полагаться на один слой не стоит.
- */
-function parseImages(raw: string, userId: string): IncomingImage[] {
-  if (!raw) return [];
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return [];
-  }
-  if (!Array.isArray(parsed)) return [];
-
-  return parsed
-    .filter((item): item is IncomingImage => {
-      if (!item || typeof item !== "object") return false;
-      const image = item as Partial<IncomingImage>;
-      return (
-        typeof image.storagePath === "string" &&
-        typeof image.thumbPath === "string" &&
-        image.storagePath.startsWith(`${userId}/`) &&
-        image.thumbPath.startsWith(`${userId}/`) &&
-        Number.isFinite(image.width) &&
-        Number.isFinite(image.height)
-      );
-    })
-    .slice(0, 4);
-}
-
-/**
- * Полная замена набора изображений стороны. Старые строки удаляются, и триггер
- * помечает их файлы к уборке; уборка пропускает пути, на которые ещё есть
- * ссылки в media, поэтому пересохранение той же карточки ничего не сносит.
- */
-async function syncMedia(
-  supabase: SupabaseClient,
-  userId: string,
-  cardId: string,
-  side: "front" | "back",
-  images: IncomingImage[],
-) {
-  await supabase.from("media").delete().eq("card_id", cardId).eq("side", side);
-
-  if (images.length > 0) {
-    await supabase.from("media").insert(
-      images.map((image, index) => ({
-        user_id: userId,
-        card_id: cardId,
-        side,
-        storage_path: image.storagePath,
-        thumb_path: image.thumbPath,
-        width: Math.round(image.width),
-        height: Math.round(image.height),
-        bytes: Math.round(image.bytes ?? 0),
-        caption: image.caption?.trim() || null,
-        position: index,
-      })),
-    );
-
-    // файлы прикреплены к карточке — снимаем пометку сироты
-    await supabase
-      .from("media_orphans")
-      .delete()
-      .in(
-        "storage_path",
-        images.flatMap((image) => [image.storagePath, image.thumbPath]),
-      );
-  }
-}
 
 export async function saveCard(
   _prev: CardFormState,
@@ -141,8 +67,8 @@ export async function saveCard(
       .eq("user_id", user.id);
     if (error) return { error: `Could not save: ${error.message}` };
     await syncCardTags(supabase, user.id, id, tagIds);
-    await syncMedia(supabase, user.id, id, "front", frontImages);
-    await syncMedia(supabase, user.id, id, "back", backImages);
+    await syncCardMedia(supabase, user.id, id, "front", frontImages);
+    await syncCardMedia(supabase, user.id, id, "back", backImages);
   } else {
     // id мог быть выбран клиентом заранее: из него уже построены пути
     // загруженных изображений
@@ -155,8 +81,8 @@ export async function saveCard(
 
     const cardId = created.id as string;
     await syncCardTags(supabase, user.id, cardId, tagIds);
-    await syncMedia(supabase, user.id, cardId, "front", frontImages);
-    await syncMedia(supabase, user.id, cardId, "back", backImages);
+    await syncCardMedia(supabase, user.id, cardId, "front", frontImages);
+    await syncCardMedia(supabase, user.id, cardId, "back", backImages);
 
     if (reversed) {
       const { data: back2 } = await supabase
@@ -176,8 +102,8 @@ export async function saveCard(
         const reverseId = back2.id as string;
         await syncCardTags(supabase, user.id, reverseId, tagIds);
         // стороны меняются местами вместе с текстом; файлы те же самые
-        await syncMedia(supabase, user.id, reverseId, "front", backImages);
-        await syncMedia(supabase, user.id, reverseId, "back", frontImages);
+        await syncCardMedia(supabase, user.id, reverseId, "front", backImages);
+        await syncCardMedia(supabase, user.id, reverseId, "back", frontImages);
       }
     }
   }

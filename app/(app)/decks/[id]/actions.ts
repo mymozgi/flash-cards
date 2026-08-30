@@ -2,7 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient, requireUser } from "@/lib/supabase/server";
-import { parseTags, resolveTags, syncCardTags } from "@/lib/cards";
+import {
+  coerceImages,
+  parseTags,
+  resolveTags,
+  syncCardMedia,
+  syncCardTags,
+  type IncomingImage,
+} from "@/lib/cards";
 
 /**
  * Карточка в том виде, в каком её правит рабочее пространство колоды:
@@ -11,6 +18,8 @@ import { parseTags, resolveTags, syncCardTags } from "@/lib/cards";
  * вариантами. Так один и тот же материал работает и в обычном режиме,
  * и в режиме выбора ответа.
  */
+export type CardShape = "square" | "landscape" | "portrait";
+
 export type DeckCardInput = {
   id: string;
   isNew: boolean;
@@ -21,16 +30,24 @@ export type DeckCardInput = {
   link: string;
   mcq: boolean;
   tags: string;
+  shape: CardShape;
+  frontImages: IncomingImage[];
+  backImages: IncomingImage[];
 };
 
 export type SaveResult = { ok: boolean; error?: string; saved?: number };
 
 const LINK_RE = /^https?:\/\//i;
 
-export async function saveDeck(topicId: string, cards: DeckCardInput[]): Promise<SaveResult> {
+export async function saveDeck(
+  topicId: string,
+  cards: DeckCardInput[],
+  order: string[] = [],
+): Promise<SaveResult> {
   const user = await requireUser();
   const supabase = await createClient();
   const tagCache = new Map<string, string>();
+  const positionOf = new Map(order.map((id, index) => [id, index]));
   let saved = 0;
 
   for (const card of cards) {
@@ -62,6 +79,8 @@ export async function saveDeck(topicId: string, cards: DeckCardInput[]): Promise
       example_md: card.example.trim() || null,
       link_url: link || null,
       mcq: card.mcq,
+      shape: card.shape,
+      position: positionOf.get(card.id) ?? 0,
       distractors,
     };
 
@@ -81,6 +100,8 @@ export async function saveDeck(topicId: string, cards: DeckCardInput[]): Promise
 
     const tagIds = await resolveTags(supabase, user.id, parseTags(card.tags), tagCache);
     await syncCardTags(supabase, user.id, card.id, tagIds);
+    await syncCardMedia(supabase, user.id, card.id, "front", coerceImages(card.frontImages, user.id));
+    await syncCardMedia(supabase, user.id, card.id, "back", coerceImages(card.backImages, user.id));
     saved += 1;
   }
 
@@ -200,6 +221,25 @@ export async function deleteTagEverywhere(name: string): Promise<SaveResult> {
     .eq("name", name);
 
   if (error) return { ok: false, error: error.message };
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/** Перетаскивание меняет порядок и у нетронутых карточек — пишем его отдельно. */
+export async function saveOrder(topicId: string, order: string[]): Promise<SaveResult> {
+  const user = await requireUser();
+  const supabase = await createClient();
+
+  for (const [index, id] of order.entries()) {
+    const { error } = await supabase
+      .from("cards")
+      .update({ position: index })
+      .eq("id", id)
+      .eq("topic_id", topicId)
+      .eq("user_id", user.id);
+    if (error) return { ok: false, error: error.message };
+  }
+
   revalidatePath("/", "layout");
   return { ok: true };
 }

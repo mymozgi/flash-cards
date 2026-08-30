@@ -2,14 +2,21 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   deleteTagEverywhere,
   removeCard,
   renameTagEverywhere,
   saveDeck,
+  saveOrder,
   updateDeck,
+  type CardShape,
   type DeckCardInput,
 } from "./actions";
+import { ImageStrip } from "@/app/(app)/cards/image-strip";
+import type { EditorImage } from "@/app/(app)/cards/editor-types";
+import { ImageError, MAX_IMAGES_PER_SIDE } from "@/lib/image";
+import { discardUpload, uploadImage } from "@/lib/upload";
 import {
   CheckIcon,
   CloseIcon,
@@ -41,6 +48,19 @@ const COLUMNS = [
 ] as const;
 type Column = (typeof COLUMNS)[number]["key"];
 
+/** Пропорции полотна; 16:9 не берём — на телефоне вырождается в полоску. */
+const SHAPES: { key: CardShape; label: string; box: string }[] = [
+  { key: "square", label: "Square", box: "size-4" },
+  { key: "landscape", label: "Landscape", box: "h-3 w-4.5" },
+  { key: "portrait", label: "Portrait", box: "h-4.5 w-3" },
+];
+
+/** В редакторе у изображений есть ещё и адреса — сервер их просто игнорирует. */
+export type DeckCard = Omit<DeckCardInput, "frontImages" | "backImages"> & {
+  frontImages: EditorImage[];
+  backImages: EditorImage[];
+};
+
 /** Поля ввода везде одинаковые: серая заливка, рамка проявляется в фокусе. */
 const FIELD =
   "w-full rounded-lg border border-transparent bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-faint focus:border-line focus:bg-surface";
@@ -60,10 +80,12 @@ export function DeckWorkspace({
   deck,
   initialCards,
   allTags,
+  userId,
 }: {
   deck: Deck;
-  initialCards: DeckCardInput[];
+  initialCards: DeckCard[];
   allTags: string[];
+  userId: string;
 }) {
   const router = useRouter();
   const [cards, setCards] = useState(initialCards);
@@ -75,21 +97,24 @@ export function DeckWorkspace({
   const [saving, setSaving] = useState(false);
   const [details, setDetails] = useState<Deck | null>(null);
   const [showTags, setShowTags] = useState(false);
+  const [orderDirty, setOrderDirty] = useState(false);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const touch = (id: string) => setDirty((prev) => new Set(prev).add(id));
 
-  const update = (id: string, patch: Partial<DeckCardInput>) => {
+  const update = (id: string, patch: Partial<DeckCard>) => {
     setCards((prev) => prev.map((card) => (card.id === id ? { ...card, ...patch } : card)));
     touch(id);
   };
 
-  const setOption = (card: DeckCardInput, index: number, value: string) =>
+  const setOption = (card: DeckCard, index: number, value: string) =>
     update(card.id, {
       options: card.options.map((option, i) => (i === index ? value : option)),
     });
 
   const addCard = () => {
-    const card: DeckCardInput = {
+    const card: DeckCard = {
       id: crypto.randomUUID(),
       isNew: true,
       term: "",
@@ -99,12 +124,15 @@ export function DeckWorkspace({
       link: "",
       mcq: false,
       tags: "",
+      shape: "square",
+      frontImages: [],
+      backImages: [],
     };
     setCards((prev) => [...prev, card]);
     touch(card.id);
   };
 
-  const drop = async (card: DeckCardInput) => {
+  const drop = async (card: DeckCard) => {
     if (!card.isNew && !confirm(`Delete “${card.term || "untitled card"}”?`)) return;
     setCards((prev) => prev.filter((c) => c.id !== card.id));
     setDirty((prev) => {
@@ -118,22 +146,69 @@ export function DeckWorkspace({
     }
   };
 
+  const addImages = async (card: DeckCard, side: "front" | "back", files: File[]) => {
+    const key = side === "front" ? "frontImages" : "backImages";
+    const room = MAX_IMAGES_PER_SIDE - card[key].length;
+    if (room <= 0) {
+      setStatus({ kind: "error", text: `At most ${MAX_IMAGES_PER_SIDE} images per side` });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const uploaded: EditorImage[] = [];
+      for (const file of files.slice(0, room)) {
+        uploaded.push(await uploadImage(userId, card.id, file));
+      }
+      update(card.id, { [key]: [...card[key], ...uploaded] } as Partial<DeckCard>);
+    } catch (e) {
+      setStatus({
+        kind: "error",
+        text: e instanceof ImageError || e instanceof Error ? e.message : "Could not add the image",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const patchImages = (card: DeckCard, side: "front" | "back", next: EditorImage[]) => {
+    const key = side === "front" ? "frontImages" : "backImages";
+    update(card.id, { [key]: next } as Partial<DeckCard>);
+  };
+
+  const reorder = (targetId: string) => {
+    if (!dragId || dragId === targetId) return;
+    setCards((prev) => {
+      const next = [...prev];
+      const from = next.findIndex((c) => c.id === dragId);
+      const to = next.findIndex((c) => c.id === targetId);
+      if (from < 0 || to < 0) return prev;
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+    setOrderDirty(true);
+  };
+
   const save = async () => {
     const pending = cards.filter((card) => dirty.has(card.id));
-    if (pending.length === 0) {
+    if (pending.length === 0 && !orderDirty) {
       setStatus({ kind: "ok", text: "Nothing to save" });
       return;
     }
     setSaving(true);
     setStatus(null);
 
-    const res = await saveDeck(deck.id, pending);
+    const order = cards.map((card) => card.id);
+    const res = await saveDeck(deck.id, pending, order);
+    if (res.ok && orderDirty) await saveOrder(deck.id, order);
     setSaving(false);
 
     if (!res.ok) {
       setStatus({ kind: "error", text: res.error ?? "Could not save" });
       return;
     }
+    setOrderDirty(false);
     setCards((prev) => prev.map((card) => ({ ...card, isNew: false })));
     setDirty(new Set());
     setStatus({ kind: "ok", text: `Saved ${res.saved} card${res.saved === 1 ? "" : "s"}` });
@@ -218,14 +293,21 @@ export function DeckWorkspace({
           ))}
         </div>
 
+        <Link
+          href={`/decks/${deck.id}/study`}
+          className="rounded-lg border border-line px-4 py-2 text-sm text-muted hover:text-ink"
+        >
+          Study
+        </Link>
+
         <button
           type="button"
           onClick={save}
-          disabled={saving}
+          disabled={saving || uploading}
           className="flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink disabled:opacity-60"
         >
           <CheckIcon />
-          {saving ? "Saving…" : dirty.size > 0 ? `Save ${dirty.size}` : "Save cards"}
+          {saving ? "Saving…" : dirty.size > 0 ? `Save ${dirty.size}` : orderDirty ? "Save order" : "Save cards"}
         </button>
       </div>
 
@@ -285,16 +367,31 @@ export function DeckWorkspace({
         ) : (
           <div className={view === "grid" ? "grid gap-4 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col gap-4"}>
             {visible.map((card) => (
-              <CardBlock
+              <div
                 key={card.id}
-                card={card}
-                index={cards.indexOf(card) + 1}
-                compact={view === "grid"}
-                allTags={allTags}
-                onUpdate={update}
-                onOption={setOption}
-                onDelete={drop}
-              />
+                draggable={dragId === card.id}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => {
+                  reorder(card.id);
+                  setDragId(null);
+                }}
+                onDragEnd={() => setDragId(null)}
+                className={dragId === card.id ? "opacity-50" : ""}
+              >
+                <CardBlock
+                  card={card}
+                  index={cards.indexOf(card) + 1}
+                  compact={view === "grid"}
+                  allTags={allTags}
+                  uploading={uploading}
+                  onGrab={() => setDragId(card.id)}
+                  onUpdate={update}
+                  onOption={setOption}
+                  onDelete={drop}
+                  onAddImages={addImages}
+                  onPatchImages={patchImages}
+                />
+              </div>
             ))}
           </div>
         )}
@@ -452,22 +549,40 @@ function CardBlock({
   index,
   compact,
   allTags,
+  uploading,
+  onGrab,
   onUpdate,
   onOption,
   onDelete,
+  onAddImages,
+  onPatchImages,
 }: {
-  card: DeckCardInput;
+  card: DeckCard;
   index: number;
   compact: boolean;
   allTags: string[];
-  onUpdate: (id: string, patch: Partial<DeckCardInput>) => void;
-  onOption: (card: DeckCardInput, index: number, value: string) => void;
-  onDelete: (card: DeckCardInput) => void;
+  uploading: boolean;
+  onGrab: () => void;
+  onUpdate: (id: string, patch: Partial<DeckCard>) => void;
+  onOption: (card: DeckCard, index: number, value: string) => void;
+  onDelete: (card: DeckCard) => void;
+  onAddImages: (card: DeckCard, side: "front" | "back", files: File[]) => void;
+  onPatchImages: (card: DeckCard, side: "front" | "back", next: EditorImage[]) => void;
 }) {
   return (
     <article className="rounded-xl border border-line p-4">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-medium text-faint">#{index}</span>
+        <div className="flex items-center gap-2">
+          <span
+            onPointerDown={onGrab}
+            aria-label="Drag to reorder"
+            title="Drag to reorder"
+            className="cursor-grab select-none px-1 text-faint active:cursor-grabbing"
+          >
+            ⠿
+          </span>
+          <span className="text-sm font-medium text-faint">#{index}</span>
+        </div>
         <div className="flex items-center gap-3">
           <span className={`text-sm ${compact ? "sr-only" : "text-muted"}`}>
             Multiple choice question
@@ -488,6 +603,30 @@ function CardBlock({
         </div>
       </div>
 
+      <div className="mt-3 flex items-center gap-2">
+        <span className="text-sm font-medium text-muted">Shape</span>
+        {SHAPES.map((shape) => (
+          <button
+            key={shape.key}
+            type="button"
+            onClick={() => onUpdate(card.id, { shape: shape.key })}
+            aria-pressed={card.shape === shape.key}
+            title={shape.label}
+            className={`flex items-center justify-center rounded-md border p-1.5 ${
+              card.shape === shape.key ? "border-accent bg-accent-soft" : "border-line"
+            }`}
+          >
+            <span
+              aria-hidden
+              className={`${shape.box} rounded-sm border ${
+                card.shape === shape.key ? "border-accent" : "border-line-strong"
+              }`}
+            />
+            <span className="sr-only">{shape.label}</span>
+          </button>
+        ))}
+      </div>
+
       <Label>Question</Label>
       <textarea
         value={card.term}
@@ -495,6 +634,33 @@ function CardBlock({
         rows={compact ? 2 : 3}
         className={`${FIELD} resize-y`}
       />
+
+      <div className="mt-2">
+        <ImageStrip
+          images={card.frontImages}
+          busy={uploading}
+          onAdd={(files) => onAddImages(card, "front", files)}
+          onRemove={(i) => {
+            const image = card.frontImages[i];
+            onPatchImages(card, "front", card.frontImages.filter((_, k) => k !== i));
+            void discardUpload(image);
+          }}
+          onCaption={(i, caption) =>
+            onPatchImages(
+              card,
+              "front",
+              card.frontImages.map((img, k) => (k === i ? { ...img, caption } : img)),
+            )
+          }
+          onMove={(i, delta) => {
+            const next = [...card.frontImages];
+            const target = i + delta;
+            if (target < 0 || target >= next.length) return;
+            [next[i], next[target]] = [next[target], next[i]];
+            onPatchImages(card, "front", next);
+          }}
+        />
+      </div>
 
       {card.mcq ? (
         <>
@@ -536,6 +702,33 @@ function CardBlock({
         </>
       )}
 
+      <div className="mt-2">
+        <ImageStrip
+          images={card.backImages}
+          busy={uploading}
+          onAdd={(files) => onAddImages(card, "back", files)}
+          onRemove={(i) => {
+            const image = card.backImages[i];
+            onPatchImages(card, "back", card.backImages.filter((_, k) => k !== i));
+            void discardUpload(image);
+          }}
+          onCaption={(i, caption) =>
+            onPatchImages(
+              card,
+              "back",
+              card.backImages.map((img, k) => (k === i ? { ...img, caption } : img)),
+            )
+          }
+          onMove={(i, delta) => {
+            const next = [...card.backImages];
+            const target = i + delta;
+            if (target < 0 || target >= next.length) return;
+            [next[i], next[target]] = [next[target], next[i]];
+            onPatchImages(card, "back", next);
+          }}
+        />
+      </div>
+
       <div className={`grid gap-3 ${compact ? "" : "sm:grid-cols-2"}`}>
         <div>
           <Label>Example (optional)</Label>
@@ -572,13 +765,13 @@ function Spreadsheet({
   onOption,
   onDelete,
 }: {
-  cards: DeckCardInput[];
+  cards: DeckCard[];
   columns: Set<Column>;
   allTags: string[];
   onToggleColumn: (key: Column) => void;
-  onUpdate: (id: string, patch: Partial<DeckCardInput>) => void;
-  onOption: (card: DeckCardInput, index: number, value: string) => void;
-  onDelete: (card: DeckCardInput) => void;
+  onUpdate: (id: string, patch: Partial<DeckCard>) => void;
+  onOption: (card: DeckCard, index: number, value: string) => void;
+  onDelete: (card: DeckCard) => void;
 }) {
   const cell = "border-b border-line px-2 py-2 align-top";
 

@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, requireUser } from "@/lib/supabase/server";
+import { mediaForCards } from "@/lib/data";
+import type { DeckCard } from "./deck-workspace";
 import { DeckWorkspace } from "./deck-workspace";
-import type { DeckCardInput } from "./actions";
+
 
 const OPTION_SLOTS = 5;
 
@@ -13,6 +15,7 @@ type CardRow = {
   example_md: string | null;
   link_url: string | null;
   mcq: boolean;
+  shape: "square" | "landscape" | "portrait";
   distractors: string[] | null;
   card_tags: { tags: { name: string } }[];
 };
@@ -36,15 +39,36 @@ export default async function DeckPage(props: { params: Promise<{ id: string }> 
     supabase
       .from("cards")
       .select(
-        "id,front_md,back_md,example_md,link_url,mcq,distractors, card_tags(tags(name))",
+        "id,front_md,back_md,example_md,link_url,mcq,shape,distractors, card_tags(tags(name))",
       )
       .eq("topic_id", id)
       .is("deleted_at", null)
+      .order("position")
       .order("created_at"),
     supabase.from("tags").select("name").order("name"),
   ]);
 
-  const cards: DeckCardInput[] = ((rows ?? []) as unknown as CardRow[]).map((row) => {
+  const [user, media] = await Promise.all([
+    requireUser(),
+    mediaForCards(((rows ?? []) as unknown as CardRow[]).map((r) => r.id)),
+  ]);
+
+  const cards: DeckCard[] = ((rows ?? []) as unknown as CardRow[]).map((row) => {
+    const attached = media.get(row.id) ?? [];
+    const toEditor = (side: "front" | "back") =>
+      attached
+        .filter((m) => m.side === side)
+        .map((m) => ({
+          storagePath: m.url.split("/public/cards/")[1] ?? "",
+          thumbPath: m.thumbUrl.split("/public/cards/")[1] ?? "",
+          url: m.url,
+          thumbUrl: m.thumbUrl,
+          width: m.width,
+          height: m.height,
+          bytes: 0,
+          caption: m.caption ?? "",
+        }));
+
     // верный ответ всегда занимает первый слот: набор слотов — это просто
     // представление, в базе лежат оборот карточки и список неправильных
     const options = [row.back_md, ...(row.distractors ?? [])].slice(0, OPTION_SLOTS);
@@ -60,6 +84,9 @@ export default async function DeckPage(props: { params: Promise<{ id: string }> 
       link: row.link_url ?? "",
       mcq: row.mcq,
       tags: (row.card_tags ?? []).map((t) => t.tags.name).join(", "),
+      shape: row.shape,
+      frontImages: toEditor("front"),
+      backImages: toEditor("back"),
     };
   });
 
@@ -79,6 +106,7 @@ export default async function DeckPage(props: { params: Promise<{ id: string }> 
           }}
           initialCards={cards}
           allTags={((tagRows ?? []) as { name: string }[]).map((t) => t.name)}
+          userId={user.id}
         />
       </div>
     </>
