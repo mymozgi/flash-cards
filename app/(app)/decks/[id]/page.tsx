@@ -29,7 +29,7 @@ export default async function DeckPage(props: { params: Promise<{ id: string }> 
 
   if (!topic) notFound();
 
-  const [{ data: parent }, { data: rows }] = await Promise.all([
+  const [{ data: parent }, { data: rows }, { data: tagRows }] = await Promise.all([
     topic.parent_id
       ? supabase.from("topics").select("name").eq("id", topic.parent_id).maybeSingle()
       : Promise.resolve({ data: null }),
@@ -41,6 +41,7 @@ export default async function DeckPage(props: { params: Promise<{ id: string }> 
       .eq("topic_id", id)
       .is("deleted_at", null)
       .order("created_at"),
+    supabase.from("tags").select("name").order("name"),
   ]);
 
   const cards: DeckCardInput[] = ((rows ?? []) as unknown as CardRow[]).map((row) => {
@@ -77,6 +78,7 @@ export default async function DeckPage(props: { params: Promise<{ id: string }> 
             parentName: (parent?.name as string) ?? null,
           }}
           initialCards={cards}
+          allTags={((tagRows ?? []) as { name: string }[]).map((t) => t.name)}
         />
       </div>
     </>

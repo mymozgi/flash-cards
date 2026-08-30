@@ -6,55 +6,55 @@
   внутри media-запроса в отрыве от светлой пары.
 */
 :root {
-  --paper: #f1f4f2;
-  --surface: #fbfcfb;
-  --surface-2: #e9eeeb;
-  --ink: #14201c;
-  --muted: #5b6b65;
-  --faint: #84948d;
-  --line: #d6deda;
-  --line-strong: #b9c5c0;
-  --accent: #0e6e5b;
-  --accent-ink: #fbfcfb;
-  --accent-soft: #dcebe5;
-  --rust: #a9531f;
-  --rust-soft: #f4e4d8;
+  --paper: #f4f6f8;
+  --surface: #ffffff;
+  --surface-2: #f1f3f5;
+  --ink: #111827;
+  --muted: #4b5563;
+  --faint: #9ca3af;
+  --line: #e5e7eb;
+  --line-strong: #d1d5db;
+  --accent: #2563eb;
+  --accent-ink: #ffffff;
+  --accent-soft: #eff6ff;
+  --rust: #dc2626;
+  --rust-soft: #fef2f2;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --paper: #0e1412;
-    --surface: #151d1a;
-    --surface-2: #1b2522;
-    --ink: #e2e9e6;
-    --muted: #9aa8a2;
-    --faint: #78877f;
-    --line: #26302c;
-    --line-strong: #37443f;
-    --accent: #4fcfae;
-    --accent-ink: #0e1412;
-    --accent-soft: #12332b;
-    --rust: #e5945e;
-    --rust-soft: #2a1c12;
+    --paper: #0f1318;
+    --surface: #171c23;
+    --surface-2: #1f262f;
+    --ink: #e6eaf0;
+    --muted: #9aa5b1;
+    --faint: #6b7684;
+    --line: #272f39;
+    --line-strong: #3a4553;
+    --accent: #60a5fa;
+    --accent-ink: #0b1220;
+    --accent-soft: #16233a;
+    --rust: #f87171;
+    --rust-soft: #2a1719;
     color-scheme: dark;
   }
 }
 
 :root[data-theme="dark"] {
-  --paper: #0e1412;
-  --surface: #151d1a;
-  --surface-2: #1b2522;
-  --ink: #e2e9e6;
-  --muted: #9aa8a2;
-  --faint: #78877f;
-  --line: #26302c;
-  --line-strong: #37443f;
-  --accent: #4fcfae;
-  --accent-ink: #0e1412;
-  --accent-soft: #12332b;
-  --rust: #e5945e;
-  --rust-soft: #2a1c12;
+  --paper: #0f1318;
+  --surface: #171c23;
+  --surface-2: #1f262f;
+  --ink: #e6eaf0;
+  --muted: #9aa5b1;
+  --faint: #6b7684;
+  --line: #272f39;
+  --line-strong: #3a4553;
+  --accent: #60a5fa;
+  --accent-ink: #0b1220;
+  --accent-soft: #16233a;
+  --rust: #f87171;
+  --rust-soft: #2a1719;
   color-scheme: dark;
 }
 
@@ -73,9 +73,18 @@
   --color-rust: var(--rust);
   --color-rust-soft: var(--rust-soft);
 
-  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-literata), Georgia, serif;
-  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+  /* Референс использует системный интерфейсный шрифт: на Windows это Segoe UI,
+     на маке — SF Pro. Ничего не качаем, приложение открывается мгновенно. */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --font-display: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
+
+  /* Скругления мягче: bare rounded становится 8 px */
+  --radius: 0.5rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
 }
 
 body {

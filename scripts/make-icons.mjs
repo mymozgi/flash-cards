@@ -11,8 +11,8 @@ import { dirname } from "node:path";
 
 const SS = 4; // кратность суперсэмплинга
 
-const PINE = [0x0e, 0x6e, 0x5b];
-const PAPER = [0xfb, 0xfc, 0xfb];
+const BRAND = [0x25, 0x63, 0xeb];
+const PAPER = [0xff, 0xff, 0xff];
 
 /** Точка внутри прямоугольника со скруглёнными углами. */
 function inRoundedRect(x, y, x0, y0, x1, y1, r) {
@@ -39,9 +39,9 @@ function drawIcon(size, inset = 0) {
 
   // фон — сплошной, иначе на тёмной теме системы иконка «поплывёт»
   for (let i = 0; i < pixels.length; i += 4) {
-    pixels[i] = PINE[0];
-    pixels[i + 1] = PINE[1];
-    pixels[i + 2] = PINE[2];
+    pixels[i] = BRAND[0];
+    pixels[i + 1] = BRAND[1];
+    pixels[i + 2] = BRAND[2];
     pixels[i + 3] = 255;
   }
 
@@ -79,7 +79,7 @@ function drawIcon(size, inset = 0) {
       // задняя карточка приглушена, передняя поверх неё, строчки — цветом фона
       if (backHits) blend(pixels, i, PAPER, (backHits / total) * 0.45);
       if (frontHits) blend(pixels, i, PAPER, frontHits / total);
-      if (lineHits) blend(pixels, i, PINE, Math.min(1, lineHits / total));
+      if (lineHits) blend(pixels, i, BRAND, Math.min(1, lineHits / total));
     }
   }
 

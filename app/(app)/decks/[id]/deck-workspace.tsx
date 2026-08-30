@@ -1,14 +1,33 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { removeCard, saveDeck, updateDeck, type DeckCardInput } from "./actions";
+import {
+  deleteTagEverywhere,
+  removeCard,
+  renameTagEverywhere,
+  saveDeck,
+  updateDeck,
+  type DeckCardInput,
+} from "./actions";
+import {
+  CheckIcon,
+  CloseIcon,
+  GridIcon,
+  ListIcon,
+  PencilIcon,
+  PlusIcon,
+  SearchIcon,
+  TableIcon,
+  TagIcon,
+  TrashIcon,
+} from "@/components/icons";
 
 const OPTION_SLOTS = 5;
 const VIEWS = [
-  { key: "list", label: "List" },
-  { key: "grid", label: "Grid" },
-  { key: "sheet", label: "Spreadsheet" },
+  { key: "list", label: "List", Icon: ListIcon },
+  { key: "grid", label: "Grid", Icon: GridIcon },
+  { key: "sheet", label: "Spreadsheet", Icon: TableIcon },
 ] as const;
 type View = (typeof VIEWS)[number]["key"];
 
@@ -22,6 +41,13 @@ const COLUMNS = [
 ] as const;
 type Column = (typeof COLUMNS)[number]["key"];
 
+/** Поля ввода везде одинаковые: серая заливка, рамка проявляется в фокусе. */
+const FIELD =
+  "w-full rounded-lg border border-transparent bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-faint focus:border-line focus:bg-surface";
+const CELL_FIELD =
+  "w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-sm focus:border-line focus:bg-surface-2";
+const PANEL = "rounded-xl border border-line bg-surface shadow-sm";
+
 export type Deck = {
   id: string;
   name: string;
@@ -33,9 +59,11 @@ export type Deck = {
 export function DeckWorkspace({
   deck,
   initialCards,
+  allTags,
 }: {
   deck: Deck;
   initialCards: DeckCardInput[];
+  allTags: string[];
 }) {
   const router = useRouter();
   const [cards, setCards] = useState(initialCards);
@@ -46,6 +74,7 @@ export function DeckWorkspace({
   const [status, setStatus] = useState<{ kind: "error" | "ok"; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [details, setDetails] = useState<Deck | null>(null);
+  const [showTags, setShowTags] = useState(false);
 
   const touch = (id: string) => setDirty((prev) => new Set(prev).add(id));
 
@@ -121,6 +150,16 @@ export function DeckWorkspace({
     );
   }, [cards, query]);
 
+  const deckTags = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const card of cards) {
+      for (const tag of card.tags.split(",").map((t) => t.trim()).filter(Boolean)) {
+        counts.set(tag, (counts.get(tag) ?? 0) + 1);
+      }
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  }, [cards]);
+
   return (
     <div className="flex flex-col gap-4">
       <DeckHeader
@@ -146,61 +185,91 @@ export function DeckWorkspace({
         }}
       />
 
-      <div className="flex flex-wrap items-center gap-2 rounded border border-line bg-surface p-2">
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search cards…"
-          className="min-w-0 flex-1 rounded border border-line bg-paper px-3 py-2 text-sm"
-        />
-        <div className="flex overflow-hidden rounded border border-line">
+      <div className={`${PANEL} flex flex-wrap items-center gap-2 p-2`}>
+        <div className="relative min-w-0 flex-1">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint">
+            <SearchIcon />
+          </span>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search cards…"
+            aria-label="Search cards"
+            className={`${FIELD} pl-9`}
+          />
+        </div>
+
+        <div className="flex gap-1 rounded-lg border border-line bg-surface-2 p-1">
           {VIEWS.map((item) => (
             <button
               key={item.key}
               type="button"
               onClick={() => setView(item.key)}
               aria-pressed={view === item.key}
-              className={`px-3 py-2 text-sm ${
-                view === item.key ? "bg-accent-soft font-medium text-accent" : "text-muted hover:text-ink"
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm ${
+                view === item.key
+                  ? "bg-surface font-medium text-ink shadow-sm"
+                  : "text-muted hover:text-ink"
               }`}
             >
+              <item.Icon className="size-3.5 shrink-0" />
               {item.label}
             </button>
           ))}
         </div>
+
         <button
           type="button"
           onClick={save}
           disabled={saving}
-          className="rounded bg-accent px-4 py-2 text-sm font-medium text-accent-ink disabled:opacity-60"
+          className="flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink disabled:opacity-60"
         >
-          {saving ? "Saving…" : dirty.size > 0 ? `Save ${dirty.size} card${dirty.size === 1 ? "" : "s"}` : "Save cards"}
+          <CheckIcon />
+          {saving ? "Saving…" : dirty.size > 0 ? `Save ${dirty.size}` : "Save cards"}
         </button>
       </div>
 
       {status && (
         <p
           role={status.kind === "error" ? "alert" : "status"}
-          className={`rounded border-l-[3px] px-3 py-2 text-sm ${
-            status.kind === "error" ? "border-rust bg-rust-soft" : "border-accent bg-accent-soft"
+          className={`rounded-lg px-3 py-2 text-sm ${
+            status.kind === "error"
+              ? "bg-rust-soft text-rust"
+              : "bg-accent-soft text-accent"
           }`}
         >
           {status.text}
         </p>
       )}
 
-      <section className="rounded border border-line bg-surface p-3 sm:p-4">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="font-display text-xl font-semibold">Flashcards</h2>
-          <span className="font-mono text-[11px] uppercase tracking-[0.13em] text-faint">
-            {visible.length} of {cards.length}
-          </span>
+      <section className={`${PANEL} p-3 sm:p-5`}>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="text-xl font-semibold tracking-tight">Flashcards</h2>
+          <button
+            type="button"
+            onClick={() => setShowTags((v) => !v)}
+            aria-expanded={showTags}
+            className="flex items-center gap-2 rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-ink"
+          >
+            <TagIcon />
+            Manage tags
+          </button>
         </div>
+
+        {showTags && (
+          <ManageTags
+            tags={deckTags}
+            onFilter={setQuery}
+            onDone={(text) => setStatus({ kind: "ok", text })}
+            onError={(text) => setStatus({ kind: "error", text })}
+          />
+        )}
 
         {view === "sheet" ? (
           <Spreadsheet
             cards={visible}
             columns={columns}
+            allTags={allTags}
             onToggleColumn={(key) =>
               setColumns((prev) => {
                 const next = new Set(prev);
@@ -214,13 +283,14 @@ export function DeckWorkspace({
             onDelete={drop}
           />
         ) : (
-          <div className={view === "grid" ? "grid gap-3 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col gap-3"}>
+          <div className={view === "grid" ? "grid gap-4 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col gap-4"}>
             {visible.map((card) => (
               <CardBlock
                 key={card.id}
                 card={card}
                 index={cards.indexOf(card) + 1}
                 compact={view === "grid"}
+                allTags={allTags}
                 onUpdate={update}
                 onOption={setOption}
                 onDelete={drop}
@@ -230,18 +300,18 @@ export function DeckWorkspace({
         )}
 
         {visible.length === 0 && (
-          <p className="py-10 text-center text-sm text-muted">
+          <p className="py-12 text-center text-sm text-muted">
             {cards.length === 0 ? "This deck is empty." : "No cards match the search."}
           </p>
         )}
 
-        <div className="mt-4 flex justify-center">
+        <div className="mt-5 flex justify-center">
           <button
             type="button"
             onClick={addCard}
-            className="rounded bg-accent px-6 py-3 text-sm font-medium text-accent-ink"
+            className="flex items-center gap-2 rounded-lg bg-accent px-8 py-3 text-sm font-medium text-accent-ink"
           >
-            + Add card
+            <PlusIcon /> Add card
           </button>
         </div>
       </section>
@@ -267,39 +337,40 @@ function DeckHeader({
   onSave: () => void;
 }) {
   return (
-    <header className="rounded border border-line bg-surface p-4 sm:p-5">
+    <header className={`${PANEL} p-4 sm:p-5`}>
       {editing ? (
         <div className="flex flex-col gap-3">
           <input
             value={editing.name}
             onChange={(e) => onChange({ name: e.target.value })}
-            className="rounded border border-line bg-paper px-3 py-2 font-display text-2xl font-semibold"
+            aria-label="Deck name"
+            className={`${FIELD} text-2xl font-semibold`}
           />
           <textarea
             value={editing.description}
             onChange={(e) => onChange({ description: e.target.value })}
             rows={2}
             placeholder="What is this deck about?"
-            className="rounded border border-line bg-paper px-3 py-2 text-sm"
+            className={`${FIELD} resize-y`}
           />
           <label className="flex items-center gap-2 text-sm text-muted">
             Colour
             <input
               type="color"
-              value={editing.color || "#0e6e5b"}
+              value={editing.color || "#2563eb"}
               onChange={(e) => onChange({ color: e.target.value })}
-              className="h-8 w-14 rounded border border-line bg-paper"
+              className="h-8 w-14 rounded-lg border border-line bg-surface"
             />
           </label>
           <div className="flex gap-2">
             <button
               type="button"
               onClick={onSave}
-              className="rounded bg-accent px-4 py-2 text-sm font-medium text-accent-ink"
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink"
             >
               Save details
             </button>
-            <button type="button" onClick={onCancel} className="rounded border border-line px-4 py-2 text-sm">
+            <button type="button" onClick={onCancel} className="rounded-lg border border-line px-4 py-2 text-sm">
               Cancel
             </button>
           </div>
@@ -307,28 +378,29 @@ function DeckHeader({
       ) : (
         <>
           <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-semibold tracking-tight">{deck.name}</h1>
+            <div className="flex shrink-0 items-center gap-3">
               <span
                 aria-hidden
-                className="size-3 shrink-0 rounded-full"
+                className="size-2.5 rounded-full"
                 style={{ background: deck.color || "var(--accent)" }}
               />
-              <h1 className="font-display text-3xl font-semibold tracking-tight">{deck.name}</h1>
+              <button
+                type="button"
+                onClick={onEdit}
+                className="flex items-center gap-2 rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-ink"
+              >
+                <PencilIcon />
+                Edit details
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={onEdit}
-              className="shrink-0 rounded border border-line px-3 py-1.5 text-sm text-muted hover:text-ink"
-            >
-              Edit details
-            </button>
           </div>
-          <div className="mt-2 flex flex-wrap gap-1.5 text-xs">
-            <span className="rounded-full border border-line px-2.5 py-0.5 text-muted">
+          <div className="mt-3 flex flex-wrap gap-2 text-xs">
+            <span className="rounded-full border border-line px-3 py-1 text-muted">
               {count} {count === 1 ? "card" : "cards"}
             </span>
             {deck.parentName && (
-              <span className="rounded-full border border-line px-2.5 py-0.5 text-muted">
+              <span className="rounded-full border border-line px-3 py-1 text-muted">
                 {deck.parentName}
               </span>
             )}
@@ -340,10 +412,46 @@ function DeckHeader({
   );
 }
 
+/** Тумблер из макета: дорожка с бегунком, а не системная галочка. */
+function Switch({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: (value: boolean) => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={() => onChange(!checked)}
+      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+        checked ? "bg-accent" : "bg-line-strong"
+      }`}
+    >
+      <span
+        aria-hidden
+        className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-[left] ${
+          checked ? "left-[22px]" : "left-0.5"
+        }`}
+      />
+    </button>
+  );
+}
+
+function Label({ children }: { children: React.ReactNode }) {
+  return <span className="mt-4 block pb-1.5 text-sm font-medium text-muted">{children}</span>;
+}
+
 function CardBlock({
   card,
   index,
   compact,
+  allTags,
   onUpdate,
   onOption,
   onDelete,
@@ -351,32 +459,31 @@ function CardBlock({
   card: DeckCardInput;
   index: number;
   compact: boolean;
+  allTags: string[];
   onUpdate: (id: string, patch: Partial<DeckCardInput>) => void;
   onOption: (card: DeckCardInput, index: number, value: string) => void;
   onDelete: (card: DeckCardInput) => void;
 }) {
   return (
-    <article className="rounded border border-line bg-paper p-3 sm:p-4">
+    <article className="rounded-xl border border-line p-4">
       <div className="flex items-center justify-between gap-3">
-        <span className="font-mono text-xs text-faint">#{index}</span>
+        <span className="text-sm font-medium text-faint">#{index}</span>
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-sm">
-            <span className={compact ? "text-xs" : ""}>Multiple choice</span>
-            <input
-              type="checkbox"
-              role="switch"
-              checked={card.mcq}
-              onChange={(e) => onUpdate(card.id, { mcq: e.target.checked })}
-              className="size-4 accent-[var(--accent)]"
-            />
-          </label>
+          <span className={`text-sm ${compact ? "sr-only" : "text-muted"}`}>
+            Multiple choice question
+          </span>
+          <Switch
+            checked={card.mcq}
+            onChange={(value) => onUpdate(card.id, { mcq: value })}
+            label="Multiple choice question"
+          />
           <button
             type="button"
             onClick={() => onDelete(card)}
             aria-label="Delete card"
             className="text-faint hover:text-rust"
           >
-            ✕
+            <TrashIcon />
           </button>
         </div>
       </div>
@@ -386,32 +493,32 @@ function CardBlock({
         value={card.term}
         onChange={(e) => onUpdate(card.id, { term: e.target.value })}
         rows={compact ? 2 : 3}
-        className="w-full resize-y rounded border border-line bg-surface px-3 py-2 text-sm"
+        className={`${FIELD} resize-y`}
       />
 
       {card.mcq ? (
         <>
-          <div className="mt-3 flex items-baseline justify-between">
-            <Label inline>Answer options</Label>
-            <span className="text-xs text-faint">Select the correct answer</span>
+          <div className="mt-4 flex items-baseline justify-between gap-2">
+            <span className="text-sm font-medium text-muted">Answer options</span>
+            <span className="text-xs text-accent">Select the correct answer</span>
           </div>
-          <ul className="mt-1 flex flex-col gap-2 border-l-2 border-accent-soft pl-3">
+          <ul className="mt-1.5 flex flex-col gap-2 border-l-2 border-accent-soft pl-3">
             {card.options.map((option, i) => (
-              <li key={i} className="flex items-start gap-2">
+              <li key={i} className="flex items-start gap-2.5">
                 <input
                   type="radio"
                   name={`correct-${card.id}`}
                   checked={card.correctIndex === i}
                   onChange={() => onUpdate(card.id, { correctIndex: i })}
                   aria-label={`Mark answer ${i + 1} as correct`}
-                  className="mt-2 size-4 shrink-0 accent-[var(--accent)]"
+                  className="mt-2.5 size-4 shrink-0 accent-[var(--accent)]"
                 />
                 <textarea
                   value={option}
                   onChange={(e) => onOption(card, i, e.target.value)}
                   placeholder={`Answer ${i + 1}`}
-                  rows={compact ? 2 : 2}
-                  className="w-full resize-y rounded border border-line bg-surface px-3 py-2 text-sm"
+                  rows={2}
+                  className={`${FIELD} resize-y`}
                 />
               </li>
             ))}
@@ -424,19 +531,19 @@ function CardBlock({
             value={card.options[card.correctIndex] ?? ""}
             onChange={(e) => onOption(card, card.correctIndex, e.target.value)}
             rows={compact ? 2 : 3}
-            className="w-full resize-y rounded border border-line bg-surface px-3 py-2 text-sm"
+            className={`${FIELD} resize-y`}
           />
         </>
       )}
 
-      <div className={`mt-3 grid gap-3 ${compact ? "" : "sm:grid-cols-2"}`}>
+      <div className={`grid gap-3 ${compact ? "" : "sm:grid-cols-2"}`}>
         <div>
-          <Label>Example — optional</Label>
+          <Label>Example (optional)</Label>
           <input
             value={card.example}
             onChange={(e) => onUpdate(card.id, { example: e.target.value })}
             placeholder="Example…"
-            className="w-full rounded border border-line bg-surface px-3 py-2 text-sm"
+            className={FIELD}
           />
         </div>
         <div>
@@ -445,18 +552,13 @@ function CardBlock({
             value={card.link}
             onChange={(e) => onUpdate(card.id, { link: e.target.value })}
             placeholder="https://…"
-            className="w-full rounded border border-line bg-surface px-3 py-2 text-sm"
+            className={FIELD}
           />
         </div>
       </div>
 
       <Label>Tags</Label>
-      <input
-        value={card.tags}
-        onChange={(e) => onUpdate(card.id, { tags: e.target.value })}
-        placeholder="vocabulary, interview-prep"
-        className="w-full rounded border border-line bg-surface px-3 py-2 text-sm"
-      />
+      <TagEditor value={card.tags} allTags={allTags} onChange={(tags) => onUpdate(card.id, { tags })} />
     </article>
   );
 }
@@ -464,6 +566,7 @@ function CardBlock({
 function Spreadsheet({
   cards,
   columns,
+  allTags,
   onToggleColumn,
   onUpdate,
   onOption,
@@ -471,6 +574,7 @@ function Spreadsheet({
 }: {
   cards: DeckCardInput[];
   columns: Set<Column>;
+  allTags: string[];
   onToggleColumn: (key: Column) => void;
   onUpdate: (id: string, patch: Partial<DeckCardInput>) => void;
   onOption: (card: DeckCardInput, index: number, value: string) => void;
@@ -480,20 +584,18 @@ function Spreadsheet({
 
   return (
     <>
-      <div className="mb-3 flex flex-wrap items-center gap-1.5">
-        <span className="mr-1 font-mono text-[11px] uppercase tracking-[0.13em] text-faint">
-          View options
-        </span>
+      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg bg-surface-2 p-2">
+        <span className="mr-1 text-sm font-medium text-muted">View options:</span>
         {COLUMNS.map((column) => (
           <button
             key={column.key}
             type="button"
             onClick={() => onToggleColumn(column.key)}
             aria-pressed={columns.has(column.key)}
-            className={`rounded-full px-3 py-1 text-xs ${
+            className={`rounded-full px-3 py-1 text-xs font-medium ${
               columns.has(column.key)
                 ? "bg-accent text-accent-ink"
-                : "border border-line text-muted hover:text-ink"
+                : "border border-line bg-surface text-muted hover:text-ink"
             }`}
           >
             {column.label}
@@ -501,16 +603,16 @@ function Spreadsheet({
         ))}
       </div>
 
-      <div className="overflow-x-auto rounded border border-line">
-        <table className="w-full min-w-[720px] text-sm">
+      <div className="overflow-x-auto rounded-xl border border-line">
+        <table className="w-full min-w-[760px] text-sm">
           <thead>
-            <tr className="bg-surface-2 text-left font-mono text-[10px] uppercase tracking-[0.12em] text-faint">
+            <tr className="bg-surface-2 text-left text-xs uppercase tracking-wide text-faint">
               {COLUMNS.filter((c) => columns.has(c.key)).map((column) => (
-                <th key={column.key} className="px-2 py-2 font-medium">
+                <th key={column.key} className="px-3 py-2.5 font-medium">
                   {column.label}
                 </th>
               ))}
-              <th className="w-8 px-2 py-2" />
+              <th className="w-10 px-2 py-2.5" />
             </tr>
           </thead>
           <tbody>
@@ -522,7 +624,7 @@ function Spreadsheet({
                       value={card.term}
                       onChange={(e) => onUpdate(card.id, { term: e.target.value })}
                       rows={2}
-                      className="w-full resize-y rounded border border-transparent bg-transparent px-1 py-0.5 focus:border-line focus:bg-surface"
+                      className={`${CELL_FIELD} resize-y`}
                     />
                   </td>
                 )}
@@ -532,7 +634,7 @@ function Spreadsheet({
                       value={card.options[card.correctIndex] ?? ""}
                       onChange={(e) => onOption(card, card.correctIndex, e.target.value)}
                       rows={2}
-                      className="w-full resize-y rounded border border-transparent bg-transparent px-1 py-0.5 focus:border-line focus:bg-surface"
+                      className={`${CELL_FIELD} resize-y`}
                     />
                   </td>
                 )}
@@ -542,7 +644,7 @@ function Spreadsheet({
                       value={card.example}
                       onChange={(e) => onUpdate(card.id, { example: e.target.value })}
                       placeholder="Example…"
-                      className="w-full rounded border border-transparent bg-transparent px-1 py-0.5 focus:border-line focus:bg-surface"
+                      className={CELL_FIELD}
                     />
                   </td>
                 )}
@@ -552,25 +654,25 @@ function Spreadsheet({
                       value={card.link}
                       onChange={(e) => onUpdate(card.id, { link: e.target.value })}
                       placeholder="https://…"
-                      className="w-full rounded border border-transparent bg-transparent px-1 py-0.5 focus:border-line focus:bg-surface"
+                      className={CELL_FIELD}
                     />
                   </td>
                 )}
                 {columns.has("tags") && (
                   <td className={`${cell} w-32`}>
-                    <input
+                    <TagEditor
                       value={card.tags}
-                      onChange={(e) => onUpdate(card.id, { tags: e.target.value })}
-                      placeholder="+ tag"
-                      className="w-full rounded border border-transparent bg-transparent px-1 py-0.5 focus:border-line focus:bg-surface"
+                      allTags={allTags}
+                      onChange={(tags) => onUpdate(card.id, { tags })}
+                      compact
                     />
                   </td>
                 )}
                 {columns.has("answers") && (
-                  <td className={`${cell} w-64`}>
+                  <td className={`${cell} w-72`}>
                     <ul className="flex flex-col gap-1">
                       {card.options.map((option, i) => (
-                        <li key={i} className="flex items-center gap-1.5">
+                        <li key={i} className="flex items-center gap-2">
                           <input
                             type="radio"
                             name={`sheet-correct-${card.id}`}
@@ -583,7 +685,7 @@ function Spreadsheet({
                             value={option}
                             onChange={(e) => onOption(card, i, e.target.value)}
                             placeholder={`Option ${i + 1}`}
-                            className="w-full rounded border border-transparent bg-transparent px-1 py-0.5 text-xs focus:border-line focus:bg-surface"
+                            className={CELL_FIELD}
                           />
                           <button
                             type="button"
@@ -591,7 +693,7 @@ function Spreadsheet({
                             aria-label={`Clear option ${i + 1}`}
                             className="shrink-0 text-faint hover:text-rust"
                           >
-                            ✕
+                            <TrashIcon className="size-3.5" />
                           </button>
                         </li>
                       ))}
@@ -605,7 +707,7 @@ function Spreadsheet({
                     aria-label="Delete card"
                     className="text-faint hover:text-rust"
                   >
-                    ✕
+                    <TrashIcon />
                   </button>
                 </td>
               </tr>
@@ -617,14 +719,182 @@ function Spreadsheet({
   );
 }
 
-function Label({ children, inline }: { children: React.ReactNode; inline?: boolean }) {
+function splitTags(value: string): string[] {
+  return [...new Set(value.split(",").map((t) => t.trim()).filter(Boolean))];
+}
+
+/**
+ * Теги карточки как чипы. Пустое состояние честно говорит «тегов нет»,
+ * а не притворяется полем ввода, — так видно, что добавить их можно.
+ * Нормализация та же, что на сервере: нижний регистр, пробелы в дефисы.
+ */
+function TagEditor({
+  value,
+  allTags,
+  onChange,
+  compact,
+}: {
+  value: string;
+  allTags: string[];
+  onChange: (value: string) => void;
+  compact?: boolean;
+}) {
+  const tags = splitTags(value);
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  const commit = () => {
+    const tag = draft.trim().toLowerCase().replace(/\s+/g, "-");
+    if (tag && !tags.includes(tag)) onChange([...tags, tag].join(", "));
+    setDraft("");
+    setAdding(false);
+  };
+
+  const remove = (tag: string) => onChange(tags.filter((t) => t !== tag).join(", "));
+  const suggestions = allTags.filter((t) => !tags.includes(t));
+
   return (
-    <span
-      className={`font-mono text-[10px] uppercase tracking-[0.13em] text-faint ${
-        inline ? "" : "mt-3 block pb-1"
-      }`}
-    >
-      {children}
-    </span>
+    <div className="flex flex-wrap items-center gap-1.5">
+      {tags.length === 0 && !adding && (
+        <span className={compact ? "text-xs text-faint" : "text-sm text-faint"}>No tags yet</span>
+      )}
+
+      {tags.map((tag) => (
+        <span
+          key={tag}
+          className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2.5 py-1 text-xs text-accent"
+        >
+          {tag}
+          <button
+            type="button"
+            onClick={() => remove(tag)}
+            aria-label={`Remove tag ${tag}`}
+            className="opacity-60 hover:opacity-100"
+          >
+            <CloseIcon className="size-3" />
+          </button>
+        </span>
+      ))}
+
+      {adding ? (
+        <>
+          <input
+            autoFocus
+            value={draft}
+            list="deck-tag-suggestions"
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                commit();
+              }
+              if (e.key === "Escape") {
+                setDraft("");
+                setAdding(false);
+              }
+            }}
+            placeholder="tag name"
+            className="w-28 rounded-full border border-line bg-surface px-2.5 py-1 text-xs"
+          />
+          <datalist id="deck-tag-suggestions">
+            {suggestions.map((tag) => (
+              <option key={tag} value={tag} />
+            ))}
+          </datalist>
+        </>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          className="inline-flex items-center gap-1 rounded-full border border-line px-2.5 py-1 text-xs text-muted hover:text-ink"
+        >
+          <PlusIcon className="size-3" />
+          Add tag
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Управление тегами: переименование и удаление действуют по всей базе,
+ * а не только в этой колоде. Переименование в уже существующий тег
+ * работает как слияние — иначе накопились бы дубли-синонимы.
+ */
+function ManageTags({
+  tags,
+  onFilter,
+  onDone,
+  onError,
+}: {
+  tags: [string, number][];
+  onFilter: (tag: string) => void;
+  onDone: (text: string) => void;
+  onError: (text: string) => void;
+}) {
+  const router = useRouter();
+  const [busy, startTransition] = useTransition();
+
+  const rename = (tag: string) => {
+    const next = prompt(`Rename “${tag}” everywhere it is used:`, tag);
+    if (!next || next === tag) return;
+    startTransition(async () => {
+      const res = await renameTagEverywhere(tag, next);
+      if (!res.ok) return onError(res.error ?? "Could not rename the tag");
+      onDone(`Tag renamed to “${next}”`);
+      router.refresh();
+    });
+  };
+
+  const drop = (tag: string) => {
+    if (!confirm(`Remove “${tag}” from every card? The cards themselves stay.`)) return;
+    startTransition(async () => {
+      const res = await deleteTagEverywhere(tag);
+      if (!res.ok) return onError(res.error ?? "Could not delete the tag");
+      onDone(`Tag “${tag}” removed`);
+      router.refresh();
+    });
+  };
+
+  return (
+    <div className={`mb-4 rounded-lg bg-surface-2 p-3 ${busy ? "opacity-60" : ""}`}>
+      {tags.length === 0 ? (
+        <p className="text-sm text-muted">No tags in this deck yet.</p>
+      ) : (
+        <ul className="flex flex-col gap-1.5">
+          {tags.map(([tag, count]) => (
+            <li key={tag} className="flex items-center gap-2 text-sm">
+              <button
+                type="button"
+                onClick={() => onFilter(tag)}
+                className="rounded-full bg-accent-soft px-2.5 py-1 text-xs text-accent"
+              >
+                {tag}
+              </button>
+              <span className="tabular-nums text-xs text-faint">{count}</span>
+              <button
+                type="button"
+                onClick={() => rename(tag)}
+                className="ml-auto text-xs text-muted hover:text-ink"
+              >
+                Rename
+              </button>
+              <button
+                type="button"
+                onClick={() => drop(tag)}
+                aria-label={`Delete tag ${tag}`}
+                className="text-faint hover:text-rust"
+              >
+                <TrashIcon className="size-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="mt-2 text-xs text-faint">
+        Renaming into an existing tag merges the two. Changes apply to every card, not just this deck.
+      </p>
+    </div>
   );
 }

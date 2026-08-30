@@ -134,3 +134,72 @@ export async function updateDeck(
   revalidatePath("/", "layout");
   return { ok: true };
 }
+
+/** Переименование тега по всей базе, а не только в этой колоде (FR-25). */
+export async function renameTagEverywhere(from: string, to: string): Promise<SaveResult> {
+  const user = await requireUser();
+  const supabase = await createClient();
+
+  const [target] = parseTags(to);
+  if (!target) return { ok: false, error: "The new tag name is empty" };
+
+  const { data: existing } = await supabase
+    .from("tags")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("name", target)
+    .maybeSingle();
+
+  const { data: source } = await supabase
+    .from("tags")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("name", from)
+    .maybeSingle();
+
+  if (!source) return { ok: false, error: `Tag “${from}” not found` };
+
+  // Целевой тег уже есть — это слияние: переносим связи и убираем исходный
+  if (existing && existing.id !== source.id) {
+    const { data: links } = await supabase
+      .from("card_tags")
+      .select("card_id")
+      .eq("tag_id", source.id);
+
+    for (const link of (links ?? []) as { card_id: string }[]) {
+      await supabase
+        .from("card_tags")
+        .upsert(
+          { card_id: link.card_id, tag_id: existing.id, user_id: user.id },
+          { onConflict: "card_id,tag_id", ignoreDuplicates: true },
+        );
+    }
+    await supabase.from("tags").delete().eq("id", source.id).eq("user_id", user.id);
+  } else {
+    const { error } = await supabase
+      .from("tags")
+      .update({ name: target })
+      .eq("id", source.id)
+      .eq("user_id", user.id);
+    if (error) return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/** Удаление тега целиком: связи с карточками уходят каскадом. */
+export async function deleteTagEverywhere(name: string): Promise<SaveResult> {
+  const user = await requireUser();
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("tags")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("name", name);
+
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
