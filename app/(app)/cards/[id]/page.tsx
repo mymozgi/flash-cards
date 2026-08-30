@@ -33,7 +33,7 @@ export default async function EditCardPage(props: { params: Promise<{ id: string
     supabase
       .from("cards")
       .select(
-        "id,topic_id,front_md,back_md,note_md,suspended,deleted_at, card_tags(tags(name)), scheduling(state,due,reps,lapses), media(side,storage_path,thumb_path,width,height,bytes,caption,position)",
+        "id,topic_id,front_md,back_md,note_md,suspended,deleted_at,distractors, card_tags(tags(name)), scheduling(state,due,reps,lapses), media(side,storage_path,thumb_path,width,height,bytes,caption,position)",
       )
       .eq("id", id)
       .maybeSingle(),
@@ -101,6 +101,7 @@ export default async function EditCardPage(props: { params: Promise<{ id: string
             tags: tagNames,
             frontImages: media.filter((m) => m.side === "front").map(toEditorImage),
             backImages: media.filter((m) => m.side === "back").map(toEditorImage),
+            distractors: (card.distractors as string[]) ?? [],
           }}
           topicPaths={topics.map((t) => t.path)}
           knownTags={allTags.map((t) => t.name)}

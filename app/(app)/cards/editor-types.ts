@@ -19,4 +19,5 @@ export type EditorCard = {
   tags: string[];
   frontImages: EditorImage[];
   backImages: EditorImage[];
+  distractors: string[];
 };

@@ -54,6 +54,12 @@ export function CardEditor({
   const [note, setNote] = useState(card?.note_md ?? "");
   const [topicPath, setTopicPath] = useState(card?.topicPath ?? "");
   const [tags, setTags] = useState(card?.tags.join(", ") ?? "");
+  // неправильные варианты для режима выбора ответа: задаются вручную
+  const [distractors, setDistractors] = useState<string[]>([
+    card?.distractors[0] ?? "",
+    card?.distractors[1] ?? "",
+    card?.distractors[2] ?? "",
+  ]);
 
   const [frontImages, setFrontImages] = useState<EditorImage[]>(card?.frontImages ?? []);
   const [backImages, setBackImages] = useState<EditorImage[]>(card?.backImages ?? []);
@@ -275,6 +281,26 @@ export function CardEditor({
           </datalist>
         </Field>
       </div>
+
+      <fieldset className="rounded border border-line p-3">
+        <legend className="px-1 font-mono text-[11px] uppercase tracking-[0.14em] text-faint">
+          Wrong answers — optional, for multiple choice
+        </legend>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {distractors.map((value, index) => (
+            <input
+              key={index}
+              name={`distractor${index + 1}`}
+              value={value}
+              onChange={(e) =>
+                setDistractors((prev) => prev.map((v, i) => (i === index ? e.target.value : v)))
+              }
+              placeholder={`Wrong answer ${index + 1}`}
+              className="w-full rounded border border-line bg-surface px-3 py-2 text-sm"
+            />
+          ))}
+        </div>
+      </fieldset>
 
       {isNew && (
         <label className="flex items-center gap-2 text-sm text-muted">

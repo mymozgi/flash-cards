@@ -4,94 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient, requireUser } from "@/lib/supabase/server";
+import { parseTags, resolveTags, resolveTopicPath, syncCardTags } from "@/lib/cards";
 
 export type CardFormState = { error: string | null };
-
-// в файле с "use server" экспортироваться могут только async-функции
-function normalizeTag(raw: string): string {
-  return raw
-    .trim()
-    .replace(/^#/, "")
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^\p{L}\p{N}_-]/gu, "");
-}
-
-/** «Английский / Грамматика / Времена» → id листа, недостающие узлы создаются (FR-33). */
-async function resolveTopicPath(
-  supabase: SupabaseClient,
-  userId: string,
-  path: string,
-): Promise<string | null> {
-  const parts = path
-    .split("/")
-    .map((p) => p.trim())
-    .filter(Boolean)
-    .slice(0, 3);
-  if (parts.length === 0) return null;
-
-  let parentId: string | null = null;
-  for (const name of parts) {
-    const query = supabase.from("topics").select("id").eq("user_id", userId).eq("name", name);
-    const { data: found } = await (
-      parentId === null ? query.is("parent_id", null) : query.eq("parent_id", parentId)
-    ).maybeSingle();
-
-    if (found) {
-      parentId = found.id as string;
-      continue;
-    }
-
-    const { data: created, error } = await supabase
-      .from("topics")
-      .insert({ user_id: userId, parent_id: parentId, name })
-      .select("id")
-      .single();
-    if (error) throw new Error(`Could not create topic “${name}”: ${error.message}`);
-    parentId = created.id as string;
-  }
-  return parentId;
-}
-
-async function resolveTags(
-  supabase: SupabaseClient,
-  userId: string,
-  raw: string,
-): Promise<string[]> {
-  const names = [
-    ...new Set(
-      raw
-        .split(/[,\s]+/)
-        .map(normalizeTag)
-        .filter(Boolean),
-    ),
-  ];
-  if (names.length === 0) return [];
-
-  const { data, error } = await supabase
-    .from("tags")
-    .upsert(
-      names.map((name) => ({ user_id: userId, name })),
-      { onConflict: "user_id,name" },
-    )
-    .select("id");
-  if (error) throw new Error(`Could not save tags: ${error.message}`);
-  return (data ?? []).map((t) => t.id as string);
-}
-
-async function syncCardTags(
-  supabase: SupabaseClient,
-  userId: string,
-  cardId: string,
-  tagIds: string[],
-) {
-  await supabase.from("card_tags").delete().eq("card_id", cardId);
-  if (tagIds.length === 0) return;
-  await supabase
-    .from("card_tags")
-    .insert(tagIds.map((tagId) => ({ card_id: cardId, tag_id: tagId, user_id: userId })));
-}
-
 
 type IncomingImage = {
   storagePath: string;
@@ -188,6 +103,9 @@ export async function saveCard(
   const topicPath = String(formData.get("topic_path") ?? "");
   const tagsRaw = String(formData.get("tags") ?? "");
   const reversed = formData.get("reversed") === "on";
+  const distractors = [1, 2, 3]
+    .map((i) => String(formData.get(`distractor${i}`) ?? "").trim())
+    .filter(Boolean);
   const frontImages = parseImages(String(formData.get("images_front") ?? ""), user.id);
   const backImages = parseImages(String(formData.get("images_back") ?? ""), user.id);
   const another = formData.get("intent") === "save_and_new";
@@ -201,7 +119,7 @@ export async function saveCard(
   try {
     [topicId, tagIds] = await Promise.all([
       resolveTopicPath(supabase, user.id, topicPath),
-      resolveTags(supabase, user.id, tagsRaw),
+      resolveTags(supabase, user.id, parseTags(tagsRaw)),
     ]);
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Could not save the card" };
@@ -212,6 +130,7 @@ export async function saveCard(
     front_md: front,
     back_md: back,
     note_md: note || null,
+    distractors,
   };
 
   if (id) {
@@ -326,7 +245,7 @@ export async function bulkUpdate(op: BulkOp): Promise<{ ok: boolean; error?: str
         break;
       }
       case "add_tags": {
-        const tagIds = await resolveTags(supabase, user.id, op.tags ?? "");
+        const tagIds = await resolveTags(supabase, user.id, parseTags(op.tags ?? ""));
         if (tagIds.length === 0) break;
         const rows = op.cardIds.flatMap((cardId) =>
           tagIds.map((tagId) => ({ card_id: cardId, tag_id: tagId, user_id: user.id })),
