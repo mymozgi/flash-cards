@@ -12,7 +12,18 @@
  */
 import { createClient } from "@supabase/supabase-js";
 
-const TABLES = ["topics", "tags", "cards", "card_tags", "scheduling", "reviews", "settings"];
+const TABLES = [
+  "topics",
+  "tags",
+  "cards",
+  "card_tags",
+  "scheduling",
+  "reviews",
+  "settings",
+  "media",
+  "media_orphans",
+  "import_batches",
+];
 const VIEWS = ["topic_card_counts"];
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

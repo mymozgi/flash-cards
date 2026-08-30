@@ -1,0 +1,5 @@
+front,back,topic,tags,note,reversed,choice1,choice2,choice3
+"What does EXPLAIN ANALYZE do?","Runs the query and prints the actual plan with per-node timing","Databases/PostgreSQL/Performance","sql,planner","EXPLAIN alone only estimates — ANALYZE actually executes",0,"Only estimates the plan","Rewrites the query","Rebuilds the indexes"
+"ubiquitous","present everywhere at once","English/Vocabulary/C1","words","",1,"rare","temporary","hidden"
+"Which muscle abducts the arm at the shoulder?","Deltoid (m. deltoideus)","Medicine/Anatomy/Upper limb","recognition","",0,"Biceps brachii","Trapezius","Pectoralis major"
+"What is the FSRS retention target used here?","0.90 — the scheduler aims for a 90% chance of recall at review time","Kartoteka/Algorithm","fsrs","Raising it means more reviews and firmer memory",0,"0.50","0.75","0.99"
