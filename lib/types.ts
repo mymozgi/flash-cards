@@ -7,6 +7,8 @@ export type TopicRow = {
   parent_id: string | null;
   name: string;
   position: number;
+  description: string | null;
+  color: string | null;
 };
 
 /** Тема вместе с полным путём — читаемый адрес узла (§6.1). */

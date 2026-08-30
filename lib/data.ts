@@ -44,7 +44,7 @@ export async function getTopicTree(): Promise<TopicNode[]> {
   const supabase = await createClient();
 
   const [{ data: topics }, { data: counts }] = await Promise.all([
-    supabase.from("topics").select("id,parent_id,name,position").order("position").order("name"),
+    supabase.from("topics").select("id,parent_id,name,position,description,color").order("position").order("name"),
     supabase.from("topic_card_counts").select("topic_id,card_count"),
   ]);
 
