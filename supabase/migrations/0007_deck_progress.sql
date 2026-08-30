@@ -3,7 +3,7 @@
 -- Считать это на клиенте значило бы тянуть все карточки ради трёх чисел.
 -- security_invoker=on — представление наследует RLS вызывающего.
 
-create view topic_progress with (security_invoker = on) as
+create or replace view topic_progress with (security_invoker = on) as
   select
     c.topic_id,
     count(*)::int                                          as total,
