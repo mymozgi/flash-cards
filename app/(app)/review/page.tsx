@@ -12,7 +12,7 @@ export default async function ReviewPage(props: {
     ignoreSchedule: free,
     topicIds: params.topic ? [params.topic] : undefined,
     tagIds: params.tag ? [params.tag] : undefined,
-    limit: free ? 60 : undefined,
+    limit: free ? 500 : undefined,
   });
 
   return (

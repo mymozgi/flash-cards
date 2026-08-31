@@ -24,7 +24,7 @@ export function SettingsForm({
     <form action={formAction} className="mt-5 flex max-w-lg flex-col gap-4">
       <Field
         label="New cards per day"
-        hint="The daily intake. Lower is safer — every new card becomes a review debt."
+        hint="The daily intake. 0 means no limit. Lower is safer — every new card becomes a review debt tomorrow."
       >
         <input
           name="daily_new_limit"
@@ -36,12 +36,12 @@ export function SettingsForm({
         />
       </Field>
 
-      <Field label="Reviews per day" hint="A ceiling for the queue, not a goal.">
+      <Field label="Reviews per day" hint="A ceiling for the scheduled queue, not a goal. 0 means no limit — Practice ignores it either way.">
         <input
           name="daily_review_limit"
           type="number"
-          min={1}
-          max={2000}
+          min={0}
+          max={5000}
           defaultValue={settings.daily_review_limit}
           className={FIELD}
         />

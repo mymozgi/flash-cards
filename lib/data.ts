@@ -125,11 +125,19 @@ export async function getTodayCounts(settings: SettingsRow): Promise<TodayCounts
   const reviewsDoneToday = reviewsToday.count ?? 0;
   const newDoneToday = newToday.count ?? 0;
 
-  const due = Math.min(dueRes.count ?? 0, Math.max(0, settings.daily_review_limit - reviewsDoneToday));
-  const newAvailable = Math.min(
-    newRes.count ?? 0,
-    Math.max(0, settings.daily_new_limit - newDoneToday),
-  );
+  // Ноль в настройках означает «без ограничения»: приложение личное,
+  // и упираться в собственный лимит посреди занятия — худшее, что оно может сделать
+  const reviewRoom =
+    settings.daily_review_limit <= 0
+      ? Number.MAX_SAFE_INTEGER
+      : Math.max(0, settings.daily_review_limit - reviewsDoneToday);
+  const newRoom =
+    settings.daily_new_limit <= 0
+      ? Number.MAX_SAFE_INTEGER
+      : Math.max(0, settings.daily_new_limit - newDoneToday);
+
+  const due = Math.min(dueRes.count ?? 0, reviewRoom);
+  const newAvailable = Math.min(newRes.count ?? 0, newRoom);
 
   return { due, newAvailable, reviewsDoneToday, newDoneToday, total: due + newAvailable };
 }
@@ -175,7 +183,7 @@ export async function getQueue(
     return q;
   };
 
-  const reviewLimit = options.ignoreSchedule ? (options.limit ?? 100) : counts.due;
+  const reviewLimit = options.ignoreSchedule ? (options.limit ?? 500) : counts.due;
   const newLimit = options.ignoreSchedule ? 0 : counts.newAvailable;
 
   const dueQuery = base().neq("state", "new").order("due", { ascending: true });
@@ -183,21 +191,22 @@ export async function getQueue(
 
   if (reviewLimit > 0) {
     const q = options.ignoreSchedule ? dueQuery : dueQuery.lte("due", nowIso);
-    const { data } = await q.limit(reviewLimit);
+    const { data, error } = await q.limit(reviewLimit);
+    // Молча вернуть пустую очередь — худший вид отказа: выглядит как «всё выучено»
+    if (error) throw new Error(`Could not build the queue: ${error.message}`);
     rows.push(...((data ?? []) as unknown as SchedulingWithCard[]));
   }
 
-  if (options.ignoreSchedule && rows.length < (options.limit ?? 100)) {
-    const { data } = await base()
+  const newRoom = options.ignoreSchedule
+    ? (options.limit ?? 100) - rows.length
+    : Math.min(newLimit, 500);
+
+  if (newRoom > 0) {
+    const { data, error } = await base()
       .eq("state", "new")
       .order("due", { ascending: true })
-      .limit((options.limit ?? 100) - rows.length);
-    rows.push(...((data ?? []) as unknown as SchedulingWithCard[]));
-  } else if (newLimit > 0) {
-    const { data } = await base()
-      .eq("state", "new")
-      .order("due", { ascending: true })
-      .limit(newLimit);
+      .limit(newRoom);
+    if (error) throw new Error(`Could not load new cards: ${error.message}`);
     rows.push(...((data ?? []) as unknown as SchedulingWithCard[]));
   }
 

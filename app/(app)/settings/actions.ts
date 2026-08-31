@@ -21,8 +21,8 @@ export async function saveSettings(
   if (!Number.isFinite(newLimit) || newLimit < 0 || newLimit > 500) {
     return { error: "New cards per day must be between 0 and 500" };
   }
-  if (!Number.isFinite(reviewLimit) || reviewLimit < 1 || reviewLimit > 2000) {
-    return { error: "Reviews per day must be between 1 and 2000" };
+  if (!Number.isFinite(reviewLimit) || reviewLimit < 0 || reviewLimit > 5000) {
+    return { error: "Reviews per day must be between 0 and 5000" };
   }
   if (!Number.isFinite(retention) || retention < 0.7 || retention > 0.98) {
     return { error: "Retention target must be between 0.70 and 0.98" };
