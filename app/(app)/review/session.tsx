@@ -13,6 +13,13 @@ import { gradeCard, undoReview, type GradeResult } from "./actions";
 const RELEARN_HORIZON_MS = 20 * 60 * 1000;
 const RELEARN_GAP = 3;
 
+/** Пропорции полотна — те же три, что выбираются в конструкторе. */
+const ASPECT: Record<"square" | "landscape" | "portrait", string> = {
+  square: "1 / 1",
+  landscape: "3 / 2",
+  portrait: "2 / 3",
+};
+
 type HistoryEntry = { card: QueueCard; pending: Promise<GradeResult> };
 
 export function ReviewSession({
@@ -215,29 +222,49 @@ export function ReviewSession({
         </p>
       )}
 
-      <div className="flex flex-1 flex-col justify-center py-8">
+      <div className="flip-scene flex flex-1 flex-col items-center justify-center gap-4 py-5">
+        {/* Клик по полотну переворачивает карточку. Это div, а не button:
+            внутри лежат кнопки изображений, а кнопку в кнопку вкладывать нельзя. */}
         <div
-          className="prose-card text-lg sm:text-xl"
-          dangerouslySetInnerHTML={{ __html: frontHtml }}
-        />
-        <CardMedia images={frontMedia} onOpen={setZoomed} />
-
-        {revealed && (
-          <>
-            <hr className="my-6 border-line" />
-            <div
-              className="prose-card text-lg sm:text-xl"
-              dangerouslySetInnerHTML={{ __html: backHtml }}
-            />
-            <CardMedia images={backMedia} onOpen={setZoomed} />
-            {noteHtml && (
+          role="button"
+          tabIndex={0}
+          aria-label={revealed ? "Show the question" : "Show the answer"}
+          onClick={() => setRevealed((r) => !r)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") setRevealed((r) => !r);
+          }}
+          className="mx-auto w-full max-w-2xl cursor-pointer"
+          style={{ aspectRatio: ASPECT[current.card.shape], maxHeight: "60dvh" }}
+        >
+          <div className="flip-inner" data-flipped={revealed}>
+            <div className="flip-face flip-face--front rounded-2xl border border-line bg-surface p-4 shadow-sm sm:p-6">
               <div
-                className="prose-card mt-5 border-l-[3px] border-line-strong pl-4 text-sm text-muted"
-                dangerouslySetInnerHTML={{ __html: noteHtml }}
+                className="prose-card min-h-0 flex-1 overflow-y-auto text-lg sm:text-xl"
+                dangerouslySetInnerHTML={{ __html: frontHtml }}
               />
-            )}
-          </>
-        )}
+              {/* просмотр картинки не должен заодно переворачивать карточку */}
+              <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                <CardMedia images={frontMedia} onOpen={setZoomed} />
+              </div>
+            </div>
+
+            <div className="flip-face flip-face--back rounded-2xl border border-accent bg-accent-soft p-4 shadow-sm sm:p-6">
+              <div
+                className="prose-card min-h-0 flex-1 overflow-y-auto text-lg sm:text-xl"
+                dangerouslySetInnerHTML={{ __html: backHtml }}
+              />
+              <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                <CardMedia images={backMedia} onOpen={setZoomed} />
+              </div>
+              {noteHtml && (
+                <div
+                  className="prose-card mt-3 shrink-0 border-l-[3px] border-line-strong pl-3 text-sm text-muted"
+                  dangerouslySetInnerHTML={{ __html: noteHtml }}
+                />
+              )}
+            </div>
+          </div>
+        </div>
 
         {current.tags.length > 0 && (
           <ul className="mt-6 flex flex-wrap gap-1.5">
@@ -253,14 +280,14 @@ export function ReviewSession({
         )}
       </div>
 
-      <div className="sticky bottom-20 flex flex-col gap-2 sm:bottom-6">
+      <div className="sticky bottom-4 flex flex-col gap-2 sm:bottom-6">
         {!revealed ? (
           <button
             type="button"
             onClick={() => setRevealed(true)}
             className="min-h-14 rounded bg-accent px-5 text-base font-medium text-accent-ink"
           >
-            Show answer
+            Flip the card
           </button>
         ) : (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">

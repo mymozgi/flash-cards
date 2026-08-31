@@ -23,9 +23,12 @@ export type TagRow = {
   name: string;
 };
 
+export type CardShape = "square" | "landscape" | "portrait";
+
 export type CardRow = {
   id: string;
   topic_id: string | null;
+  shape: CardShape;
   front_md: string;
   back_md: string;
   note_md: string | null;
