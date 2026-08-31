@@ -303,6 +303,13 @@ export function DeckWorkspace({
           Study
         </Link>
 
+        <Link
+          href={`/review?free=1&topic=${deck.id}`}
+          className="rounded-lg border border-line px-4 py-2 text-sm text-muted hover:text-ink"
+        >
+          Practice
+        </Link>
+
         <button
           type="button"
           onClick={save}

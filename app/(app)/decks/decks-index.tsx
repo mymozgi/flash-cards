@@ -326,10 +326,16 @@ function DeckCard({
 
       <div className="mt-3 flex gap-2">
         <Link
+          href={`/review?free=1&topic=${deck.id}`}
+          className="flex-1 rounded-lg border border-line px-3 py-2 text-center text-sm"
+        >
+          Practice
+        </Link>
+        <Link
           href={`/decks/${deck.id}/study`}
           className="flex-1 rounded-lg border border-line px-3 py-2 text-center text-sm"
         >
-          Study
+          Browse
         </Link>
         <Link
           href={`/decks/${deck.id}`}

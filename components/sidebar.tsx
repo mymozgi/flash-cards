@@ -11,7 +11,10 @@ const GROUPS: { items: { href: string; label: string; Icon: typeof GridIcon }[] 
     items: [
       { href: "/", label: "Today", Icon: ListIcon },
       { href: "/decks", label: "Flashcard sets", Icon: GridIcon },
-      { href: "/review", label: "Review", Icon: SearchIcon },
+      { href: "/review", label: "Review due", Icon: SearchIcon },
+      // Свободная тренировка доступна всегда: расписание может быть пустым,
+      // а желание повторить — нет
+      { href: "/review?free=1", label: "Practice", Icon: PlusIcon },
     ],
   },
   {
@@ -26,7 +29,9 @@ const GROUPS: { items: { href: string; label: string; Icon: typeof GridIcon }[] 
 ];
 
 function isActive(pathname: string, href: string) {
-  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+  if (href === "/") return pathname === "/";
+  // у Review и Practice один путь, поэтому по нему подсвечиваем только Review
+  return pathname.startsWith(href.split("?")[0]) && !href.includes("?");
 }
 
 /**
