@@ -6,19 +6,15 @@ import type { Grade } from "ts-fsrs";
 import { fromFsrsCard, previewIntervals, RATINGS, scheduler, toFsrsCard } from "@/lib/fsrs";
 import { renderMarkdown } from "@/lib/markdown";
 import type { MediaItem, QueueCard } from "@/lib/types";
-import { CardMedia, Lightbox } from "@/components/card-media";
+import { CardRenderer, ASPECT } from "@/components/card-renderer";
+import { Lightbox } from "@/components/card-media";
 import { gradeCard, undoReview, type GradeResult } from "./actions";
 
 /** Карточка, провалившаяся сейчас, возвращается в этой же сессии (§8.1). */
 const RELEARN_HORIZON_MS = 20 * 60 * 1000;
 const RELEARN_GAP = 3;
 
-/** Пропорции полотна — те же три, что выбираются в конструкторе. */
-const ASPECT: Record<"square" | "landscape" | "portrait", string> = {
-  square: "1 / 1",
-  landscape: "3 / 2",
-  portrait: "2 / 3",
-};
+
 
 type HistoryEntry = { card: QueueCard; pending: Promise<GradeResult> };
 
@@ -237,32 +233,27 @@ export function ReviewSession({
           style={{ aspectRatio: ASPECT[current.card.shape], maxHeight: "60dvh" }}
         >
           <div className="flip-inner" data-flipped={revealed}>
-            <div className="flip-face flip-face--front rounded-2xl border border-line bg-surface p-4 shadow-sm sm:p-6">
-              <div
-                className="prose-card min-h-0 flex-1 overflow-y-auto text-lg sm:text-xl"
-                dangerouslySetInnerHTML={{ __html: frontHtml }}
-              />
-              {/* просмотр картинки не должен заодно переворачивать карточку */}
-              <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-                <CardMedia images={frontMedia} onOpen={setZoomed} />
-              </div>
-            </div>
-
-            <div className="flip-face flip-face--back rounded-2xl border border-accent bg-accent-soft p-4 shadow-sm sm:p-6">
-              <div
-                className="prose-card min-h-0 flex-1 overflow-y-auto text-lg sm:text-xl"
-                dangerouslySetInnerHTML={{ __html: backHtml }}
-              />
-              <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-                <CardMedia images={backMedia} onOpen={setZoomed} />
-              </div>
-              {noteHtml && (
-                <div
-                  className="prose-card mt-3 shrink-0 border-l-[3px] border-line-strong pl-3 text-sm text-muted"
-                  dangerouslySetInnerHTML={{ __html: noteHtml }}
-                />
-              )}
-            </div>
+            {/* обе грани рисует тот же компонент, что и предпросмотр в редакторе */}
+            <CardRenderer
+              fill
+              className="flip-face flip-face--front"
+              shape={current.card.shape}
+              layout={current.card.layout}
+              imagePosition={current.card.image_position}
+              html={frontHtml}
+              images={frontMedia}
+              onImageClick={() => setZoomed(frontMedia[0] ?? null)}
+            />
+            <CardRenderer
+              fill
+              className="flip-face flip-face--back"
+              shape={current.card.shape}
+              layout={current.card.layout}
+              imagePosition={current.card.image_position}
+              html={backHtml + noteHtml}
+              images={backMedia}
+              onImageClick={() => setZoomed(backMedia[0] ?? null)}
+            />
           </div>
         </div>
 

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { renderMarkdown } from "@/lib/markdown";
-import type { MediaItem } from "@/lib/types";
+import { CardRenderer, type CardImage, type CardLayout, type CardShape, type ImagePosition } from "@/components/card-renderer";
 import { CloseIcon, GridIcon } from "@/components/icons";
 
 export type StudyCard = {
@@ -12,33 +12,51 @@ export type StudyCard = {
   answer: string;
   example: string;
   link: string;
-  shape: "square" | "landscape" | "portrait";
-  media: MediaItem[];
+  shape: CardShape;
+  layout: CardLayout;
+  imagePosition: ImagePosition;
+  frontImages: CardImage[];
+  backImages: CardImage[];
 };
 
 /**
- * Пропорции полотна. 16:9 намеренно нет: на телефоне такая карточка
- * превращается в полоску, где не помещается ни картинка, ни текст.
+ * Просмотр колоды: карточки листаются кнопками Previous и Next.
+ * Переворота здесь нет намеренно — это режим знакомства с материалом,
+ * а не проверки себя; проверка живёт на экране повторения.
  */
-const ASPECT: Record<StudyCard["shape"], string> = {
-  square: "1 / 1",
-  landscape: "3 / 2",
-  portrait: "2 / 3",
-};
-
-export function StudyDeck({ deckName, cards, deckId }: { deckName: string; cards: StudyCard[]; deckId: string }) {
+export function StudyDeck({
+  deckName,
+  cards,
+  deckId,
+}: {
+  deckName: string;
+  cards: StudyCard[];
+  deckId: string;
+}) {
   const [order, setOrder] = useState(() => cards.map((_, i) => i));
   const [at, setAt] = useState(0);
-  const [flipped, setFlipped] = useState(false);
+  const [dir, setDir] = useState<"next" | "prev">("next");
   const [shuffled, setShuffled] = useState(false);
+  const [zoomed, setZoomed] = useState<string | null>(null);
+  // ключ перезапускает анимацию: без него повторный переход не проигрывается.
+  // Это состояние, а не ref: ref нельзя читать во время отрисовки.
+  const [step, setStep] = useState(0);
 
   const card = cards[order[at]];
   const total = order.length;
+  const atFirst = at === 0;
+  const atLast = at === total - 1;
 
   const go = useCallback(
     (delta: number) => {
-      setFlipped(false);
-      setAt((prev) => Math.min(total - 1, Math.max(0, prev + delta)));
+      setAt((prev) => {
+        const next = Math.min(total - 1, Math.max(0, prev + delta));
+        if (next !== prev) {
+          setDir(delta > 0 ? "next" : "prev");
+          setStep((n) => n + 1);
+        }
+        return next;
+      });
     },
     [total],
   );
@@ -51,24 +69,20 @@ export function StudyDeck({ deckName, cards, deckId }: { deckName: string; cards
     }
     setOrder(next);
     setAt(0);
-    setFlipped(false);
     setShuffled(true);
+    setStep((n) => n + 1);
   };
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === " " || event.key === "Enter") {
-        event.preventDefault();
-        setFlipped((f) => !f);
-      }
       if (event.key === "ArrowRight") go(1);
       if (event.key === "ArrowLeft") go(-1);
+      if (event.key === "Escape") setZoomed(null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [go]);
 
-  // Свайп по карточке листает колоду; вертикальное движение не мешает скроллу
   const touch = useRef<{ x: number; y: number } | null>(null);
   const onTouchStart = (e: React.TouchEvent) => {
     const t = e.changedTouches[0];
@@ -84,8 +98,8 @@ export function StudyDeck({ deckName, cards, deckId }: { deckName: string; cards
     if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)) go(dx < 0 ? 1 : -1);
   };
 
-  const front = useMemo(() => card?.media.filter((m) => m.side === "front") ?? [], [card]);
-  const back = useMemo(() => card?.media.filter((m) => m.side === "back") ?? [], [card]);
+  const frontHtml = useMemo(() => (card ? renderMarkdown(card.term) : ""), [card]);
+  const answerHtml = useMemo(() => (card ? renderMarkdown(card.answer) : ""), [card]);
 
   if (!card) {
     return (
@@ -103,6 +117,18 @@ export function StudyDeck({ deckName, cards, deckId }: { deckName: string; cards
 
   return (
     <div className="flex flex-col gap-4">
+      {zoomed && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Image"
+          onClick={() => setZoomed(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-paper/95 p-4"
+        >
+          <img src={zoomed} alt="" className="max-h-[85dvh] max-w-full object-contain" />
+        </div>
+      )}
+
       <div className="flex items-center justify-between gap-3">
         <Link href={`/decks/${deckId}`} className="flex items-center gap-2 text-sm text-muted hover:text-ink">
           <CloseIcon />
@@ -131,127 +157,84 @@ export function StudyDeck({ deckName, cards, deckId }: { deckName: string; cards
         />
       </div>
 
-      <div className="flip-scene mx-auto w-full max-w-2xl" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-        <button
-          type="button"
-          onClick={() => setFlipped((f) => !f)}
-          aria-label={flipped ? "Show the question" : "Show the answer"}
-          className="block w-full text-left"
-          style={{ aspectRatio: ASPECT[card.shape], maxHeight: "68dvh" }}
-        >
-          <div className="flip-inner" data-flipped={flipped}>
-            <Face
-              className="flip-face--front"
-              text={card.term}
-              images={front}
-              hint="Tap to flip"
-            />
-            <Face
-              className="flip-face--back"
-              text={card.answer}
-              images={back}
-              example={card.example}
-              link={card.link}
-              accent
-            />
-          </div>
-        </button>
+      <div
+        className="deck-scene relative mx-auto w-full max-w-2xl"
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
+        {/* слои позади: видно, что карточка лежит в стопке */}
+        {!atLast && (
+          <>
+            <div className="deck-stack-layer" style={{ transform: "translateY(10px) scale(0.965)" }} />
+            <div className="deck-stack-layer" style={{ transform: "translateY(20px) scale(0.93)" }} />
+          </>
+        )}
+        <div key={step} className="deck-card relative" data-dir={dir}>
+          <CardRenderer
+            shape={card.shape}
+            layout={card.layout}
+            imagePosition={card.imagePosition}
+            html={frontHtml}
+            images={card.frontImages}
+            maxHeight="58dvh"
+            onImageClick={() => setZoomed(card.frontImages[0]?.url ?? null)}
+          />
+        </div>
       </div>
 
       <div className="flex items-center justify-center gap-2">
         <button
           type="button"
           onClick={() => go(-1)}
-          disabled={at === 0}
-          className="min-h-12 min-w-24 rounded-lg border border-line px-5 text-sm disabled:opacity-40"
+          disabled={atFirst}
+          className="min-h-12 flex-1 rounded-lg border border-line px-5 text-sm disabled:opacity-40 sm:flex-none sm:min-w-32"
         >
           Previous
         </button>
         <button
           type="button"
-          onClick={() => setFlipped((f) => !f)}
-          className="min-h-12 flex-1 rounded-lg bg-accent px-5 text-sm font-medium text-accent-ink sm:flex-none sm:min-w-40"
-        >
-          {flipped ? "Question" : "Flip"}
-        </button>
-        <button
-          type="button"
           onClick={() => go(1)}
-          disabled={at === total - 1}
-          className="min-h-12 min-w-24 rounded-lg border border-line px-5 text-sm disabled:opacity-40"
+          disabled={atLast}
+          className="min-h-12 flex-1 rounded-lg bg-accent px-5 text-sm font-medium text-accent-ink disabled:opacity-40 sm:flex-none sm:min-w-32"
         >
           Next
         </button>
       </div>
 
+      {/* Ответ виден сразу: переворота в этом режиме нет */}
+      <section className="mx-auto w-full max-w-2xl rounded-xl border border-line bg-surface p-4 shadow-sm">
+        <h2 className="text-sm font-medium text-muted">Answer</h2>
+        <div className="prose-card mt-2" dangerouslySetInnerHTML={{ __html: answerHtml }} />
+        {card.backImages.length > 0 && (
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {card.backImages.map((image) => (
+              <button
+                key={image.url}
+                type="button"
+                onClick={() => setZoomed(image.url)}
+                className="overflow-hidden rounded-lg border border-line"
+              >
+                <img src={image.url} alt={image.caption ?? ""} className="h-40 w-full object-cover" />
+              </button>
+            ))}
+          </div>
+        )}
+        {card.example && <p className="mt-2 text-sm italic text-muted">{card.example}</p>}
+        {card.link && (
+          <a
+            href={card.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 block truncate text-sm text-accent underline underline-offset-4"
+          >
+            {card.link}
+          </a>
+        )}
+      </section>
+
       <p className="text-center text-xs text-faint">
-        Space flips · arrows move · swipe left and right on a phone
+        Arrows or swipe move between cards · flip-based self-testing lives in Review
       </p>
-    </div>
-  );
-}
-
-function Face({
-  className,
-  text,
-  images,
-  example,
-  link,
-  hint,
-  accent,
-}: {
-  className: string;
-  text: string;
-  images: MediaItem[];
-  example?: string;
-  link?: string;
-  hint?: string;
-  accent?: boolean;
-}) {
-  const html = useMemo(() => renderMarkdown(text), [text]);
-
-  return (
-    <div
-      className={`flip-face rounded-2xl border p-4 sm:p-6 ${className} ${
-        accent ? "border-accent bg-accent-soft" : "border-line bg-surface"
-      } shadow-sm`}
-    >
-      {images.length > 0 && (
-        <div className={`mb-3 grid min-h-0 flex-1 gap-2 ${images.length > 1 ? "grid-cols-2" : ""}`}>
-          {images.map((image) => (
-            // обычный img: файлы уже сжаты клиентом, оптимизация Vercel лимитирована
-            <img
-              key={image.id}
-              src={image.url}
-              alt={image.caption ?? ""}
-              className="h-full w-full rounded-lg object-contain"
-            />
-          ))}
-        </div>
-      )}
-
-      <div
-        className={`prose-card min-h-0 overflow-y-auto ${
-          images.length > 0 ? "text-base" : "flex-1 text-lg sm:text-2xl"
-        }`}
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
-
-      {example && <p className="mt-2 shrink-0 text-sm italic text-muted">{example}</p>}
-
-      {link && (
-        <a
-          href={link}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          className="mt-2 shrink-0 truncate text-sm text-accent underline underline-offset-4"
-        >
-          {link}
-        </a>
-      )}
-
-      {hint && <p className="mt-2 shrink-0 text-center text-xs text-faint">{hint}</p>}
     </div>
   );
 }

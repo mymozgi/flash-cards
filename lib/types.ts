@@ -25,10 +25,15 @@ export type TagRow = {
 
 export type CardShape = "square" | "landscape" | "portrait";
 
+export type CardLayout = "full_image" | "split";
+export type ImagePosition = "left" | "right" | "top" | "bottom";
+
 export type CardRow = {
   id: string;
   topic_id: string | null;
   shape: CardShape;
+  layout: CardLayout;
+  image_position: ImagePosition;
   front_md: string;
   back_md: string;
   note_md: string | null;

@@ -16,6 +16,8 @@ type CardRow = {
   link_url: string | null;
   mcq: boolean;
   shape: "square" | "landscape" | "portrait";
+  layout: "full_image" | "split";
+  image_position: "left" | "right" | "top" | "bottom";
   distractors: string[] | null;
   card_tags: { tags: { name: string } }[];
 };
@@ -39,7 +41,7 @@ export default async function DeckPage(props: { params: Promise<{ id: string }> 
     supabase
       .from("cards")
       .select(
-        "id,front_md,back_md,example_md,link_url,mcq,shape,distractors, card_tags(tags(name))",
+        "id,front_md,back_md,example_md,link_url,mcq,shape,layout,image_position,distractors, card_tags(tags(name))",
       )
       .eq("topic_id", id)
       .is("deleted_at", null)
@@ -85,6 +87,8 @@ export default async function DeckPage(props: { params: Promise<{ id: string }> 
       mcq: row.mcq,
       tags: (row.card_tags ?? []).map((t) => t.tags.name).join(", "),
       shape: row.shape,
+      layout: row.layout,
+      imagePosition: row.image_position,
       frontImages: toEditor("front"),
       backImages: toEditor("back"),
     };

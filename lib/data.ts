@@ -16,7 +16,7 @@ import type {
 const SCHEDULING_FIELDS =
   "card_id,state,due,stability,difficulty,elapsed_days,scheduled_days,learning_steps,reps,lapses,last_review";
 const CARD_FIELDS =
-  "id,topic_id,front_md,back_md,note_md,kind,shape,suspended,created_at,updated_at";
+  "id,topic_id,front_md,back_md,note_md,kind,shape,layout,image_position,suspended,created_at,updated_at";
 
 export async function getSettings(): Promise<SettingsRow> {
   const supabase = await createClient();

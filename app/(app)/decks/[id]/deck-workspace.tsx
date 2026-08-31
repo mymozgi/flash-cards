@@ -10,9 +10,15 @@ import {
   saveDeck,
   saveOrder,
   updateDeck,
-  type CardShape,
   type DeckCardInput,
 } from "./actions";
+import { renderMarkdown } from "@/lib/markdown";
+import {
+  CardRenderer,
+  LAYOUT_OPTIONS,
+  POSITION_OPTIONS,
+  SHAPE_OPTIONS,
+} from "@/components/card-renderer";
 import { ImageStrip } from "@/app/(app)/cards/image-strip";
 import type { EditorImage } from "@/app/(app)/cards/editor-types";
 import { ImageError, MAX_IMAGES_PER_SIDE } from "@/lib/image";
@@ -48,12 +54,7 @@ const COLUMNS = [
 ] as const;
 type Column = (typeof COLUMNS)[number]["key"];
 
-/** Пропорции полотна; 16:9 не берём — на телефоне вырождается в полоску. */
-const SHAPES: { key: CardShape; label: string; box: string }[] = [
-  { key: "square", label: "Square", box: "size-4" },
-  { key: "landscape", label: "Landscape", box: "h-3 w-4.5" },
-  { key: "portrait", label: "Portrait", box: "h-4.5 w-3" },
-];
+
 
 /** В редакторе у изображений есть ещё и адреса — сервер их просто игнорирует. */
 export type DeckCard = Omit<DeckCardInput, "frontImages" | "backImages"> & {
@@ -125,6 +126,8 @@ export function DeckWorkspace({
       mcq: false,
       tags: "",
       shape: "square",
+      layout: "split",
+      imagePosition: "top",
       frontImages: [],
       backImages: [],
     };
@@ -603,29 +606,76 @@ function CardBlock({
         </div>
       </div>
 
-      <div className="mt-3 flex items-center gap-2">
-        <span className="text-sm font-medium text-muted">Shape</span>
-        {SHAPES.map((shape) => (
+      {/* Слева органы управления, справа живой предпросмотр — тот же компонент,
+          которым карточка рисуется в учебных режимах, поэтому расхождений нет. */}
+      <div className="mt-1 grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="min-w-0">
+      <Label>Aspect ratio</Label>
+      <div className="flex flex-wrap gap-2">
+        {SHAPE_OPTIONS.map((shape) => (
           <button
             key={shape.key}
             type="button"
             onClick={() => onUpdate(card.id, { shape: shape.key })}
             aria-pressed={card.shape === shape.key}
-            title={shape.label}
-            className={`flex items-center justify-center rounded-md border p-1.5 ${
-              card.shape === shape.key ? "border-accent bg-accent-soft" : "border-line"
+            className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs ${
+              card.shape === shape.key
+                ? "border-accent bg-accent-soft text-accent"
+                : "border-line text-muted hover:text-ink"
             }`}
           >
             <span
               aria-hidden
-              className={`${shape.box} rounded-sm border ${
+              className={`${shape.box} rounded-sm border-2 ${
                 card.shape === shape.key ? "border-accent" : "border-line-strong"
               }`}
             />
-            <span className="sr-only">{shape.label}</span>
+            {shape.ratio}
           </button>
         ))}
       </div>
+
+      <Label>Layout</Label>
+      <div className="flex flex-wrap gap-2">
+        {LAYOUT_OPTIONS.map((option) => (
+          <button
+            key={option.key}
+            type="button"
+            onClick={() => onUpdate(card.id, { layout: option.key })}
+            aria-pressed={card.layout === option.key}
+            className={`rounded-lg border px-3 py-2 text-xs ${
+              card.layout === option.key
+                ? "border-accent bg-accent-soft text-accent"
+                : "border-line text-muted hover:text-ink"
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      {card.layout === "split" && (
+        <>
+          <Label>Image position</Label>
+          <div className="flex flex-wrap gap-2">
+            {POSITION_OPTIONS.map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => onUpdate(card.id, { imagePosition: option.key })}
+                aria-pressed={card.imagePosition === option.key}
+                className={`rounded-lg border px-3 py-2 text-xs ${
+                  card.imagePosition === option.key
+                    ? "border-accent bg-accent-soft text-accent"
+                    : "border-line text-muted hover:text-ink"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
       <Label>Question</Label>
       <textarea
@@ -752,6 +802,24 @@ function CardBlock({
 
       <Label>Tags</Label>
       <TagEditor value={card.tags} allTags={allTags} onChange={(tags) => onUpdate(card.id, { tags })} />
+        </div>
+
+        {!compact && (
+          <aside className="lg:sticky lg:top-4 lg:self-start">
+            <span className="mb-1.5 block text-sm font-medium text-muted">Live preview</span>
+            <CardRenderer
+              shape={card.shape}
+              layout={card.layout}
+              imagePosition={card.imagePosition}
+              html={renderMarkdown(card.term || "_Question_")}
+              images={card.frontImages.map((img) => ({ url: img.url, caption: img.caption }))}
+            />
+            <p className="mt-2 text-xs text-faint">
+              Exactly how the card appears while studying.
+            </p>
+          </aside>
+        )}
+      </div>
     </article>
   );
 }

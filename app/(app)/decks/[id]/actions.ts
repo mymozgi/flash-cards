@@ -19,6 +19,8 @@ import {
  * и в режиме выбора ответа.
  */
 export type CardShape = "square" | "landscape" | "portrait";
+export type CardLayout = "full_image" | "split";
+export type ImagePosition = "left" | "right" | "top" | "bottom";
 
 export type DeckCardInput = {
   id: string;
@@ -31,6 +33,8 @@ export type DeckCardInput = {
   mcq: boolean;
   tags: string;
   shape: CardShape;
+  layout: CardLayout;
+  imagePosition: ImagePosition;
   frontImages: IncomingImage[];
   backImages: IncomingImage[];
 };
@@ -80,6 +84,8 @@ export async function saveDeck(
       link_url: link || null,
       mcq: card.mcq,
       shape: card.shape,
+      layout: card.layout,
+      image_position: card.imagePosition,
       position: positionOf.get(card.id) ?? 0,
       distractors,
     };

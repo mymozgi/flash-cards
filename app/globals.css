@@ -204,3 +204,57 @@ body {
     visibility: hidden;
   }
 }
+
+/*
+  Перелистывание колоды. Карточка уезжает вбок с лёгким разворотом и уходом
+  вглубь — ощущение движения по стопке, а не вращения вокруг оси.
+  Смещения намеренно небольшие: крупная анимация на каждом шаге утомляет.
+*/
+@keyframes deck-in-right {
+  from {
+    opacity: 0;
+    transform: translate3d(9%, 0, -90px) rotateY(-7deg) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes deck-in-left {
+  from {
+    opacity: 0;
+    transform: translate3d(-9%, 0, -90px) rotateY(7deg) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.deck-scene {
+  perspective: 1600px;
+}
+.deck-card {
+  will-change: transform, opacity;
+}
+.deck-card[data-dir="next"] {
+  animation: deck-in-right 0.34s cubic-bezier(0.22, 0.68, 0.24, 1) both;
+}
+.deck-card[data-dir="prev"] {
+  animation: deck-in-left 0.34s cubic-bezier(0.22, 0.68, 0.24, 1) both;
+}
+
+/* Слои позади текущей карточки: подсказывают, что за ней есть стопка */
+.deck-stack-layer {
+  position: absolute;
+  inset: 0;
+  border-radius: 1rem;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deck-card[data-dir] {
+    animation: none;
+  }
+}
