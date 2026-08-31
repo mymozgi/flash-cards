@@ -179,20 +179,54 @@ export function ReviewSession({
 
   if (!current) {
     return (
-      <div className="py-16 text-center">
-        <h1 className="font-display text-3xl font-semibold">Session finished</h1>
+      <div className="mx-auto max-w-lg py-16 text-center">
+        <h1 className="text-3xl font-semibold tracking-tight">
+          {free ? "Practice finished" : "Session finished"}
+        </h1>
         <p className="mt-2 text-sm text-muted">
-          {done > 0 ? `Cards graded: ${done}` : "The queue is empty"}
+          {done > 0 ? `Cards graded: ${done}` : "Nothing is due right now"}
         </p>
+
+        {/* Пустая очередь — это не тупик: расписание отодвинуло карточки вперёд,
+            но повторить их вне расписания можно в любой момент. */}
+        {!free && (
+          <p className="mt-4 text-sm text-muted">
+            Cards you graded moved into the future — that is what spaced repetition does. To go
+            through them again anyway, use free practice: it ignores the schedule and leaves it
+            untouched.
+          </p>
+        )}
+
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
-          <Link href="/" className="rounded bg-accent px-5 py-3 text-sm font-medium text-accent-ink">
+          {!free && (
+            <Link
+              href="/review?free=1"
+              className="rounded-lg bg-accent px-5 py-3 text-sm font-medium text-accent-ink"
+            >
+              Practice again
+            </Link>
+          )}
+          <Link
+            href="/"
+            className={`rounded-lg px-5 py-3 text-sm ${
+              free
+                ? "bg-accent font-medium text-accent-ink"
+                : "border border-line text-muted hover:text-ink"
+            }`}
+          >
             Back to Today
+          </Link>
+          <Link
+            href="/decks"
+            className="rounded-lg border border-line px-5 py-3 text-sm text-muted hover:text-ink"
+          >
+            Browse decks
           </Link>
           {done > 0 && (
             <button
               type="button"
               onClick={() => void undo()}
-              className="rounded border border-line px-5 py-3 text-sm text-muted hover:text-ink"
+              className="rounded-lg border border-line px-5 py-3 text-sm text-muted hover:text-ink"
             >
               Undo last grade
             </button>
