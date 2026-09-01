@@ -130,6 +130,15 @@ export const MoonIcon = (p: IconProps) => (
   </Svg>
 );
 
+/** Медиа: рамка, солнце и линия горизонта — общепринятый знак изображения. */
+export const ImageIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="1.8" y="3" width="12.4" height="10" rx="1.6" />
+    <circle cx="5.6" cy="6.5" r="1.1" />
+    <path d="m2.4 11.4 3.1-2.9 2.4 2.2 2.3-2.6 3.5 3.7" />
+  </Svg>
+);
+
 export const CloseIcon = (p: IconProps) => (
   <Svg {...p}>
     <path d="M4 4l8 8M12 4l-8 8" />

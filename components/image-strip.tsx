@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { MAX_IMAGES_PER_SIDE, formatBytes } from "@/lib/image";
-import { CloseIcon } from "@/components/icons";
+import { CloseIcon, ImageIcon, PlusIcon } from "@/components/icons";
 import type { EditorImage } from "@/lib/types";
 
 export function ImageStrip({
@@ -42,9 +42,9 @@ export function ImageStrip({
         setDragging(false);
         if (!full) pick(e.dataTransfer.files);
       }}
-      className={`rounded border border-dashed p-2 ${
-        dragging ? "border-accent bg-accent-soft" : "border-line"
-      }`}
+      className={`rounded-lg border border-dashed transition-colors ${
+        images.length > 0 ? "p-2" : "p-0"
+      } ${dragging ? "border-accent bg-accent-soft" : "border-line-strong"}`}
     >
       {images.length > 0 && (
         <ul className="mb-2 flex flex-col gap-2">
@@ -112,21 +112,42 @@ export function ImageStrip({
         onChange={(e) => pick(e.target.files)}
       />
 
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-faint">
+      {images.length === 0 ? (
+        /* Пустая зона — сама себе кнопка: попасть в область проще, чем
+           в строчку текста, а перетаскивание становится очевидным */
         <button
           type="button"
           onClick={() => input.current?.click()}
-          disabled={busy || full}
-          className="text-accent disabled:opacity-40"
+          disabled={busy}
+          className="flex min-h-28 w-full flex-col items-center justify-center gap-1.5 px-4 py-6 text-center disabled:opacity-60"
         >
-          {busy ? "Uploading…" : "Add image"}
+          <ImageIcon className="size-7 text-faint" />
+          <span className="text-sm font-medium text-accent">
+            {busy ? "Uploading…" : "Add image"}
+          </span>
+          <span className="text-2xs text-faint">
+            or drop a file here, or paste from the clipboard
+          </span>
         </button>
-        <span>
-          {full
-            ? `Limit: ${MAX_IMAGES_PER_SIDE} per side`
-            : "or drop a file, or paste from the clipboard"}
-        </span>
-      </div>
+      ) : (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 pb-0.5 text-xs text-faint">
+          <button
+            type="button"
+            onClick={() => input.current?.click()}
+            disabled={busy || full}
+            className="inline-flex items-center gap-1.5 text-accent disabled:opacity-40"
+          >
+            <PlusIcon className="size-3.5" />
+            {busy ? "Uploading…" : "Add image"}
+          </button>
+          <span>
+            {full
+              ? `Limit: ${MAX_IMAGES_PER_SIDE} per side`
+              : "or drop a file, or paste from the clipboard"}
+          </span>
+        </div>
+      )}
+
     </div>
   );
 }
