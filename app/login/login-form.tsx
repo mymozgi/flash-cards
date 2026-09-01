@@ -2,6 +2,8 @@
 
 import { useActionState } from "react";
 import { signIn, type LoginState } from "./actions";
+import { Button } from "@/components/ui/button";
+import { inputClass } from "@/components/ui/field";
 
 const initial: LoginState = { error: null };
 
@@ -13,24 +15,24 @@ export function LoginForm({ next }: { next: string }) {
       <input type="hidden" name="next" value={next} />
 
       <label className="flex flex-col gap-1.5">
-        <span className="font-mono text-2xs uppercase tracking-[0.14em] text-faint">Email</span>
+        <span className="pb-1.5 text-sm font-medium text-muted">Email</span>
         <input
           name="email"
           type="email"
           autoComplete="username"
           required
-          className="rounded border border-line bg-surface px-3 py-2.5 text-base"
+          className={inputClass}
         />
       </label>
 
       <label className="flex flex-col gap-1.5">
-        <span className="font-mono text-2xs uppercase tracking-[0.14em] text-faint">Password</span>
+        <span className="pb-1.5 text-sm font-medium text-muted">Password</span>
         <input
           name="password"
           type="password"
           autoComplete="current-password"
           required
-          className="rounded border border-line bg-surface px-3 py-2.5 text-base"
+          className={inputClass}
         />
       </label>
 
@@ -40,13 +42,9 @@ export function LoginForm({ next }: { next: string }) {
         </p>
       )}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="mt-2 rounded bg-accent px-4 py-3 font-medium text-accent-ink disabled:opacity-60"
-      >
+      <Button type="submit" tone="primary" size="lg" loading={pending} className="mt-2 w-full">
         {pending ? "Signing in…" : "Sign in"}
-      </button>
+      </Button>
     </form>
   );
 }
