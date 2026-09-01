@@ -15,7 +15,12 @@ const PUBLIC_PATHS = ["/login", "/auth", "/api/cron"];
  * Настоящая защита — права в базе; этот список лишь не пускает гостя на
  * страницы, которые всё равно упадут без сессии.
  */
-const GUEST_PATHS = [/^\/decks$/, /^\/decks\/[^/]+\/study$/, /^\/library$/];
+const GUEST_PATHS = [
+  /^\/decks$/,
+  /^\/decks\/[^/]+\/study$/,
+  /^\/library$/,
+  /^\/how-it-works$/,
+];
 
 /**
  * В Next 16 middleware переименован в proxy (см. docs/01-app/01-getting-started/16-proxy.md).

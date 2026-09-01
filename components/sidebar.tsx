@@ -16,6 +16,7 @@ const GROUPS: { items: { href: string; label: string; Icon: typeof GridIcon }[] 
       // а желание повторить — нет
       { href: "/review?free=1", label: "Practice", Icon: PlusIcon },
       { href: "/stats", label: "Knowledge areas", Icon: TableIcon },
+      { href: "/how-it-works", label: "How it works", Icon: TagIcon },
     ],
   },
   {
@@ -36,6 +37,7 @@ const GUEST_GROUPS: typeof GROUPS = [
     items: [
       { href: "/decks", label: "Flashcard sets", Icon: GridIcon },
       { href: "/library", label: "Browse cards", Icon: SearchIcon },
+      { href: "/how-it-works", label: "How it works", Icon: TagIcon },
     ],
   },
 ];

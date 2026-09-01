@@ -103,6 +103,23 @@ export function DeckWorkspace({
   const [uploading, setUploading] = useState(false);
   const { ask, dialog } = useConfirm();
 
+  /**
+   * Свёрнутые карточки. В длинной колоде развёрнутый редактор на каждую —
+   * это километры прокрутки, поэтому от шести карточек список открывается
+   * свёрнутым. В короткой сворачивать нечего, там всё видно сразу.
+   */
+  const [collapsed, setCollapsed] = useState<Set<string>>(
+    () => new Set(initialCards.length > 5 ? initialCards.map((card) => card.id) : []),
+  );
+
+  const toggleCollapsed = (id: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
   const touch = (id: string) => setDirty((prev) => new Set(prev).add(id));
 
   const update = (id: string, patch: Partial<DeckCard>) => {
@@ -134,6 +151,11 @@ export function DeckWorkspace({
       backImages: [],
     };
     setCards((prev) => [...prev, card]);
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      next.delete(card.id);
+      return next;
+    });
     touch(card.id);
   };
 
@@ -331,15 +353,28 @@ export function DeckWorkspace({
       <section className={`${PANEL} p-3 sm:p-5`}>
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="text-xl font-semibold tracking-tight">Flashcards</h2>
-          <button
-            type="button"
-            onClick={() => setShowTags((v) => !v)}
-            aria-expanded={showTags}
-            className="flex items-center gap-2 rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-ink"
-          >
-            <TagIcon />
-            Manage tags
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                setCollapsed((prev) =>
+                  prev.size === cards.length ? new Set() : new Set(cards.map((c) => c.id)),
+                )
+              }
+              className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-ink"
+            >
+              {collapsed.size === cards.length && cards.length > 0 ? "Expand all" : "Collapse all"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowTags((v) => !v)}
+              aria-expanded={showTags}
+              className="flex items-center gap-2 rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-ink"
+            >
+              <TagIcon />
+              Manage tags
+            </button>
+          </div>
         </div>
 
         {showTags && (
@@ -386,6 +421,8 @@ export function DeckWorkspace({
                   card={card}
                   index={cards.indexOf(card) + 1}
                   compact={view === "grid"}
+                  collapsed={collapsed.has(card.id)}
+                  onToggleCollapse={() => toggleCollapsed(card.id)}
                   allTags={allTags}
                   uploading={uploading}
                   onGrab={() => setDragId(card.id)}
@@ -551,6 +588,8 @@ function CardBlock({
   card,
   index,
   compact,
+  collapsed,
+  onToggleCollapse,
   allTags,
   uploading,
   onGrab,
@@ -563,6 +602,8 @@ function CardBlock({
   card: DeckCard;
   index: number;
   compact: boolean;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
   allTags: string[];
   uploading: boolean;
   onGrab: () => void;
@@ -575,7 +616,7 @@ function CardBlock({
   return (
     <article className="rounded-xl border border-line p-4">
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           <span
             onPointerDown={onGrab}
             aria-label="Drag to reorder"
@@ -584,7 +625,27 @@ function CardBlock({
           >
             ⠿
           </span>
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? "Expand card" : "Collapse card"}
+            className="text-faint transition-transform hover:text-ink"
+            style={{ transform: collapsed ? "rotate(-90deg)" : undefined }}
+          >
+            ⌄
+          </button>
           <span className="text-sm font-medium text-faint">#{index}</span>
+          {/* В свёрнутом виде вместо полей — сам вопрос: по нему карточку и ищут */}
+          {collapsed && (
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              className="min-w-0 flex-1 truncate text-left text-sm text-ink"
+            >
+              {card.term || <span className="text-faint">Untitled card</span>}
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <span className={`text-sm ${compact ? "sr-only" : "text-muted"}`}>
@@ -625,6 +686,7 @@ function CardBlock({
 
       {/* Слева органы управления, справа живой предпросмотр — тот же компонент,
           которым карточка рисуется в учебных режимах, поэтому расхождений нет. */}
+      {!collapsed && (
       <div className="mt-1 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0">
       <Label>Aspect ratio</Label>
@@ -833,6 +895,7 @@ function CardBlock({
           </aside>
         )}
       </div>
+      )}
     </article>
   );
 }
