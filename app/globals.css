@@ -73,10 +73,10 @@
   --color-rust: var(--rust);
   --color-rust-soft: var(--rust-soft);
 
-  /* Референс использует системный интерфейсный шрифт: на Windows это Segoe UI,
-     на маке — SF Pro. Ничего не качаем, приложение открывается мгновенно. */
-  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-  --font-display: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Poppins покрывает латиницу; кириллица уедет в системный шрифт — он идёт
+     следующим в стеке, поэтому подмена выглядит намеренной, а не сломанной */
+  --font-sans: var(--font-poppins), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: var(--font-poppins), system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
 
   /* Скругления мягче: bare rounded становится 8 px */
@@ -90,6 +90,9 @@
 body {
   background: var(--paper);
   color: var(--ink);
+  /* 16 px — базовый кегль; ниже него мелкий текст на телефоне читается тяжело */
+  font-size: 16px;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   /* панель оценок не должна уезжать под индикатор жестов iPhone (§11.1) */
   padding-bottom: env(safe-area-inset-bottom);

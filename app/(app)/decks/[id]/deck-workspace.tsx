@@ -264,7 +264,7 @@ export function DeckWorkspace({
       />
 
       <div className={`${PANEL} flex flex-wrap items-center gap-2 p-2`}>
-        <div className="relative min-w-0 flex-1">
+        <div className="relative w-full min-w-0 sm:flex-1">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint">
             <SearchIcon />
           </span>
@@ -290,8 +290,8 @@ export function DeckWorkspace({
                   : "text-muted hover:text-ink"
               }`}
             >
-              <item.Icon className="size-3.5 shrink-0" />
-              {item.label}
+              <item.Icon className="size-4 shrink-0" />
+              <span className="hidden sm:inline">{item.label}</span>
             </button>
           ))}
         </div>
@@ -615,7 +615,7 @@ function CardBlock({
 
       {/* Слева органы управления, справа живой предпросмотр — тот же компонент,
           которым карточка рисуется в учебных режимах, поэтому расхождений нет. */}
-      <div className="mt-1 grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="mt-1 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0">
       <Label>Aspect ratio</Label>
       <div className="flex flex-wrap gap-2">
@@ -812,7 +812,7 @@ function CardBlock({
         </div>
 
         {!compact && (
-          <aside className="lg:sticky lg:top-4 lg:self-start">
+          <aside className="xl:sticky xl:top-4 xl:self-start">
             <span className="mb-1.5 block text-sm font-medium text-muted">Live preview</span>
             <CardRenderer
               shape={card.shape}

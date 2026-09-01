@@ -1,5 +1,15 @@
 import type { Metadata, Viewport } from "next";
+import { Poppins } from "next/font/google";
 import "./globals.css";
+
+// У Poppins нет кириллицы: интерфейс английский, и для него шрифт подходит,
+// а русский текст карточек подхватит запасной стек — это задано в globals.css
+const poppins = Poppins({
+  variable: "--font-poppins",
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "600"],
+  display: "swap",
+});
 import { RegisterServiceWorker } from "@/components/register-sw";
 
 // Тему ставим до первой отрисовки, иначе на тёмной системе мелькает вспышка
@@ -27,7 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
       </head>
       <body
-        className="font-sans antialiased"
+        className={`${poppins.variable} font-sans antialiased`}
       >
         {children}
         <RegisterServiceWorker />
