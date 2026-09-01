@@ -6,6 +6,18 @@ import { supabaseEnv } from "@/lib/supabase/env";
 const PUBLIC_PATHS = ["/login", "/auth", "/api/cron"];
 
 /**
+ * Что видит гость, когда владелец включил общий доступ.
+ *
+ * Список намеренно узкий: только чтение. Конструктор колоды сюда не входит —
+ * это редактор, даже если гостю всё равно не дали бы записать. Повторение тоже:
+ * оно пишет оценки и двигает расписание владельца.
+ *
+ * Настоящая защита — права в базе; этот список лишь не пускает гостя на
+ * страницы, которые всё равно упадут без сессии.
+ */
+const GUEST_PATHS = [/^\/decks$/, /^\/decks\/[^/]+\/study$/, /^\/library$/];
+
+/**
  * В Next 16 middleware переименован в proxy (см. docs/01-app/01-getting-started/16-proxy.md).
  * Задача — обновить куки сессии Supabase и увести гостя на /login.
  * Это оптимистичная проверка: доступ к данным всё равно закрыт RLS.
@@ -37,8 +49,9 @@ export async function proxy(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
   const isPublic = PUBLIC_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
+  const isGuestReadable = GUEST_PATHS.some((pattern) => pattern.test(path));
 
-  if (!user && !isPublic) {
+  if (!user && !isPublic && !isGuestReadable) {
     const target = request.nextUrl.clone();
     target.pathname = "/login";
     target.searchParams.set("next", path);

@@ -82,7 +82,7 @@ const REQUIRED_COLUMNS = {
   scheduling:
     "card_id,user_id,state,due,stability,difficulty,elapsed_days,scheduled_days,learning_steps,reps,lapses,last_review",
   media: "id,user_id,card_id,side,storage_path,thumb_path,width,height,bytes,caption,position",
-  settings: "user_id,daily_new_limit,daily_review_limit,request_retention,timezone,mcq_enabled",
+  settings: "user_id,daily_new_limit,daily_review_limit,request_retention,timezone,mcq_enabled,public_library",
   import_batches: "id,user_id,filename,row_count,created_count,skipped_count,error_count,status",
   topic_progress: "topic_id,total,memorized,last_used",
 };

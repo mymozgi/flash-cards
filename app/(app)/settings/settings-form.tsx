@@ -16,6 +16,7 @@ export function SettingsForm({
     request_retention: number;
     timezone: string;
     mcq_enabled: boolean;
+    public_library: boolean;
   };
 }) {
   const [state, formAction, pending] = useActionState(saveSettings, initial);
@@ -75,6 +76,29 @@ export function SettingsForm({
         />
         Turn on multiple choice for new cards by default
       </label>
+
+      <div className="rounded-xl border border-line bg-surface p-4">
+        <label className="flex items-start gap-3 text-sm">
+          <input
+            type="checkbox"
+            name="public_library"
+            defaultChecked={settings.public_library}
+            className="mt-0.5 size-4 accent-[var(--accent)]"
+          />
+          <span>
+            <span className="font-medium">Share the library with guests</span>
+            <span className="mt-1 block text-2xs text-faint">
+              Anyone with the address can browse your sets and cards without signing in. They
+              cannot add, change or delete anything — guests get read access in the database and
+              nothing else. Reviewing, importing and settings stay yours.
+            </span>
+            <span className="mt-1 block text-2xs text-amber">
+              Turn this on only if you are fine with the whole library being readable by anyone
+              who has the link.
+            </span>
+          </span>
+        </label>
+      </div>
 
       {state.error && (
         <p role="alert" className="rounded-lg bg-rust-soft px-3 py-2 text-sm text-rust">

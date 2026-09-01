@@ -11,7 +11,7 @@ export default async function SettingsPage() {
 
   const { data: extra } = await supabase
     .from("settings")
-    .select("mcq_enabled")
+    .select("mcq_enabled,public_library")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -25,7 +25,11 @@ export default async function SettingsPage() {
         </p>
       </header>
       <SettingsForm
-        settings={{ ...settings, mcq_enabled: Boolean(extra?.mcq_enabled) }}
+        settings={{
+          ...settings,
+          mcq_enabled: Boolean(extra?.mcq_enabled),
+          public_library: Boolean(extra?.public_library),
+        }}
       />
     </>
   );

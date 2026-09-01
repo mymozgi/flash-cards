@@ -28,6 +28,17 @@ const GROUPS: { items: { href: string; label: string; Icon: typeof GridIcon }[] 
   },
 ];
 
+/** Гостю показываем только то, что он может открыть. Пункты, ведущие в отказ,
+    хуже отсутствующих: они выглядят поломкой, а не границей доступа. */
+const GUEST_GROUPS: typeof GROUPS = [
+  {
+    items: [
+      { href: "/decks", label: "Flashcard sets", Icon: GridIcon },
+      { href: "/library", label: "Browse cards", Icon: SearchIcon },
+    ],
+  },
+];
+
 function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
   // у Review и Practice один путь, поэтому по нему подсвечиваем только Review
@@ -38,7 +49,13 @@ function isActive(pathname: string, href: string) {
  * Боковое меню на десктопе, выдвижное на телефоне. Сворачивается до иконок:
  * на ноутбуке с коротким экраном 240 px ширины заметно дороже, чем кажется.
  */
-export function Sidebar({ signOutAction }: { signOutAction: () => Promise<void> }) {
+export function Sidebar({
+  signOutAction,
+  isGuest = false,
+}: {
+  signOutAction: () => Promise<void>;
+  isGuest?: boolean;
+}) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -95,16 +112,26 @@ export function Sidebar({ signOutAction }: { signOutAction: () => Promise<void> 
           </button>
         </div>
 
-        <Link
-          href="/decks?new=1"
-          onClick={() => setOpen(false)}
-          className="flex items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-medium text-accent-ink"
-        >
-          <PlusIcon />
-          {!collapsed && "Create set"}
-        </Link>
+        {isGuest ? (
+          <Link
+            href="/login"
+            onClick={() => setOpen(false)}
+            className="flex items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-medium text-accent-ink"
+          >
+            {collapsed ? "→" : "Sign in"}
+          </Link>
+        ) : (
+          <Link
+            href="/decks?new=1"
+            onClick={() => setOpen(false)}
+            className="flex items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-medium text-accent-ink"
+          >
+            <PlusIcon />
+            {!collapsed && "Create set"}
+          </Link>
+        )}
 
-        {GROUPS.map((group, i) => (
+        {(isGuest ? GUEST_GROUPS : GROUPS).map((group, i) => (
           <nav key={i} className={i > 0 ? "mt-2 border-t border-line pt-2" : ""}>
             <ul className="flex flex-col gap-0.5">
               {group.items.map((item) => (
@@ -133,11 +160,13 @@ export function Sidebar({ signOutAction }: { signOutAction: () => Promise<void> 
           <div className="hidden lg:block">
             <ThemeToggle />
           </div>
-          <form action={signOutAction}>
-            <button type="submit" className="px-2 py-2 text-sm text-faint hover:text-ink">
-              {collapsed ? "→" : "Sign out"}
-            </button>
-          </form>
+          {!isGuest && (
+            <form action={signOutAction}>
+              <button type="submit" className="px-2 py-2 text-sm text-faint hover:text-ink">
+                {collapsed ? "→" : "Sign out"}
+              </button>
+            </form>
+          )}
         </div>
       </aside>
     </>

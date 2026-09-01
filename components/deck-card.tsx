@@ -14,11 +14,14 @@ export type { DeckSummary };
  */
 export function DeckCard({
   deck,
+  readOnly = false,
   selecting = false,
   selected = false,
   onToggle,
 }: {
   deck: DeckSummary;
+  /** Гостевой режим: тренировка пишет оценки, правка меняет данные — обе скрыты. */
+  readOnly?: boolean;
   /* Режим выбора нужен только списку наборов. На «Сегодня» карточка
      показывается без него — из серверного компонента функцию-заглушку
      передать нельзя, туда уезжают только серверные действия. */
@@ -42,7 +45,7 @@ export function DeckCard({
         >
           {deck.category ?? "No category"}
         </Badge>
-        {selecting ? (
+        {selecting && !readOnly ? (
           <input
             type="checkbox"
             checked={selected}
@@ -94,19 +97,27 @@ export function DeckCard({
       <div className="mt-3 flex gap-2">
         {/* Practice — то, ради чего набор открывают. Он и должен выглядеть
             как главное действие, а правка и просмотр — как вспомогательные. */}
-        <LinkButton
-          href={`/review?free=1&topic=${deck.id}`}
-          tone="primary"
-          className="flex-[2]"
-        >
-          Practice
-        </LinkButton>
-        <LinkButton href={`/decks/${deck.id}/study`} size="sm" className="flex-1">
-          Browse
-        </LinkButton>
-        <LinkButton href={`/decks/${deck.id}`} tone="ghost" size="sm" className="flex-1">
-          Edit
-        </LinkButton>
+        {readOnly ? (
+          <LinkButton href={`/decks/${deck.id}/study`} tone="primary" className="flex-1">
+            Browse cards
+          </LinkButton>
+        ) : (
+          <>
+            <LinkButton
+              href={`/review?free=1&topic=${deck.id}`}
+              tone="primary"
+              className="flex-[2]"
+            >
+              Practice
+            </LinkButton>
+            <LinkButton href={`/decks/${deck.id}/study`} size="sm" className="flex-1">
+              Browse
+            </LinkButton>
+            <LinkButton href={`/decks/${deck.id}`} tone="ghost" size="sm" className="flex-1">
+              Edit
+            </LinkButton>
+          </>
+        )}
       </div>
     </div>
   );

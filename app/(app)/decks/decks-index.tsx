@@ -23,10 +23,13 @@ export function DecksIndex({
   decks,
   dueCount,
   openCreate,
+  readOnly = false,
 }: {
   decks: DeckSummary[];
   dueCount: number;
   openCreate: boolean;
+  /** Гостевой режим: всё, что меняет данные, не показываем вовсе. */
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -106,10 +109,12 @@ export function DecksIndex({
       {dialog}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">My flashcard sets</h1>
-        <Button tone="primary" onClick={() => setCreating((c) => !c)}>
-          <PlusIcon />
-          Create set
-        </Button>
+        {!readOnly && (
+          <Button tone="primary" onClick={() => setCreating((c) => !c)}>
+            <PlusIcon />
+            Create set
+          </Button>
+        )}
       </div>
 
       {creating && (
@@ -156,20 +161,22 @@ export function DecksIndex({
             ))}
           </select>
         </label>
-        <button
-          type="button"
-          onClick={() => {
-            setSelecting((v) => !v);
-            setSelected(new Set());
-          }}
-          aria-pressed={selecting}
-          className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
-            selecting ? "border-accent bg-accent-soft text-accent" : "border-line text-muted"
-          }`}
-        >
-          <CheckIcon className="size-3.5" />
-          Select
-        </button>
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={() => {
+              setSelecting((v) => !v);
+              setSelected(new Set());
+            }}
+            aria-pressed={selecting}
+            className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
+              selecting ? "border-accent bg-accent-soft text-accent" : "border-line text-muted"
+            }`}
+          >
+            <CheckIcon className="size-3.5" />
+            Select
+          </button>
+        )}
       </div>
 
       {error && (
@@ -197,6 +204,7 @@ export function DecksIndex({
             <li key={deck.id}>
               <DeckCard
                 deck={deck}
+                readOnly={readOnly}
                 selecting={selecting}
                 selected={selected.has(deck.id)}
                 onToggle={() =>
@@ -214,6 +222,7 @@ export function DecksIndex({
       )}
 
       {/* липкая панель действий: на телефоне поднята над безопасной зоной */}
+      {!readOnly && (
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur lg:static lg:mt-4 lg:rounded-xl lg:border lg:px-4 lg:pb-3">
         <div className="mx-auto flex max-w-3xl items-center gap-2">
           <Link
@@ -233,6 +242,7 @@ export function DecksIndex({
           </span>
         </div>
       </div>
+      )}
     </div>
   );
 }

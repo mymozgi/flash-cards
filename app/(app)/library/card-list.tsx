@@ -25,7 +25,14 @@ const STATE_LABELS: Record<string, string> = {
   relearning: "relearning",
 };
 
-export function CardList({ cards }: { cards: LibraryCard[] }) {
+export function CardList({
+  cards,
+  readOnly = false,
+}: {
+  cards: LibraryCard[];
+  /** Гостевой режим: выбор и массовые операции скрыты, строка ведёт в просмотр. */
+  readOnly?: boolean;
+}) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -68,7 +75,7 @@ export function CardList({ cards }: { cards: LibraryCard[] }) {
   return (
     <>
       {dialog}
-      {selected.size > 0 && (
+      {!readOnly && selected.size > 0 && (
         <div className="sticky top-0 z-10 -mx-5 mb-3 flex flex-wrap items-center gap-2 border-b border-line bg-surface px-5 py-3 text-sm sm:mx-0 sm:rounded sm:border">
           <span className="font-mono text-xs tabular-nums text-faint">
             {selected.size} selected
@@ -117,13 +124,15 @@ export function CardList({ cards }: { cards: LibraryCard[] }) {
       <ul className={`divide-y divide-line rounded border border-line bg-surface ${pending ? "opacity-60" : ""}`}>
         {cards.map((card) => (
           <li key={card.id} className="flex items-start gap-3 px-3 py-3 sm:px-4">
-            <input
-              type="checkbox"
-              checked={selected.has(card.id)}
-              onChange={() => toggle(card.id)}
-              aria-label="Select card"
-              className="mt-1 size-4 shrink-0 accent-[var(--accent)]"
-            />
+            {!readOnly && (
+              <input
+                type="checkbox"
+                checked={selected.has(card.id)}
+                onChange={() => toggle(card.id)}
+                aria-label="Select card"
+                className="mt-1 size-4 shrink-0 accent-[var(--accent)]"
+              />
+            )}
             {card.thumbUrl && (
               <img
                 src={card.thumbUrl}
@@ -137,7 +146,13 @@ export function CardList({ cards }: { cards: LibraryCard[] }) {
                 редактировать негде, поэтому строка не кликается: сначала
                 её нужно назначить в набор массовой операцией. */}
             <Link
-              href={card.topicId ? `/decks/${card.topicId}` : "/library"}
+              href={
+                card.topicId
+                  ? readOnly
+                    ? `/decks/${card.topicId}/study`
+                    : `/decks/${card.topicId}`
+                  : "/library"
+              }
               aria-disabled={!card.topicId}
               className={`min-w-0 flex-1 ${card.topicId ? "" : "pointer-events-none"}`}
             >

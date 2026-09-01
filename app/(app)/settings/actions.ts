@@ -17,6 +17,7 @@ export async function saveSettings(
   const retention = Number(formData.get("request_retention"));
   const timezone = String(formData.get("timezone") ?? "UTC");
   const mcq = formData.get("mcq_enabled") === "on";
+  const publicLibrary = formData.get("public_library") === "on";
 
   if (!Number.isFinite(newLimit) || newLimit < 0 || newLimit > 500) {
     return { error: "New cards per day must be between 0 and 500" };
@@ -40,6 +41,7 @@ export async function saveSettings(
     request_retention: retention,
     timezone,
     mcq_enabled: mcq,
+    public_library: publicLibrary,
     updated_at: new Date().toISOString(),
   });
 

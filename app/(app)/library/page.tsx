@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, currentUser } from "@/lib/supabase/server";
 import { getTags, getTopicTree } from "@/lib/data";
 import { publicUrl } from "@/lib/storage";
 import { CardList, type LibraryCard } from "./card-list";
@@ -11,7 +11,7 @@ export default async function LibraryPage(props: {
 }) {
   const params = await props.searchParams;
   const supabase = await createClient();
-  const [topics, tags] = await Promise.all([getTopicTree(), getTags()]);
+  const [topics, tags, user] = await Promise.all([getTopicTree(), getTags(), currentUser()]);
 
   // фильтр по теме включает всех её потомков
   let topicIds: string[] | null = null;
@@ -120,7 +120,7 @@ export default async function LibraryPage(props: {
             </Link>
           </p>
         ) : (
-          <CardList cards={cards} />
+          <CardList cards={cards} readOnly={!user} />
         )}
       </div>
     </>
