@@ -98,14 +98,14 @@ export function DeckCard({
         {/* Practice — то, ради чего набор открывают. Он и должен выглядеть
             как главное действие, а правка и просмотр — как вспомогательные. */}
         {readOnly ? (
-          <LinkButton href={`/decks/${deck.id}/study`} tone="primary" className="flex-1">
+          <LinkButton href={`/decks/${deck.id}/study`} tone="soft" className="flex-1">
             Browse cards
           </LinkButton>
         ) : (
           <>
             <LinkButton
               href={`/review?free=1&topic=${deck.id}`}
-              tone="primary"
+              tone="soft"
               className="flex-[2]"
             >
               Practice

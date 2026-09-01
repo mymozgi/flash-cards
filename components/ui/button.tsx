@@ -4,14 +4,14 @@ import Link from "next/link";
  * Кнопка приложения.
  *
  * До неё в коде жило двенадцать разных сочетаний паддинга у того, что по сути
- * одна и та же кнопка. Здесь три размера и четыре роли — этого хватает на все
+ * одна и та же кнопка. Здесь три размера и пять ролей — этого хватает на все
  * экраны, а новая вариация теперь требует осознанного решения, а не случайного
  * `px-5 py-2.5`.
  *
  * Состояния заданы один раз: наведение, фокус с видимым кольцом, нажатие,
  * блокировка и загрузка.
  */
-export type ButtonTone = "primary" | "secondary" | "ghost" | "danger";
+export type ButtonTone = "primary" | "soft" | "secondary" | "ghost" | "danger";
 export type ButtonSize = "sm" | "md" | "lg";
 
 const BASE =
@@ -22,6 +22,12 @@ const BASE =
 
 const TONES: Record<ButtonTone, string> = {
   primary: "bg-accent text-accent-ink hover:brightness-110 active:brightness-95",
+  /**
+   * Светлый синий: заметно, но без крика. Заливка светлым синим с белым
+   * текстом дала бы контраст 3,68 при норме 4,5 — поэтому светлый фон и
+   * синий текст: 4,75 в светлой теме и 6,18 в тёмной.
+   */
+  soft: "bg-accent-soft text-accent hover:brightness-95 active:brightness-90",
   secondary: "border border-line bg-surface text-ink hover:bg-surface-2 active:bg-surface-2",
   ghost: "text-muted hover:bg-surface-2 hover:text-ink",
   danger: "border border-line bg-surface text-rust hover:bg-rust-soft",

@@ -68,7 +68,7 @@ Settings → Environment Variables, а не в репозитории.
 
 | Роль | Чем пользоваться |
 |---|---|
-| Кнопка | `Button` / `LinkButton`: тон `primary · secondary · ghost · danger`, размер `sm · md · lg` |
+| Кнопка | `Button` / `LinkButton`: тон `primary · soft · secondary · ghost · danger`, размер `sm · md · lg` |
 | Поле ввода | `inputClass`, в таблице `cellInputClass` |
 | Подпись и пояснение | `Field`, `Label` |
 | Поверхность | `Panel`, `panelClass`, `raisedClass`, `insetClass` |
