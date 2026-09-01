@@ -91,6 +91,32 @@ export const SettingsIcon = (p: IconProps) => (
   </Svg>
 );
 
+/**
+ * Раскрытие и сворачивание. Геометрия та же, что у chevron-down в Lucide и
+ * Feather: угол 90°, вершина по центру. Рисуем сами, а не тянем библиотеку:
+ * в наборе уже десять своих иконок одной толщины и сетки, и одна импортная
+ * выбилась бы из ряда сильнее, чем стоит сэкономленное время.
+ */
+/** Гамбургер: три полосы одной длины, иначе читается как «сортировка». */
+export const MenuIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M2.5 4h11M2.5 8h11M2.5 12h11" />
+  </Svg>
+);
+
+export const ChevronIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="m4 6.5 4 4 4-4" />
+  </Svg>
+);
+
+/** Ручка перетаскивания: шесть точек, как принято для draggable-строк. */
+export const GripIcon = (p: IconProps) => (
+  <Svg {...p} >
+    <path d="M6.2 3.5h.01M9.8 3.5h.01M6.2 8h.01M9.8 8h.01M6.2 12.5h.01M9.8 12.5h.01" strokeWidth="2.2" />
+  </Svg>
+);
+
 export const CloseIcon = (p: IconProps) => (
   <Svg {...p}>
     <path d="M4 4l8 8M12 4l-8 8" />

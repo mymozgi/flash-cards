@@ -28,6 +28,8 @@ import { panelClass } from "@/components/ui/panel";
 import { useConfirm } from "@/components/ui/confirm";
 import {
   CheckIcon,
+  ChevronIcon,
+  GripIcon,
   CloseIcon,
   GridIcon,
   ListIcon,
@@ -621,19 +623,19 @@ function CardBlock({
             onPointerDown={onGrab}
             aria-label="Drag to reorder"
             title="Drag to reorder"
-            className="cursor-grab select-none px-1 text-faint active:cursor-grabbing"
+            className="cursor-grab px-0.5 text-faint active:cursor-grabbing"
           >
-            ⠿
+            <GripIcon />
           </span>
           <button
             type="button"
             onClick={onToggleCollapse}
             aria-expanded={!collapsed}
             aria-label={collapsed ? "Expand card" : "Collapse card"}
-            className="text-faint transition-transform hover:text-ink"
+            className="flex items-center text-faint transition-transform duration-200 hover:text-ink"
             style={{ transform: collapsed ? "rotate(-90deg)" : undefined }}
           >
-            ⌄
+            <ChevronIcon />
           </button>
           <span className="text-sm font-medium text-faint">#{index}</span>
           {/* В свёрнутом виде вместо полей — сам вопрос: по нему карточку и ищут */}

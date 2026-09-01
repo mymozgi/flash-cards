@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { MAX_IMAGES_PER_SIDE, formatBytes } from "@/lib/image";
+import { CloseIcon } from "@/components/icons";
 import type { EditorImage } from "@/lib/types";
 
 export function ImageStrip({
@@ -94,7 +95,7 @@ export function ImageStrip({
                   aria-label="Remove image"
                   className="px-1.5 text-faint hover:text-rust"
                 >
-                  ✕
+                  <CloseIcon className="size-3.5" />
                 </button>
               </div>
             </li>

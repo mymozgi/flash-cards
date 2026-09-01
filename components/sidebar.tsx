@@ -8,6 +8,8 @@ import {
   GridIcon,
   ListIcon,
   PlusIcon,
+  MenuIcon,
+  CloseIcon,
   SearchIcon,
   SettingsIcon,
   TableIcon,
@@ -82,7 +84,7 @@ export function Sidebar({
           aria-label="Open menu"
           className="text-muted hover:text-ink"
         >
-          ☰
+          <MenuIcon />
         </button>
         <span className="min-w-0">
           <span className="block truncate font-bold leading-tight">Memorizer</span>
@@ -120,7 +122,7 @@ export function Sidebar({
             aria-label={collapsed ? "Expand menu" : "Collapse menu"}
             className="hidden text-muted hover:text-ink lg:block"
           >
-            ☰
+            <MenuIcon />
           </button>
           <button
             type="button"
@@ -128,7 +130,7 @@ export function Sidebar({
             aria-label="Close menu"
             className="text-muted hover:text-ink lg:hidden"
           >
-            ✕
+            <CloseIcon />
           </button>
         </div>
 
