@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { bulkUpdate, type BulkOp } from "./actions";
+import { useConfirm } from "@/components/ui/confirm";
 
 export type LibraryCard = {
   id: string;
@@ -28,6 +29,7 @@ export function CardList({ cards }: { cards: LibraryCard[] }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const { ask, dialog } = useConfirm();
   const router = useRouter();
 
   const toggle = (id: string) =>
@@ -38,10 +40,18 @@ export function CardList({ cards }: { cards: LibraryCard[] }) {
       return next;
     });
 
-  const run = (op: Omit<BulkOp, "cardIds">) => {
+  const run = async (op: Omit<BulkOp, "cardIds">) => {
     const cardIds = [...selected];
     if (cardIds.length === 0) return;
-    if (op.action === "delete" && !confirm(`Delete ${cardIds.length} card(s)?`)) return;
+
+    if (op.action === "delete") {
+      const confirmed = await ask({
+        title: `Delete ${cardIds.length} ${cardIds.length === 1 ? "card" : "cards"}?`,
+        description: "They move to the trash and can be restored within 30 days.",
+        confirmLabel: "Move to trash",
+      });
+      if (!confirmed) return;
+    }
 
     startTransition(async () => {
       const res = await bulkUpdate({ ...op, cardIds });
@@ -57,6 +67,7 @@ export function CardList({ cards }: { cards: LibraryCard[] }) {
 
   return (
     <>
+      {dialog}
       {selected.size > 0 && (
         <div className="sticky top-0 z-10 -mx-5 mb-3 flex flex-wrap items-center gap-2 border-b border-line bg-surface px-5 py-3 text-sm sm:mx-0 sm:rounded sm:border">
           <span className="font-mono text-xs tabular-nums text-faint">

@@ -92,17 +92,19 @@ export function DeckCard({
       </div>
 
       <div className="mt-3 flex gap-2">
-        <LinkButton href={`/review?free=1&topic=${deck.id}`} size="sm" className="flex-1">
+        {/* Practice — то, ради чего набор открывают. Он и должен выглядеть
+            как главное действие, а правка и просмотр — как вспомогательные. */}
+        <LinkButton
+          href={`/review?free=1&topic=${deck.id}`}
+          tone="primary"
+          className="flex-[2]"
+        >
           Practice
         </LinkButton>
         <LinkButton href={`/decks/${deck.id}/study`} size="sm" className="flex-1">
           Browse
         </LinkButton>
-        <LinkButton
-          href={`/decks/${deck.id}`}
-          size="sm"
-          className="flex-1 border-transparent bg-accent-soft text-accent hover:bg-accent-soft"
-        >
+        <LinkButton href={`/decks/${deck.id}`} tone="ghost" size="sm" className="flex-1">
           Edit
         </LinkButton>
       </div>

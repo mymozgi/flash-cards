@@ -8,6 +8,7 @@ import { CheckIcon, PlusIcon, SearchIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { panelClass } from "@/components/ui/panel";
 import { DeckCard, type DeckSummary } from "@/components/deck-card";
+import { useConfirm } from "@/components/ui/confirm";
 import { inputClass } from "@/components/ui/field";
 
 const SORTS = [
@@ -36,6 +37,7 @@ export function DecksIndex({
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, startTransition] = useTransition();
+  const { ask, dialog } = useConfirm();
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -75,10 +77,16 @@ export function DecksIndex({
     });
   };
 
-  const removeSelected = () => {
+  const removeSelected = async () => {
     const ids = [...selected];
     if (ids.length === 0) return;
-    if (!confirm(`Delete ${ids.length} set(s)? Cards move up to the parent category.`)) return;
+    const confirmed = await ask({
+      title: `Delete ${ids.length} ${ids.length === 1 ? "set" : "sets"}?`,
+      description:
+        "The cards are not deleted — they move up to the parent category and stay searchable in the library.",
+      confirmLabel: "Delete sets",
+    });
+    if (!confirmed) return;
     startTransition(async () => {
       for (const id of ids) {
         const res = await deleteTopic(id, "reparent");
@@ -95,6 +103,7 @@ export function DecksIndex({
 
   return (
     <div className="flex flex-col gap-4">
+      {dialog}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">My flashcard sets</h1>
         <Button tone="primary" onClick={() => setCreating((c) => !c)}>

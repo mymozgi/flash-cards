@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { purgeCard, restoreCard } from "./actions";
 import { TrashIcon } from "@/components/icons";
+import { useConfirm } from "@/components/ui/confirm";
 
 export type TrashedCard = {
   id: string;
@@ -17,6 +18,7 @@ export function TrashList({ cards }: { cards: TrashedCard[] }) {
   const router = useRouter();
   const [busy, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const { ask, dialog } = useConfirm();
 
   const run = (fn: () => Promise<{ ok: boolean; error?: string }>) =>
     startTransition(async () => {
@@ -31,6 +33,7 @@ export function TrashList({ cards }: { cards: TrashedCard[] }) {
 
   return (
     <>
+      {dialog}
       {error && (
         <p role="alert" className="mb-3 rounded-lg bg-rust-soft px-3 py-2 text-sm text-rust">
           {error}
@@ -56,8 +59,14 @@ export function TrashList({ cards }: { cards: TrashedCard[] }) {
             </button>
             <button
               type="button"
-              onClick={() => {
-                if (confirm("Delete this card for good?")) run(() => purgeCard(card.id));
+              onClick={async () => {
+                const confirmed = await ask({
+                  title: "Delete this card for good?",
+                  description:
+                    "The card and its review history are removed permanently. This cannot be undone.",
+                  confirmLabel: "Delete for good",
+                });
+                if (confirmed) run(() => purgeCard(card.id));
               }}
               aria-label="Delete for good"
               className="p-1.5 text-faint hover:text-rust"

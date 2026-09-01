@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { deleteTagEverywhere, renameTagEverywhere } from "@/app/(app)/decks/[id]/actions";
 import { SearchIcon, TrashIcon } from "@/components/icons";
+import { useConfirm } from "@/components/ui/confirm";
 
 export type TagRowView = { id: string; name: string; count: number };
 
@@ -13,6 +14,7 @@ export function TagsManager({ tags }: { tags: TagRowView[] }) {
   const [busy, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const { ask, dialog } = useConfirm();
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -32,8 +34,13 @@ export function TagsManager({ tags }: { tags: TagRowView[] }) {
     });
   };
 
-  const drop = (name: string, count: number) => {
-    if (!confirm(`Remove “${name}” from ${count} card(s)? The cards stay.`)) return;
+  const drop = async (name: string, count: number) => {
+    const confirmed = await ask({
+      title: `Delete the tag “${name}”?`,
+      description: `It is removed from ${count} ${count === 1 ? "card" : "cards"}. The cards themselves stay.`,
+      confirmLabel: "Delete tag",
+    });
+    if (!confirmed) return;
     startTransition(async () => {
       const res = await deleteTagEverywhere(name);
       if (!res.ok) setError(res.error ?? "Could not delete the tag");
@@ -46,6 +53,7 @@ export function TagsManager({ tags }: { tags: TagRowView[] }) {
 
   return (
     <div className="mt-5">
+      {dialog}
       <div className="relative max-w-md">
         <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint">
           <SearchIcon />

@@ -25,6 +25,7 @@ import { discardUpload, uploadImage } from "@/lib/upload";
 import { Button, LinkButton } from "@/components/ui/button";
 import { cellInputClass, inputClass } from "@/components/ui/field";
 import { panelClass } from "@/components/ui/panel";
+import { useConfirm } from "@/components/ui/confirm";
 import {
   CheckIcon,
   CloseIcon,
@@ -100,6 +101,7 @@ export function DeckWorkspace({
   const [orderDirty, setOrderDirty] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const { ask, dialog } = useConfirm();
 
   const touch = (id: string) => setDirty((prev) => new Set(prev).add(id));
 
@@ -136,7 +138,14 @@ export function DeckWorkspace({
   };
 
   const drop = async (card: DeckCard) => {
-    if (!card.isNew && !confirm(`Delete “${card.term || "untitled card"}”?`)) return;
+    if (!card.isNew) {
+      const confirmed = await ask({
+        title: `Delete “${card.term || "this untitled card"}”?`,
+        description: "It moves to the trash and can be restored within 30 days.",
+        confirmLabel: "Move to trash",
+      });
+      if (!confirmed) return;
+    }
     setCards((prev) => prev.filter((c) => c.id !== card.id));
     setDirty((prev) => {
       const next = new Set(prev);
@@ -240,6 +249,7 @@ export function DeckWorkspace({
 
   return (
     <div className="flex flex-col gap-4">
+      {dialog}
       <DeckHeader
         deck={deck}
         count={cards.length}
@@ -1089,6 +1099,7 @@ function ManageTags({
 }) {
   const router = useRouter();
   const [busy, startTransition] = useTransition();
+  const { ask, dialog } = useConfirm();
 
   const rename = (tag: string) => {
     const next = prompt(`Rename “${tag}” everywhere it is used:`, tag);
@@ -1101,8 +1112,13 @@ function ManageTags({
     });
   };
 
-  const drop = (tag: string) => {
-    if (!confirm(`Remove “${tag}” from every card? The cards themselves stay.`)) return;
+  const drop = async (tag: string) => {
+    const confirmed = await ask({
+      title: `Delete the tag “${tag}”?`,
+      description: "It is removed from every card that uses it. The cards themselves stay.",
+      confirmLabel: "Delete tag",
+    });
+    if (!confirmed) return;
     startTransition(async () => {
       const res = await deleteTagEverywhere(tag);
       if (!res.ok) return onError(res.error ?? "Could not delete the tag");
@@ -1113,6 +1129,7 @@ function ManageTags({
 
   return (
     <div className={`mb-4 rounded-lg bg-surface-2 p-3 ${busy ? "opacity-60" : ""}`}>
+      {dialog}
       {tags.length === 0 ? (
         <p className="text-sm text-muted">No tags in this deck yet.</p>
       ) : (
