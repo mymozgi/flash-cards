@@ -15,6 +15,7 @@ const GROUPS: { items: { href: string; label: string; Icon: typeof GridIcon }[] 
       // Свободная тренировка доступна всегда: расписание может быть пустым,
       // а желание повторить — нет
       { href: "/review?free=1", label: "Practice", Icon: PlusIcon },
+      { href: "/stats", label: "Knowledge areas", Icon: TableIcon },
     ],
   },
   {

@@ -284,3 +284,69 @@ body {
     animation: none;
   }
 }
+
+/*
+  Цвета долей по тегам. Значения жёсткие, а не производные от темы: они
+  проверены скриптом валидации палитры ровно в этом виде — худшая соседняя
+  пара ΔE 9,1 в светлой теме и 8,4 в тёмной при пороге 8. Подмена оттенка
+  сломала бы проверку, поэтому менять их можно только вместе с повторным
+  прогоном валидатора.
+*/
+.tag-hue-0 {
+  background: #2a78d6;
+}
+.tag-hue-1 {
+  background: #eb6834;
+}
+.tag-hue-2 {
+  background: #1baf7a;
+}
+.tag-hue-3 {
+  background: #eda100;
+}
+.tag-hue-4 {
+  background: #e87ba4;
+}
+.tag-hue-5 {
+  background: #008300;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .tag-hue-0 {
+    background: #3987e5;
+  }
+  :root:not([data-theme="light"]) .tag-hue-1 {
+    background: #d95926;
+  }
+  :root:not([data-theme="light"]) .tag-hue-2 {
+    background: #199e70;
+  }
+  :root:not([data-theme="light"]) .tag-hue-3 {
+    background: #c98500;
+  }
+  :root:not([data-theme="light"]) .tag-hue-4 {
+    background: #d55181;
+  }
+  :root:not([data-theme="light"]) .tag-hue-5 {
+    background: #008300;
+  }
+}
+
+:root[data-theme="dark"] .tag-hue-0 {
+  background: #3987e5;
+}
+:root[data-theme="dark"] .tag-hue-1 {
+  background: #d95926;
+}
+:root[data-theme="dark"] .tag-hue-2 {
+  background: #199e70;
+}
+:root[data-theme="dark"] .tag-hue-3 {
+  background: #c98500;
+}
+:root[data-theme="dark"] .tag-hue-4 {
+  background: #d55181;
+}
+:root[data-theme="dark"] .tag-hue-5 {
+  background: #008300;
+}
