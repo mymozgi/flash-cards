@@ -65,6 +65,48 @@ for (const name of [...TABLES, ...VIEWS]) {
   }
 }
 
+
+/**
+ * Проверка расхождения схемы.
+ *
+ * Существование таблицы ничего не говорит о её колонках: приложение уже
+ * падало на отсутствующем image_position, хотя таблица cards была на месте.
+ * Здесь запрашиваются ровно те колонки, которые нужны коду, — недостающая
+ * назовёт себя сама. Работает только под аккаунтом: гостю PostgREST
+ * отвечает «доступ закрыт» ещё до разбора списка колонок.
+ */
+const REQUIRED_COLUMNS = {
+  cards:
+    "id,user_id,topic_id,front_md,back_md,note_md,example_md,link_url,kind,shape,layout,image_position,mcq,distractors,position,suspended,deleted_at,import_batch_id,front_norm,created_at,updated_at",
+  topics: "id,user_id,parent_id,name,position,description,color,image_path,created_at",
+  scheduling:
+    "card_id,user_id,state,due,stability,difficulty,elapsed_days,scheduled_days,learning_steps,reps,lapses,last_review",
+  media: "id,user_id,card_id,side,storage_path,thumb_path,width,height,bytes,caption,position",
+  settings: "user_id,daily_new_limit,daily_review_limit,request_retention,timezone,mcq_enabled",
+  import_batches: "id,user_id,filename,row_count,created_count,skipped_count,error_count,status",
+  topic_progress: "topic_id,total,memorized,last_used",
+};
+
+async function checkColumns(client) {
+  console.log("");
+  console.log("Колонки, которые нужны коду:");
+  let broken = 0;
+
+  for (const [table, columns] of Object.entries(REQUIRED_COLUMNS)) {
+    const { error } = await client.from(table).select(columns).limit(1);
+    if (!error) {
+      ok(`${table} — все ${columns.split(",").length} колонки на месте`);
+      continue;
+    }
+    broken++;
+    bad(`${table} — ${error.message}`);
+    if (error.message.includes("schema cache") || error.code === "42703") {
+      console.log("    Похоже, не применена одна из миграций в supabase/migrations/");
+    }
+  }
+  return broken;
+}
+
 const email = process.env.KARTOTEKA_EMAIL;
 const password = process.env.KARTOTEKA_PASSWORD;
 
@@ -80,6 +122,8 @@ if (email && password) {
     failures++;
   } else {
     ok(`вход выполнен: ${auth.user.email}`);
+    failures += await checkColumns(supabase);
+    console.log("");
     const userId = auth.user.id;
     let cardId = null;
 
@@ -125,8 +169,9 @@ if (email && password) {
   }
 } else {
   console.log(
-    "\nСквозная проверка пропущена. Чтобы включить, задайте KARTOTEKA_EMAIL и KARTOTEKA_PASSWORD.",
+    "\nСверка колонок и сквозная проверка пропущены: задайте KARTOTEKA_EMAIL и KARTOTEKA_PASSWORD.",
   );
+  warn("расхождение схемы без входа не проверяется — гостя отсекают раньше колонок");
 }
 
 console.log(
