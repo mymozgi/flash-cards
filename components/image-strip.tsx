@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { MAX_IMAGES_PER_SIDE, formatBytes } from "@/lib/image";
-import type { EditorImage } from "./editor-types";
+import type { EditorImage } from "@/lib/types";
 
 export function ImageStrip({
   images,

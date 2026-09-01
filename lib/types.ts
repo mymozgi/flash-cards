@@ -64,6 +64,18 @@ export type SettingsRow = {
   timezone: string;
 };
 
+/** Изображение в редакторе: путь для сервера плюс адреса для показа. */
+export type EditorImage = {
+  storagePath: string;
+  thumbPath: string;
+  url: string;
+  thumbUrl: string;
+  width: number;
+  height: number;
+  bytes: number;
+  caption: string;
+};
+
 export type MediaItem = {
   id: string;
   side: CardSide;

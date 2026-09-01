@@ -341,7 +341,11 @@ export function ReviewSession({
           >
             Undo
           </button>
-          <Link href={`/cards/${current.card.id}`} className="py-2 hover:text-ink">
+          {/* Правка живёт в конструкторе колоды: другого редактора больше нет */}
+          <Link
+            href={current.card.topic_id ? `/decks/${current.card.topic_id}` : "/library"}
+            className="py-2 hover:text-ink"
+          >
             Edit
           </Link>
         </div>

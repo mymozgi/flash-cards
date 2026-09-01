@@ -128,21 +128,6 @@ export type IncomingImage = {
   caption: string;
 };
 
-/**
- * Пути приходят с клиента, поэтому проверяем, что они лежат в папке владельца:
- * политика хранилища устроена так же, но полагаться на один слой не стоит.
- */
-export function parseImages(raw: string, userId: string): IncomingImage[] {
-  if (!raw) return [];
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return [];
-  }
-  return coerceImages(parsed, userId);
-}
-
 export function coerceImages(value: unknown, userId: string): IncomingImage[] {
   if (!Array.isArray(value)) return [];
   return value

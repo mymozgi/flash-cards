@@ -59,8 +59,8 @@ export default async function TodayPage() {
         {topics.length === 0 ? (
           <p className="mt-3 text-sm text-muted">
             No topics yet.{" "}
-            <Link href="/cards/new" className="text-accent underline underline-offset-4">
-              Create your first card
+            <Link href="/decks?new=1" className="text-accent underline underline-offset-4">
+              Create your first set
             </Link>{" "}
             — you can add a topic right in the editor.
           </p>

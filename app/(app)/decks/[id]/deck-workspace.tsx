@@ -19,8 +19,8 @@ import {
   POSITION_OPTIONS,
   SHAPE_OPTIONS,
 } from "@/components/card-renderer";
-import { ImageStrip } from "@/app/(app)/cards/image-strip";
-import type { EditorImage } from "@/app/(app)/cards/editor-types";
+import { ImageStrip } from "@/components/image-strip";
+import type { EditorImage } from "@/lib/types";
 import { ImageError, MAX_IMAGES_PER_SIDE } from "@/lib/image";
 import { discardUpload, uploadImage } from "@/lib/upload";
 import {
@@ -125,6 +125,8 @@ export function DeckWorkspace({
       link: "",
       mcq: false,
       tags: "",
+      note: "",
+      suspended: false,
       shape: "square",
       layout: "split",
       imagePosition: "top",
@@ -604,6 +606,23 @@ function CardBlock({
           />
           <button
             type="button"
+            onClick={() => onUpdate(card.id, { suspended: !card.suspended })}
+            aria-pressed={card.suspended}
+            title={
+              card.suspended
+                ? "Suspended — kept in the deck, never scheduled"
+                : "Suspend: keep the card but drop it from the queue"
+            }
+            className={`rounded-lg border px-2.5 py-1 text-xs ${
+              card.suspended
+                ? "border-amber bg-amber-soft text-amber"
+                : "border-line text-muted hover:text-ink"
+            }`}
+          >
+            {card.suspended ? "Suspended" : "Suspend"}
+          </button>
+          <button
+            type="button"
             onClick={() => onDelete(card)}
             aria-label="Delete card"
             className="text-faint hover:text-rust"
@@ -806,6 +825,15 @@ function CardBlock({
           />
         </div>
       </div>
+
+      <Label>Note — shown only after the answer</Label>
+      <textarea
+        value={card.note}
+        onChange={(e) => onUpdate(card.id, { note: e.target.value })}
+        rows={2}
+        placeholder="Source, mnemonic, counter-example…"
+        className={`${FIELD} resize-y`}
+      />
 
       <Label>Tags</Label>
       <TagEditor value={card.tags} allTags={allTags} onChange={(tags) => onUpdate(card.id, { tags })} />

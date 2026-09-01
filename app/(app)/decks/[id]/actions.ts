@@ -32,6 +32,8 @@ export type DeckCardInput = {
   link: string;
   mcq: boolean;
   tags: string;
+  note: string;
+  suspended: boolean;
   shape: CardShape;
   layout: CardLayout;
   imagePosition: ImagePosition;
@@ -81,6 +83,8 @@ export async function saveDeck(
       front_md: term,
       back_md: correct,
       example_md: card.example.trim() || null,
+      note_md: card.note.trim() || null,
+      suspended: card.suspended,
       link_url: link || null,
       mcq: card.mcq,
       shape: card.shape,

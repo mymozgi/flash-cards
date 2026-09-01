@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { bulkUpdate, type BulkOp } from "../cards/actions";
+import { bulkUpdate, type BulkOp } from "./actions";
 
 export type LibraryCard = {
   id: string;
   front: string;
   back: string;
+  topicId: string | null;
   topicPath: string | null;
   tags: string[];
   suspended: boolean;
@@ -121,11 +122,18 @@ export function CardList({ cards }: { cards: LibraryCard[] }) {
                 className="mt-0.5 size-10 shrink-0 rounded border border-line object-cover"
               />
             )}
-            <Link href={`/cards/${card.id}`} className="min-w-0 flex-1">
+            {/* Редактор один — конструктор колоды. У карточки без колоды
+                редактировать негде, поэтому строка не кликается: сначала
+                её нужно назначить в набор массовой операцией. */}
+            <Link
+              href={card.topicId ? `/decks/${card.topicId}` : "/library"}
+              aria-disabled={!card.topicId}
+              className={`min-w-0 flex-1 ${card.topicId ? "" : "pointer-events-none"}`}
+            >
               <p className="truncate text-sm font-medium">{card.front}</p>
               <p className="truncate text-sm text-muted">{card.back}</p>
               <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] uppercase tracking-[0.12em] text-faint">
-                <span>{card.topicPath ?? "no topic"}</span>
+                <span>{card.topicPath ?? "no deck — assign one to edit"}</span>
                 <span>·</span>
                 <span>{STATE_LABELS[card.state] ?? card.state}</span>
                 {card.suspended && <span className="text-rust">· suspended</span>}

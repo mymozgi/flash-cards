@@ -61,6 +61,7 @@ export default async function LibraryPage(props: {
     id: row.id,
     front: row.front_md,
     back: row.back_md,
+    topicId: row.topic_id,
     topicPath: row.topic_id ? (pathById.get(row.topic_id) ?? null) : null,
     tags: (row.card_tags ?? []).map((t) => t.tags.name),
     suspended: row.suspended,
@@ -114,8 +115,8 @@ export default async function LibraryPage(props: {
         ) : cards.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted">
             Nothing found.{" "}
-            <Link href="/cards/new" className="text-accent underline underline-offset-4">
-              Create a card
+            <Link href="/decks?new=1" className="text-accent underline underline-offset-4">
+              Create a set
             </Link>
           </p>
         ) : (

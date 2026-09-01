@@ -19,6 +19,10 @@
   --accent-soft: #eff6ff;
   --rust: #dc2626;
   --rust-soft: #fef2f2;
+  /* Предупреждение: состояние не ошибочное, но и не штатное — например
+     приостановленная карточка. Красный тут врал бы. */
+  --amber: #b45309;
+  --amber-soft: #fffbeb;
   color-scheme: light;
 }
 
@@ -37,6 +41,8 @@
     --accent-soft: #16233a;
     --rust: #f87171;
     --rust-soft: #2a1719;
+    --amber: #fbbf24;
+    --amber-soft: #2a2113;
     color-scheme: dark;
   }
 }
@@ -55,6 +61,8 @@
   --accent-soft: #16233a;
   --rust: #f87171;
   --rust-soft: #2a1719;
+  --amber: #fbbf24;
+  --amber-soft: #2a2113;
   color-scheme: dark;
 }
 
@@ -72,6 +80,8 @@
   --color-accent-soft: var(--accent-soft);
   --color-rust: var(--rust);
   --color-rust-soft: var(--rust-soft);
+  --color-amber: var(--amber);
+  --color-amber-soft: var(--amber-soft);
 
   /* Poppins покрывает латиницу; кириллица уедет в системный шрифт — он идёт
      следующим в стеке, поэтому подмена выглядит намеренной, а не сломанной */
