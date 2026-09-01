@@ -50,7 +50,6 @@ const COLUMNS = [
   { key: "term", label: "Term" },
   { key: "definition", label: "Definition" },
   { key: "example", label: "Example (optional)" },
-  { key: "link", label: "Link" },
   { key: "tags", label: "Tags" },
   { key: "answers", label: "Answers" },
 ] as const;
@@ -122,7 +121,6 @@ export function DeckWorkspace({
       options: Array(OPTION_SLOTS).fill(""),
       correctIndex: 0,
       example: "",
-      link: "",
       mcq: false,
       tags: "",
       note: "",
@@ -398,14 +396,13 @@ export function DeckWorkspace({
           </p>
         )}
 
-        <div className="mt-5 flex justify-center">
-          <button
-            type="button"
-            onClick={addCard}
-            className="flex items-center gap-2 rounded-lg bg-accent px-8 py-3 text-sm font-medium text-accent-ink"
-          >
+        {/* Кнопка липнет ко дну: в длинной колоде она уезжала за экран,
+            и чтобы добавить карточку, приходилось прокручивать весь список.
+            Тень отделяет её от содержимого, под которым она проходит. */}
+        <div className="sticky bottom-4 z-10 mt-5 flex justify-center pb-[env(safe-area-inset-bottom)]">
+          <Button tone="primary" size="lg" onClick={addCard} className="px-8 shadow-raised">
             <PlusIcon /> Add card
-          </button>
+          </Button>
         </div>
       </section>
     </div>
@@ -789,26 +786,13 @@ function CardBlock({
         />
       </div>
 
-      <div className={`grid gap-3 ${compact ? "" : "sm:grid-cols-2"}`}>
-        <div>
-          <Label>Example (optional)</Label>
-          <input
-            value={card.example}
-            onChange={(e) => onUpdate(card.id, { example: e.target.value })}
-            placeholder="Example…"
-            className={FIELD}
-          />
-        </div>
-        <div>
-          <Label>Link</Label>
-          <input
-            value={card.link}
-            onChange={(e) => onUpdate(card.id, { link: e.target.value })}
-            placeholder="https://…"
-            className={FIELD}
-          />
-        </div>
-      </div>
+      <Label>Example (optional)</Label>
+      <input
+        value={card.example}
+        onChange={(e) => onUpdate(card.id, { example: e.target.value })}
+        placeholder="Example…"
+        className={FIELD}
+      />
 
       <Label>Note — shown only after the answer</Label>
       <textarea
@@ -924,16 +908,6 @@ function Spreadsheet({
                       value={card.example}
                       onChange={(e) => onUpdate(card.id, { example: e.target.value })}
                       placeholder="Example…"
-                      className={CELL_FIELD}
-                    />
-                  </td>
-                )}
-                {columns.has("link") && (
-                  <td className={`${cell} w-36`}>
-                    <input
-                      value={card.link}
-                      onChange={(e) => onUpdate(card.id, { link: e.target.value })}
-                      placeholder="https://…"
                       className={CELL_FIELD}
                     />
                   </td>

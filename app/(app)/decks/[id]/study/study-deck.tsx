@@ -11,7 +11,6 @@ export type StudyCard = {
   term: string;
   answer: string;
   example: string;
-  link: string;
   shape: CardShape;
   layout: CardLayout;
   imagePosition: ImagePosition;
@@ -220,16 +219,6 @@ export function StudyDeck({
           </div>
         )}
         {card.example && <p className="mt-2 text-sm italic text-muted">{card.example}</p>}
-        {card.link && (
-          <a
-            href={card.link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-2 block truncate text-sm text-accent underline underline-offset-4"
-          >
-            {card.link}
-          </a>
-        )}
       </section>
 
       <p className="text-center text-xs text-faint">

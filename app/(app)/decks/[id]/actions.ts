@@ -29,7 +29,6 @@ export type DeckCardInput = {
   options: string[];
   correctIndex: number;
   example: string;
-  link: string;
   mcq: boolean;
   tags: string;
   note: string;
@@ -42,8 +41,6 @@ export type DeckCardInput = {
 };
 
 export type SaveResult = { ok: boolean; error?: string; saved?: number };
-
-const LINK_RE = /^https?:\/\//i;
 
 export async function saveDeck(
   topicId: string,
@@ -67,11 +64,6 @@ export async function saveDeck(
       };
     }
 
-    const link = card.link.trim();
-    if (link && !LINK_RE.test(link)) {
-      return { ok: false, error: `“${link}” is not a valid link — it must start with http(s)://` };
-    }
-
     const distractors = card.options
       .filter((_, index) => index !== card.correctIndex)
       .map((option) => option.trim())
@@ -85,7 +77,6 @@ export async function saveDeck(
       example_md: card.example.trim() || null,
       note_md: card.note.trim() || null,
       suspended: card.suspended,
-      link_url: link || null,
       mcq: card.mcq,
       shape: card.shape,
       layout: card.layout,

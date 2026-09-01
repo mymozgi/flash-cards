@@ -77,7 +77,7 @@ for (const name of [...TABLES, ...VIEWS]) {
  */
 const REQUIRED_COLUMNS = {
   cards:
-    "id,user_id,topic_id,front_md,back_md,note_md,example_md,link_url,kind,shape,layout,image_position,mcq,distractors,position,suspended,deleted_at,import_batch_id,front_norm,created_at,updated_at",
+    "id,user_id,topic_id,front_md,back_md,note_md,example_md,kind,shape,layout,image_position,mcq,distractors,position,suspended,deleted_at,import_batch_id,front_norm,created_at,updated_at",
   topics: "id,user_id,parent_id,name,position,description,color,image_path,created_at",
   scheduling:
     "card_id,user_id,state,due,stability,difficulty,elapsed_days,scheduled_days,learning_steps,reps,lapses,last_review",

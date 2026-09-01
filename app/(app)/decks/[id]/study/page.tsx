@@ -9,7 +9,6 @@ type Row = {
   front_md: string;
   back_md: string;
   example_md: string | null;
-  link_url: string | null;
   shape: CardShape;
   layout: CardLayout;
   image_position: ImagePosition;
@@ -23,7 +22,7 @@ export default async function StudyPage(props: { params: Promise<{ id: string }>
     supabase.from("topics").select("id,name").eq("id", id).maybeSingle(),
     supabase
       .from("cards")
-      .select("id,front_md,back_md,example_md,link_url,shape,layout,image_position")
+      .select("id,front_md,back_md,example_md,shape,layout,image_position")
       .eq("topic_id", id)
       .is("deleted_at", null)
       .eq("suspended", false)
@@ -43,7 +42,6 @@ export default async function StudyPage(props: { params: Promise<{ id: string }>
       term: row.front_md,
       answer: row.back_md,
       example: row.example_md ?? "",
-      link: row.link_url ?? "",
       shape: row.shape,
       layout: row.layout,
       imagePosition: row.image_position,
