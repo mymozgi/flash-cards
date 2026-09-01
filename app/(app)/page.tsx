@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { getSettings, getTodayCounts, getTopicTree } from "@/lib/data";
+import { getDeckSummaries, getSettings, getTodayCounts } from "@/lib/data";
+import { DeckCard } from "@/components/deck-card";
 import { plural } from "@/lib/day";
 
 export default async function TodayPage() {
   const settings = await getSettings();
-  const [counts, topics] = await Promise.all([getTodayCounts(settings), getTopicTree()]);
+  const [counts, decks] = await Promise.all([getTodayCounts(settings), getDeckSummaries()]);
   const done = counts.reviewsDoneToday + counts.newDoneToday;
 
   return (
@@ -55,31 +56,25 @@ export default async function TodayPage() {
       </dl>
 
       <section className="mt-10">
-        <h2 className="font-mono text-2xs uppercase tracking-[0.16em] text-faint">Topics</h2>
-        {topics.length === 0 ? (
-          <p className="mt-3 text-sm text-muted">
-            No topics yet.{" "}
+        <div className="mb-3 flex items-baseline justify-between gap-3">
+          <h2 className="text-lg font-semibold tracking-tight">Your sets</h2>
+          <Link href="/decks" className="text-sm text-muted hover:text-ink">
+            All sets
+          </Link>
+        </div>
+
+        {decks.length === 0 ? (
+          <p className="rounded-xl border border-line bg-surface py-12 text-center text-sm text-muted">
+            No sets yet.{" "}
             <Link href="/decks?new=1" className="text-accent underline underline-offset-4">
-              Create your first set
-            </Link>{" "}
-            — you can add a topic right in the editor.
+              Create the first one
+            </Link>
           </p>
         ) : (
-          <ul className="mt-3 divide-y divide-line rounded border border-line bg-surface">
-            {topics.map((topic) => (
-              <li key={topic.id}>
-                <Link
-                  href={`/library?topic=${topic.id}`}
-                  className="flex items-baseline justify-between gap-4 px-4 py-2.5 text-sm hover:bg-surface-2"
-                  style={{ paddingLeft: `${16 + topic.depth * 18}px` }}
-                >
-                  <span className={topic.depth === 0 ? "font-medium" : "text-muted"}>
-                    {topic.name}
-                  </span>
-                  <span className="font-mono text-xs tabular-nums text-faint">
-                    {topic.cardCount}
-                  </span>
-                </Link>
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {decks.map((deck) => (
+              <li key={deck.id}>
+                <DeckCard deck={deck} />
               </li>
             ))}
           </ul>

@@ -4,6 +4,7 @@ import { startOfDay } from "./day";
 import { publicUrl } from "./storage";
 import type {
   CardRow,
+  DeckSummary,
   MediaItem,
   QueueCard,
   SchedulingRow,
@@ -73,6 +74,41 @@ export async function getTopicTree(): Promise<TopicNode[]> {
   };
   walk(null, "", 0);
   return out;
+}
+
+/**
+ * Сводка по каждому набору: сколько карточек, сколько выучено, когда
+ * повторяли. Считает представление topic_progress — тянуть все карточки
+ * на клиент ради трёх чисел было бы расточительно.
+ */
+export async function getDeckSummaries(): Promise<DeckSummary[]> {
+  const supabase = await createClient();
+  const [topics, { data: progress }] = await Promise.all([
+    getTopicTree(),
+    supabase.from("topic_progress").select("topic_id,total,memorized,last_used"),
+  ]);
+
+  const stats = new Map(
+    ((progress ?? []) as { topic_id: string | null; total: number; memorized: number; last_used: string | null }[])
+      .filter((row) => row.topic_id)
+      .map((row) => [row.topic_id as string, row]),
+  );
+  const byId = new Map(topics.map((t) => [t.id, t]));
+
+  return topics.map((topic) => {
+    const row = stats.get(topic.id);
+    const parent = topic.parent_id ? byId.get(topic.parent_id) : undefined;
+    return {
+      id: topic.id,
+      name: topic.name,
+      description: topic.description ?? "",
+      color: topic.color ?? "",
+      category: parent?.name ?? null,
+      total: row?.total ?? 0,
+      memorized: row?.memorized ?? 0,
+      lastUsed: row?.last_used ?? null,
+    };
+  });
 }
 
 export async function getTags(): Promise<TagRow[]> {

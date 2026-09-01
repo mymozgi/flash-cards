@@ -55,7 +55,7 @@ export function Sidebar({ signOutAction }: { signOutAction: () => Promise<void> 
         >
           ☰
         </button>
-        <span className="font-semibold">Kartoteka</span>
+        <span className="font-semibold">Flashcards</span>
         <div className="ml-auto">
           <ThemeToggle />
         </div>

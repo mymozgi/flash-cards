@@ -82,7 +82,7 @@ export async function GET(request: Request) {
     return new Response(body, {
       headers: {
         "content-type": "application/json; charset=utf-8",
-        "content-disposition": `attachment; filename="kartoteka-${stamp}.json"`,
+        "content-disposition": `attachment; filename="flashcards-${stamp}.json"`,
       },
     });
   }
@@ -105,7 +105,7 @@ export async function GET(request: Request) {
   return new Response(`﻿${csv}`, {
     headers: {
       "content-type": "text/csv; charset=utf-8",
-      "content-disposition": `attachment; filename="kartoteka-${stamp}.csv"`,
+      "content-disposition": `attachment; filename="flashcards-${stamp}.csv"`,
     },
   });
 }

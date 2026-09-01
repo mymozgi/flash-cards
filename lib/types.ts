@@ -18,6 +18,18 @@ export type TopicNode = TopicRow & {
   cardCount: number;
 };
 
+/** Набор с прогрессом — то, что показывает карточка колоды. */
+export type DeckSummary = {
+  id: string;
+  name: string;
+  description: string;
+  color: string;
+  category: string | null;
+  total: number;
+  memorized: number;
+  lastUsed: string | null;
+};
+
 export type TagRow = {
   id: string;
   name: string;

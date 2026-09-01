@@ -12,14 +12,15 @@ const poppins = Poppins({
 });
 import { RegisterServiceWorker } from "@/components/register-sw";
 
-// Тему ставим до первой отрисовки, иначе на тёмной системе мелькает вспышка
+// Тему ставим до первой отрисовки, иначе на тёмной системе мелькает вспышка.
+// Ключ хранилища остался прежним — см. components/theme-toggle.tsx
 const THEME_BOOT = `try{document.documentElement.dataset.theme=localStorage.getItem("kartoteka:theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}`;
 
 export const metadata: Metadata = {
-  title: "Kartoteka",
+  title: "Flashcards",
   description: "A personal spaced-repetition trainer",
-  applicationName: "Kartoteka",
-  appleWebApp: { capable: true, title: "Kartoteka", statusBarStyle: "default" },
+  applicationName: "Flashcards",
+  appleWebApp: { capable: true, title: "Flashcards", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {
