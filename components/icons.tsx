@@ -83,6 +83,13 @@ export const PlusIcon = (p: IconProps) => (
   </Svg>
 );
 
+export const SettingsIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="8" cy="8" r="2.3" />
+    <path d="M8 1.5v1.6M8 12.9v1.6M14.5 8h-1.6M3.1 8H1.5M12.6 3.4l-1.1 1.1M4.5 11.5l-1.1 1.1M12.6 12.6l-1.1-1.1M4.5 4.5 3.4 3.4" />
+  </Svg>
+);
+
 export const CloseIcon = (p: IconProps) => (
   <Svg {...p}>
     <path d="M4 4l8 8M12 4l-8 8" />

@@ -5,16 +5,22 @@
  * где-то серая заливка с рамкой по фокусу, где-то постоянная рамка.
  * Здесь один вид и одно место, где его менять.
  */
+/**
+ * Граница видима всегда, а не только в фокусе: заливка #f1f3f5 даёт контраст
+ * 1,03 с фоном страницы и 1,11 с белой панелью — поле неотличимо от воздуха.
+ * Подложка эту задачу не решает, решает именно граница.
+ */
 export const inputClass =
-  "w-full rounded-lg border border-transparent bg-surface-2 px-3 py-2 text-sm text-ink " +
+  "w-full rounded-lg border border-field-line bg-surface px-3 py-2 text-sm text-ink " +
   "placeholder:text-faint transition-colors " +
-  "focus:border-line focus:bg-surface focus-visible:outline-2 focus-visible:outline-offset-1 " +
+  "hover:border-ink focus:border-accent focus-visible:outline-2 focus-visible:outline-offset-1 " +
   "focus-visible:outline-accent disabled:opacity-55";
 
 /** Ячейка таблицы: без заливки, пока в неё не встали курсором. */
+/** В ячейке таблицы границу даёт сама сетка, поэтому поле остаётся плоским. */
 export const cellInputClass =
   "w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-sm " +
-  "focus:border-line focus:bg-surface-2";
+  "hover:border-line focus:border-accent focus:bg-surface";
 
 export function Label({ children }: { children: React.ReactNode }) {
   return <span className="block pb-1.5 text-sm font-medium text-muted">{children}</span>;

@@ -23,6 +23,10 @@
      приостановленная карточка. Красный тут врал бы. */
   --amber: #b45309;
   --amber-soft: #fffbeb;
+  /* Граница поля ввода. Отдельно от --line, потому что WCAG 1.4.11 требует
+     3:1 для границ элементов управления, а --line даёт 1,24 на белом.
+     Замерено: 3,41 на поверхности и 3,14 на фоне страницы. */
+  --field-line: #8b8b8b;
   color-scheme: light;
 }
 
@@ -43,6 +47,7 @@
     --rust-soft: #2a1719;
     --amber: #fbbf24;
     --amber-soft: #2a2113;
+    --field-line: #6b7280;
     color-scheme: dark;
   }
 }
@@ -63,6 +68,7 @@
   --rust-soft: #2a1719;
   --amber: #fbbf24;
   --amber-soft: #2a2113;
+  --field-line: #6b7280;
   color-scheme: dark;
 }
 
@@ -82,6 +88,7 @@
   --color-rust-soft: var(--rust-soft);
   --color-amber: var(--amber);
   --color-amber-soft: var(--amber-soft);
+  --color-field-line: var(--field-line);
 
   /* Poppins покрывает латиницу; кириллица уедет в системный шрифт — он идёт
      следующим в стеке, поэтому подмена выглядит намеренной, а не сломанной */

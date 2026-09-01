@@ -4,7 +4,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { ThemeToggle } from "./theme-toggle";
-import { GridIcon, ListIcon, PlusIcon, SearchIcon, TableIcon, TagIcon, TrashIcon } from "./icons";
+import {
+  GridIcon,
+  ListIcon,
+  PlusIcon,
+  SearchIcon,
+  SettingsIcon,
+  TableIcon,
+  TagIcon,
+  TrashIcon,
+} from "./icons";
 
 const GROUPS: { items: { href: string; label: string; Icon: typeof GridIcon }[] }[] = [
   {
@@ -25,7 +34,7 @@ const GROUPS: { items: { href: string; label: string; Icon: typeof GridIcon }[] 
       { href: "/topics", label: "Manage categories", Icon: ListIcon },
       { href: "/tags", label: "Manage tags", Icon: TagIcon },
       { href: "/trash", label: "Deleted cards", Icon: TrashIcon },
-      { href: "/settings", label: "Settings", Icon: PlusIcon },
+      { href: "/settings", label: "Settings", Icon: SettingsIcon },
     ],
   },
 ];
