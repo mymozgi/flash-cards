@@ -10,7 +10,7 @@ import { LinkButton } from "@/components/ui/button";
  * либо опирается на работу, названную в конце страницы.
  */
 export const metadata = {
-  title: "How it works — Flashcards",
+  title: "How it works — Memorizer",
   description: "Why testing yourself and spacing reviews beats re-reading, and what this app does about it.",
 };
 

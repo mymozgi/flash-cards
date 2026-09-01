@@ -84,7 +84,10 @@ export function Sidebar({
         >
           ☰
         </button>
-        <span className="font-semibold">Flashcards</span>
+        <span className="min-w-0">
+          <span className="block truncate font-bold leading-tight">Memorizer</span>
+          <span className="block truncate text-2xs text-faint">by Oleg Tsykhonia</span>
+        </span>
         <div className="ml-auto">
           <ThemeToggle />
         </div>
@@ -105,7 +108,12 @@ export function Sidebar({
         } ${collapsed ? "w-16" : "w-60"}`}
       >
         <div className="flex items-center justify-between gap-2 px-1 pb-2">
-          {!collapsed && <span className="font-semibold">Workspace</span>}
+          {!collapsed && (
+            <span className="min-w-0">
+              <span className="block truncate font-bold leading-tight">Memorizer</span>
+              <span className="block truncate text-2xs text-faint">by Oleg Tsykhonia</span>
+            </span>
+          )}
           <button
             type="button"
             onClick={() => setCollapsed((c) => !c)}

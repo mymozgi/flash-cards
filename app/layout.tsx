@@ -17,10 +17,10 @@ import { RegisterServiceWorker } from "@/components/register-sw";
 const THEME_BOOT = `try{document.documentElement.dataset.theme=localStorage.getItem("kartoteka:theme")||"light"}catch(e){document.documentElement.dataset.theme="light"}`;
 
 export const metadata: Metadata = {
-  title: "Flashcards",
+  title: "Memorizer",
   description: "A personal spaced-repetition trainer",
-  applicationName: "Flashcards",
-  appleWebApp: { capable: true, title: "Flashcards", statusBarStyle: "default" },
+  applicationName: "Memorizer",
+  appleWebApp: { capable: true, title: "Memorizer", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {

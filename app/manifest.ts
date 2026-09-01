@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Flashcards",
-    short_name: "Flashcards",
+    name: "Memorizer",
+    short_name: "Memorizer",
     description: "A personal spaced-repetition trainer",
     start_url: "/",
     scope: "/",
