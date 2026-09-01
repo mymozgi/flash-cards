@@ -15,14 +15,14 @@ export type CardImage = { url: string; caption?: string | null };
 
 export const ASPECT: Record<CardShape, string> = {
   square: "1 / 1",
-  landscape: "16 / 9",
-  portrait: "9 / 16",
+  landscape: "3 / 2",
+  portrait: "2 / 3",
 };
 
 export const SHAPE_OPTIONS: { key: CardShape; label: string; ratio: string; box: string }[] = [
   { key: "square", label: "Square", ratio: "1:1", box: "h-6 w-6" },
-  { key: "landscape", label: "Landscape", ratio: "16:9", box: "h-4 w-7" },
-  { key: "portrait", label: "Portrait", ratio: "9:16", box: "h-7 w-4" },
+  { key: "landscape", label: "Landscape", ratio: "3:2", box: "h-5 w-7" },
+  { key: "portrait", label: "Portrait", ratio: "2:3", box: "h-7 w-5" },
 ];
 
 export const LAYOUT_OPTIONS: { key: CardLayout; label: string }[] = [
@@ -75,7 +75,7 @@ export function CardRenderer({
           {/* затемнение снизу: без него белый текст теряется на светлой картинке */}
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/45 to-transparent p-4 sm:p-5">
             <div
-              className="prose-card max-h-[45%] overflow-y-auto text-white [&_a]:text-white"
+              className="prose-card max-h-[45%] overflow-y-auto text-center text-white [&_a]:text-white [&_ul]:inline-block [&_ul]:text-left [&_ol]:inline-block [&_ol]:text-left"
               dangerouslySetInnerHTML={{ __html: html }}
             />
           </div>
@@ -97,15 +97,15 @@ export function CardRenderer({
             className={sideways ? "h-1/2 w-full sm:h-full sm:w-1/2" : "h-1/2 w-full"}
             onClick={onImageClick}
           />
-          <div className={`min-h-0 flex-1 overflow-y-auto p-4 sm:p-5`}>
-            <div className="prose-card" dangerouslySetInnerHTML={{ __html: html }} />
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto p-4 text-center sm:p-5">
+            <div className="prose-card w-full [&_ul]:inline-block [&_ul]:text-left [&_ol]:inline-block [&_ol]:text-left" dangerouslySetInnerHTML={{ __html: html }} />
             {image?.caption && <p className="mt-2 text-xs text-faint">{image.caption}</p>}
           </div>
         </div>
       ) : (
         <div className="flex size-full items-center justify-center overflow-y-auto p-5 sm:p-7">
           <div
-            className="prose-card w-full text-lg sm:text-xl"
+            className="prose-card w-full text-center text-lg sm:text-xl [&_ul]:inline-block [&_ul]:text-left [&_ol]:inline-block [&_ol]:text-left"
             dangerouslySetInnerHTML={{ __html: html }}
           />
         </div>
