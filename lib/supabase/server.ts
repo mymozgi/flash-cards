@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { supabaseEnv } from "./env";
+import { applyRemember, REMEMBER_COOKIE } from "./remember";
 
 /** Клиент для серверных компонентов и server actions. */
 export async function createClient() {
@@ -13,9 +14,11 @@ export async function createClient() {
         return cookieStore.getAll();
       },
       setAll(cookiesToSet) {
+        // Отсутствие куки трактуем как «запомнить»: так ведёт себя вход по умолчанию
+        const remember = cookieStore.get(REMEMBER_COOKIE)?.value !== "0";
         try {
           for (const { name, value, options } of cookiesToSet) {
-            cookieStore.set(name, value, options);
+            cookieStore.set(name, value, applyRemember(options, remember));
           }
         } catch {
           // Вызов из серверного компонента: куки уже отправлены.

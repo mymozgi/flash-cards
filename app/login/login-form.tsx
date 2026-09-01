@@ -36,6 +36,22 @@ export function LoginForm({ next }: { next: string }) {
         />
       </label>
 
+      <label className="flex items-start gap-2.5 text-sm">
+        <input
+          type="checkbox"
+          name="remember"
+          defaultChecked
+          className="mt-0.5 size-4 accent-[var(--accent)]"
+        />
+        <span>
+          Keep me signed in
+          <span className="mt-0.5 block text-2xs text-faint">
+            Stays signed in for 30 days on this device. Uncheck on a shared computer — then the
+            session ends when the browser closes.
+          </span>
+        </span>
+      </label>
+
       {state.error && (
         <p role="alert" className="rounded border-l-[3px] border-rust bg-rust-soft px-3 py-2 text-sm">
           {state.error}

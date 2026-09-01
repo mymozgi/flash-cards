@@ -117,6 +117,19 @@ export const GripIcon = (p: IconProps) => (
   </Svg>
 );
 
+export const SunIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="8" cy="8" r="3.1" />
+    <path d="M8 1.4v1.2M8 13.4v1.2M14.6 8h-1.2M2.6 8H1.4M12.7 3.3l-.85.85M4.15 11.85l-.85.85M12.7 12.7l-.85-.85M4.15 4.15l-.85-.85" />
+  </Svg>
+);
+
+export const MoonIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M13.2 9.6A5.6 5.6 0 0 1 6.4 2.8a5.8 5.8 0 1 0 6.8 6.8Z" />
+  </Svg>
+);
+
 export const CloseIcon = (p: IconProps) => (
   <Svg {...p}>
     <path d="M4 4l8 8M12 4l-8 8" />

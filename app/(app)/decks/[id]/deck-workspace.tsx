@@ -26,6 +26,7 @@ import { Button, LinkButton } from "@/components/ui/button";
 import { cellInputClass, inputClass } from "@/components/ui/field";
 import { panelClass } from "@/components/ui/panel";
 import { useConfirm } from "@/components/ui/confirm";
+import { Switch } from "@/components/ui/switch";
 import {
   CheckIcon,
   ChevronIcon,
@@ -548,37 +549,6 @@ function DeckHeader({
         </>
       )}
     </header>
-  );
-}
-
-/** Тумблер из макета: дорожка с бегунком, а не системная галочка. */
-function Switch({
-  checked,
-  onChange,
-  label,
-}: {
-  checked: boolean;
-  onChange: (value: boolean) => void;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      onClick={() => onChange(!checked)}
-      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
-        checked ? "bg-accent" : "bg-line-strong"
-      }`}
-    >
-      <span
-        aria-hidden
-        className={`absolute top-0.5 size-5 rounded-full bg-white shadow transition-[left] ${
-          checked ? "left-[22px]" : "left-0.5"
-        }`}
-      />
-    </button>
   );
 }
 

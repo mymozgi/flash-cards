@@ -91,7 +91,7 @@ export function Sidebar({
           <span className="block truncate text-2xs text-faint">by Oleg Tsykhonia</span>
         </span>
         <div className="ml-auto">
-          <ThemeToggle />
+          <ThemeToggle compact />
         </div>
       </div>
 

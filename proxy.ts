@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { supabaseEnv } from "@/lib/supabase/env";
+import { applyRemember, REMEMBER_COOKIE } from "@/lib/supabase/remember";
 
 // /api/cron защищён своим секретом, сессия ему не нужна
 const PUBLIC_PATHS = ["/login", "/auth", "/api/cron"];
@@ -41,8 +42,9 @@ export async function proxy(request: NextRequest) {
           request.cookies.set(name, value);
         }
         response = NextResponse.next({ request });
+        const remember = request.cookies.get(REMEMBER_COOKIE)?.value !== "0";
         for (const { name, value, options } of cookiesToSet) {
-          response.cookies.set(name, value, options);
+          response.cookies.set(name, value, applyRemember(options, remember));
         }
       },
     },
