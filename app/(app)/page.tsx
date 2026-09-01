@@ -10,7 +10,7 @@ export default async function TodayPage() {
   return (
     <>
       <header className="border-b border-line-strong pb-5">
-        <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-faint">Today</p>
+        <p className="font-mono text-2xs uppercase tracking-[0.16em] text-faint">Today</p>
         <h1 className="mt-2 font-display text-5xl font-semibold tracking-tight tabular-nums">
           {counts.total}
         </h1>
@@ -46,7 +46,7 @@ export default async function TodayPage() {
           { label: "New limit", value: settings.daily_new_limit },
         ].map((stat) => (
           <div key={stat.label} className="bg-surface px-4 py-3">
-            <dt className="font-mono text-[10px] uppercase tracking-[0.13em] text-faint">
+            <dt className="font-mono text-2xs uppercase tracking-[0.13em] text-faint">
               {stat.label}
             </dt>
             <dd className="mt-1 text-xl font-medium tabular-nums">{stat.value}</dd>
@@ -55,7 +55,7 @@ export default async function TodayPage() {
       </dl>
 
       <section className="mt-10">
-        <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-faint">Topics</h2>
+        <h2 className="font-mono text-2xs uppercase tracking-[0.16em] text-faint">Topics</h2>
         {topics.length === 0 ? (
           <p className="mt-3 text-sm text-muted">
             No topics yet.{" "}

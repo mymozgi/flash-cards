@@ -282,7 +282,7 @@ export function ImportWizard() {
               { label: "Topics used", value: newTopics.length },
             ].map((s) => (
               <div key={s.label} className="bg-surface px-4 py-3">
-                <dt className="font-mono text-[10px] uppercase tracking-[0.13em] text-faint">{s.label}</dt>
+                <dt className="font-mono text-2xs uppercase tracking-[0.13em] text-faint">{s.label}</dt>
                 <dd className="mt-1 text-xl font-medium tabular-nums">{s.value}</dd>
               </div>
             ))}
@@ -290,7 +290,7 @@ export function ImportWizard() {
 
           {dupCount > 0 && (
             <fieldset className="mt-4 rounded border border-line p-3">
-              <legend className="px-1 font-mono text-[10px] uppercase tracking-[0.13em] text-faint">
+              <legend className="px-1 font-mono text-2xs uppercase tracking-[0.13em] text-faint">
                 What to do with duplicates
               </legend>
               {(
@@ -314,7 +314,7 @@ export function ImportWizard() {
             </fieldset>
           )}
 
-          <h3 className="mt-6 font-mono text-[11px] uppercase tracking-[0.14em] text-faint">
+          <h3 className="mt-6 font-mono text-2xs uppercase tracking-[0.14em] text-faint">
             First {Math.min(PREVIEW, prepared.length)} cards
           </h3>
           <ul className="mt-2 divide-y divide-line rounded border border-line bg-surface">
@@ -325,7 +325,7 @@ export function ImportWizard() {
                   className="prose-card mt-1 text-muted"
                   dangerouslySetInnerHTML={{ __html: renderMarkdown(row.back) }}
                 />
-                <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-faint">
+                <p className="mt-1 font-mono text-2xs uppercase tracking-[0.12em] text-faint">
                   {row.topic || "no topic"}
                   {row.tags && ` · ${row.tags}`}
                   {row.reversed && " · reversed"}
@@ -381,7 +381,7 @@ export function ImportWizard() {
               { label: "Errors", value: report.errors.length },
             ].map((s) => (
               <div key={s.label} className="bg-surface px-4 py-3">
-                <dt className="font-mono text-[10px] uppercase tracking-[0.13em] text-faint">{s.label}</dt>
+                <dt className="font-mono text-2xs uppercase tracking-[0.13em] text-faint">{s.label}</dt>
                 <dd className="mt-1 text-xl font-medium tabular-nums">{s.value}</dd>
               </div>
             ))}
@@ -421,7 +421,7 @@ function Steps({ current }: { current: Step }) {
   const activeIndex = order.indexOf(current === "running" ? "preview" : current);
 
   return (
-    <ol className="flex flex-wrap gap-2 font-mono text-[11px] uppercase tracking-[0.13em]">
+    <ol className="flex flex-wrap gap-2 font-mono text-2xs uppercase tracking-[0.13em]">
       {order.map((step, i) => (
         <li
           key={step}

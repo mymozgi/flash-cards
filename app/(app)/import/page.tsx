@@ -13,7 +13,7 @@ export default function ImportPage() {
       <ImportWizard />
 
       <section className="mt-12 border-t border-line pt-6">
-        <h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-faint">Export</h2>
+        <h2 className="font-mono text-2xs uppercase tracking-[0.16em] text-faint">Export</h2>
         <p className="mt-2 max-w-prose text-sm text-muted">
           Your data should never be locked inside the app. CSV matches the import format above;
           JSON also carries the schedule and the full review history.

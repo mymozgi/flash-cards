@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { createTopic, deleteTopic } from "@/app/(app)/topics/actions";
 import { CheckIcon, PlusIcon, SearchIcon, TrashIcon } from "@/components/icons";
+import { Button, LinkButton } from "@/components/ui/button";
+import { Badge, panelClass } from "@/components/ui/panel";
+import { inputClass } from "@/components/ui/field";
 
 export type DeckSummary = {
   id: string;
@@ -104,37 +107,26 @@ export function DecksIndex({
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">My flashcard sets</h1>
-        <button
-          type="button"
-          onClick={() => setCreating((c) => !c)}
-          className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink"
-        >
+        <Button tone="primary" onClick={() => setCreating((c) => !c)}>
           <PlusIcon />
           Create set
-        </button>
+        </Button>
       </div>
 
       {creating && (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface p-3 shadow-sm">
+        <div className={`${panelClass} flex flex-wrap items-center gap-2 p-3`}>
           <input
             autoFocus
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && create()}
             placeholder="Set name, or Category / Set to nest it"
-            className="min-w-0 flex-1 rounded-lg border border-transparent bg-surface-2 px-3 py-2 text-sm focus:border-line focus:bg-surface"
+            className={`${inputClass} min-w-0 flex-1`}
           />
-          <button
-            type="button"
-            onClick={create}
-            disabled={busy}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink disabled:opacity-60"
-          >
+          <Button tone="primary" onClick={create} loading={busy}>
             Create
-          </button>
-          <button type="button" onClick={() => setCreating(false)} className="rounded-lg border border-line px-4 py-2 text-sm">
-            Cancel
-          </button>
+          </Button>
+          <Button onClick={() => setCreating(false)}>Cancel</Button>
         </div>
       )}
 
@@ -266,15 +258,13 @@ function DeckCard({
       }`}
     >
       <div className="flex items-start justify-between gap-2">
-        <span
-          className="rounded-full px-2.5 py-0.5 text-xs"
-          style={{
-            background: deck.color ? `${deck.color}22` : "var(--surface-2)",
-            color: deck.color || "var(--muted)",
-          }}
+        <Badge
+          style={
+            deck.color ? { background: `${deck.color}22`, color: deck.color } : undefined
+          }
         >
           {deck.category ?? "No category"}
-        </span>
+        </Badge>
         {selecting ? (
           <input
             type="checkbox"
@@ -325,24 +315,19 @@ function DeckCard({
       </div>
 
       <div className="mt-3 flex gap-2">
-        <Link
-          href={`/review?free=1&topic=${deck.id}`}
-          className="flex-1 rounded-lg border border-line px-3 py-2 text-center text-sm"
-        >
+        <LinkButton href={`/review?free=1&topic=${deck.id}`} size="sm" className="flex-1">
           Practice
-        </Link>
-        <Link
-          href={`/decks/${deck.id}/study`}
-          className="flex-1 rounded-lg border border-line px-3 py-2 text-center text-sm"
-        >
+        </LinkButton>
+        <LinkButton href={`/decks/${deck.id}/study`} size="sm" className="flex-1">
           Browse
-        </Link>
-        <Link
+        </LinkButton>
+        <LinkButton
           href={`/decks/${deck.id}`}
-          className="flex-1 rounded-lg bg-accent-soft px-3 py-2 text-center text-sm font-medium text-accent"
+          size="sm"
+          className="flex-1 border-transparent bg-accent-soft text-accent hover:bg-accent-soft"
         >
           Edit
-        </Link>
+        </LinkButton>
       </div>
     </div>
   );

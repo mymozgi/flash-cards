@@ -2,10 +2,10 @@
 
 import { useActionState } from "react";
 import { saveSettings, type SettingsState } from "./actions";
+import { Button } from "@/components/ui/button";
+import { Field, inputClass } from "@/components/ui/field";
 
 const initial: SettingsState = { error: null };
-const FIELD =
-  "w-full rounded-lg border border-transparent bg-surface-2 px-3 py-2 text-sm focus:border-line focus:bg-surface";
 
 export function SettingsForm({
   settings,
@@ -32,7 +32,7 @@ export function SettingsForm({
           min={0}
           max={500}
           defaultValue={settings.daily_new_limit}
-          className={FIELD}
+          className={inputClass}
         />
       </Field>
 
@@ -43,7 +43,7 @@ export function SettingsForm({
           min={0}
           max={5000}
           defaultValue={settings.daily_review_limit}
-          className={FIELD}
+          className={inputClass}
         />
       </Field>
 
@@ -58,12 +58,12 @@ export function SettingsForm({
           min={0.7}
           max={0.98}
           defaultValue={settings.request_retention}
-          className={FIELD}
+          className={inputClass}
         />
       </Field>
 
       <Field label="Time zone" hint="Decides when the daily counters reset. IANA name, e.g. Europe/Kyiv.">
-        <input name="timezone" defaultValue={settings.timezone} className={FIELD} />
+        <input name="timezone" defaultValue={settings.timezone} className={inputClass} />
       </Field>
 
       <label className="flex items-center gap-3 text-sm">
@@ -87,31 +87,10 @@ export function SettingsForm({
         </p>
       )}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="self-start rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink disabled:opacity-60"
-      >
+      <Button type="submit" tone="primary" size="lg" loading={pending} className="self-start">
         {pending ? "Saving…" : "Save settings"}
-      </button>
+      </Button>
     </form>
   );
 }
 
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-sm font-medium">{label}</span>
-      {children}
-      <span className="text-xs text-faint">{hint}</span>
-    </label>
-  );
-}

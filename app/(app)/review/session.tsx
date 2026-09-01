@@ -239,7 +239,7 @@ export function ReviewSession({
   return (
     <div className="flex min-h-[calc(100dvh-8rem)] flex-col" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       {zoomed && <Lightbox image={zoomed} onClose={() => setZoomed(null)} />}
-      <div className="flex items-center justify-between gap-4 border-b border-line pb-3 font-mono text-[11px] uppercase tracking-[0.13em] text-faint">
+      <div className="flex items-center justify-between gap-4 border-b border-line pb-3 font-mono text-2xs uppercase tracking-[0.13em] text-faint">
         <span className="truncate">{current.topicPath ?? "No topic"}</span>
         <span className="tabular-nums">
           {done} / {done + queue.length}
@@ -296,7 +296,7 @@ export function ReviewSession({
             {current.tags.map((tag) => (
               <li
                 key={tag}
-                className="rounded bg-surface-2 px-2 py-0.5 font-mono text-[11px] text-faint"
+                className="rounded bg-surface-2 px-2 py-0.5 font-mono text-2xs text-faint"
               >
                 #{tag}
               </li>
@@ -324,7 +324,7 @@ export function ReviewSession({
                 className="min-h-14 rounded border border-line-strong bg-surface px-2 py-2 text-sm font-medium hover:border-accent hover:text-accent"
               >
                 <span className="block">{rating.label}</span>
-                <span className="block font-mono text-[11px] font-normal tabular-nums text-faint">
+                <span className="block font-mono text-2xs font-normal tabular-nums text-faint">
                   {previews?.[rating.grade]}
                 </span>
               </button>
@@ -332,7 +332,7 @@ export function ReviewSession({
           </div>
         )}
 
-        <div className="flex items-center justify-between gap-4 text-[13px] text-faint">
+        <div className="flex items-center justify-between gap-4 text-sm text-faint">
           <button
             type="button"
             onClick={() => void undo()}

@@ -13,7 +13,7 @@ export function LoginForm({ next }: { next: string }) {
       <input type="hidden" name="next" value={next} />
 
       <label className="flex flex-col gap-1.5">
-        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-faint">Email</span>
+        <span className="font-mono text-2xs uppercase tracking-[0.14em] text-faint">Email</span>
         <input
           name="email"
           type="email"
@@ -24,7 +24,7 @@ export function LoginForm({ next }: { next: string }) {
       </label>
 
       <label className="flex flex-col gap-1.5">
-        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-faint">Password</span>
+        <span className="font-mono text-2xs uppercase tracking-[0.14em] text-faint">Password</span>
         <input
           name="password"
           type="password"

@@ -132,7 +132,7 @@ export function CardList({ cards }: { cards: LibraryCard[] }) {
             >
               <p className="truncate text-sm font-medium">{card.front}</p>
               <p className="truncate text-sm text-muted">{card.back}</p>
-              <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] uppercase tracking-[0.12em] text-faint">
+              <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-2xs uppercase tracking-[0.12em] text-faint">
                 <span>{card.topicPath ?? "no deck — assign one to edit"}</span>
                 <span>·</span>
                 <span>{STATE_LABELS[card.state] ?? card.state}</span>

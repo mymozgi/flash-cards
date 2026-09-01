@@ -2,7 +2,6 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import {
   deleteTagEverywhere,
   removeCard,
@@ -23,6 +22,9 @@ import { ImageStrip } from "@/components/image-strip";
 import type { EditorImage } from "@/lib/types";
 import { ImageError, MAX_IMAGES_PER_SIDE } from "@/lib/image";
 import { discardUpload, uploadImage } from "@/lib/upload";
+import { Button, LinkButton } from "@/components/ui/button";
+import { cellInputClass, inputClass } from "@/components/ui/field";
+import { panelClass } from "@/components/ui/panel";
 import {
   CheckIcon,
   CloseIcon,
@@ -62,12 +64,10 @@ export type DeckCard = Omit<DeckCardInput, "frontImages" | "backImages"> & {
   backImages: EditorImage[];
 };
 
-/** Поля ввода везде одинаковые: серая заливка, рамка проявляется в фокусе. */
-const FIELD =
-  "w-full rounded-lg border border-transparent bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-faint focus:border-line focus:bg-surface";
-const CELL_FIELD =
-  "w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-sm focus:border-line focus:bg-surface-2";
-const PANEL = "rounded-xl border border-line bg-surface shadow-sm";
+// Вид полей и поверхностей задаётся дизайн-системой, а не локальной копией строки
+const FIELD = inputClass;
+const CELL_FIELD = cellInputClass;
+const PANEL = panelClass;
 
 export type Deck = {
   id: string;
@@ -298,29 +298,13 @@ export function DeckWorkspace({
           ))}
         </div>
 
-        <Link
-          href={`/decks/${deck.id}/study`}
-          className="rounded-lg border border-line px-4 py-2 text-sm text-muted hover:text-ink"
-        >
-          Study
-        </Link>
+        <LinkButton href={`/decks/${deck.id}/study`}>Study</LinkButton>
+        <LinkButton href={`/review?free=1&topic=${deck.id}`}>Practice</LinkButton>
 
-        <Link
-          href={`/review?free=1&topic=${deck.id}`}
-          className="rounded-lg border border-line px-4 py-2 text-sm text-muted hover:text-ink"
-        >
-          Practice
-        </Link>
-
-        <button
-          type="button"
-          onClick={save}
-          disabled={saving || uploading}
-          className="flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink disabled:opacity-60"
-        >
-          <CheckIcon />
+        <Button tone="primary" onClick={save} loading={saving} disabled={uploading}>
+          {!saving && <CheckIcon />}
           {saving ? "Saving…" : dirty.size > 0 ? `Save ${dirty.size}` : orderDirty ? "Save order" : "Save cards"}
-        </button>
+        </Button>
       </div>
 
       {status && (

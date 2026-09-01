@@ -65,7 +65,7 @@ export function ImageStrip({
                   placeholder="Caption — optional"
                   className="w-full rounded border border-line bg-surface px-2 py-1 text-xs"
                 />
-                <span className="font-mono text-[10px] text-faint">
+                <span className="font-mono text-2xs text-faint">
                   {image.width}×{image.height} · {formatBytes(image.bytes)}
                 </span>
               </div>
