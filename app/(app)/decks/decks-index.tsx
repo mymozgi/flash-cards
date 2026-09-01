@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { panelClass } from "@/components/ui/panel";
 import { DeckCard, type DeckSummary } from "@/components/deck-card";
 import { useConfirm } from "@/components/ui/confirm";
-import { inputClass } from "@/components/ui/field";
+import { inputClass, selectClass } from "@/components/ui/field";
 
 const SORTS = [
   { key: "recent", label: "Last used" },
@@ -152,7 +152,7 @@ export function DecksIndex({
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value as Sort)}
-            className="rounded-lg border border-line bg-surface px-2 py-2 text-sm"
+            className={`${selectClass} w-auto`}
           >
             {SORTS.map((s) => (
               <option key={s.key} value={s.key}>
@@ -196,7 +196,11 @@ export function DecksIndex({
 
       {visible.length === 0 ? (
         <p className="rounded-xl border border-line bg-surface py-16 text-center text-sm text-muted">
-          {decks.length === 0 ? "No sets yet — create the first one." : "Nothing matches the search."}
+          {decks.length > 0
+            ? "Nothing matches the search."
+            : readOnly
+              ? "This library has nothing to show yet."
+              : "No sets yet — create the first one."}
         </p>
       ) : (
         <ul className={`grid gap-3 sm:grid-cols-2 lg:grid-cols-3 ${busy ? "opacity-60" : ""}`}>

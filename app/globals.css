@@ -27,6 +27,9 @@
      3:1 для границ элементов управления, а --line даёт 1,24 на белом.
      Замерено: 3,41 на поверхности и 3,14 на фоне страницы. */
   --field-line: #8b8b8b;
+  /* Стрелка выпадающего списка: рисуем сами, потому что системную нельзя
+     ни отодвинуть от края, ни перекрасить под тему */
+  --select-arrow: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%234b5563' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6.5 4 4 4-4'/%3E%3C/svg%3E");
   color-scheme: light;
 }
 
@@ -48,6 +51,7 @@
     --amber: #fbbf24;
     --amber-soft: #2a2113;
     --field-line: #6b7280;
+    --select-arrow: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%239aa5b1' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6.5 4 4 4-4'/%3E%3C/svg%3E");
     color-scheme: dark;
   }
 }
@@ -69,6 +73,7 @@
   --amber: #fbbf24;
   --amber-soft: #2a2113;
   --field-line: #6b7280;
+  --select-arrow: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%239aa5b1' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6.5 4 4 4-4'/%3E%3C/svg%3E");
   color-scheme: dark;
 }
 

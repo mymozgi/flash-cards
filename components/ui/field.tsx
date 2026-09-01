@@ -17,6 +17,16 @@ export const inputClass =
   "focus-visible:outline-accent disabled:opacity-55";
 
 /** Ячейка таблицы: без заливки, пока в неё не встали курсором. */
+/**
+ * Выпадающий список. Системная стрелка прижимается к самой рамке и на
+ * коротких значениях налезает на текст, поэтому родная убрана, своя
+ * нарисована фоном и справа оставлено под неё место.
+ */
+export const selectClass =
+  inputClass +
+  " appearance-none bg-[length:12px] bg-[right_0.75rem_center] bg-no-repeat pr-9 " +
+  "bg-[image:var(--select-arrow)]";
+
 /** В ячейке таблицы границу даёт сама сетка, поэтому поле остаётся плоским. */
 export const cellInputClass =
   "w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-sm " +

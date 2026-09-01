@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { saveSettings, type SettingsState } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Field, inputClass } from "@/components/ui/field";
@@ -20,6 +20,9 @@ export function SettingsForm({
   };
 }) {
   const [state, formAction, pending] = useActionState(saveSettings, initial);
+  // Показываем состояние доступа сразу при переключении: до сохранения оно
+  // ещё не действует, и об этом честнее сказать, чем промолчать
+  const [shareChecked, setShareChecked] = useState(settings.public_library);
 
   return (
     <form action={formAction} className="mt-5 flex max-w-lg flex-col gap-4">
@@ -83,6 +86,7 @@ export function SettingsForm({
             type="checkbox"
             name="public_library"
             defaultChecked={settings.public_library}
+            onChange={(e) => setShareChecked(e.target.checked)}
             className="mt-0.5 size-4 accent-[var(--accent)]"
           />
           <span>
@@ -95,6 +99,13 @@ export function SettingsForm({
             <span className="mt-1 block text-2xs text-amber">
               Turn this on only if you are fine with the whole library being readable by anyone
               who has the link.
+            </span>
+            <span className="mt-2 block text-2xs text-faint">
+              {settings.public_library
+                ? "Currently shared. Guests reach it at /decks without signing in."
+                : shareChecked
+                  ? "Not shared yet — press Save settings to turn it on."
+                  : "Not shared. Guests see an empty library."}
             </span>
           </span>
         </label>
