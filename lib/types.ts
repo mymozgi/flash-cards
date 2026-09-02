@@ -27,6 +27,16 @@ export type DeckSummary = {
   color: string;
   /** Готовый адрес обложки; пустая строка — обложки нет. */
   cover: string;
+  /**
+   * Предки от корня до родителя. Нужны фильтру: выбрав «Psychology», человек
+   * ждёт увидеть и то, что лежит под «Cognitive Biases», — иначе набор
+   * пропадает из собственной же категории.
+   */
+  ancestors: string[];
+  /** Корень ветки. У корневого набора — он сам. */
+  rootId: string;
+  rootName: string;
+  rootColor: string;
   category: string | null;
   total: number;
   memorized: number;

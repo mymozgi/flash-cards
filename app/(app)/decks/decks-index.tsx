@@ -33,6 +33,9 @@ export function DecksIndex({
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<Sort>("recent");
+  /** null — «все категории». Иначе id узла, чью ветку показываем. */
+  const [branch, setBranch] = useState<string | null>(null);
+  const [onlyUnfinished, setOnlyUnfinished] = useState(false);
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [creating, setCreating] = useState(openCreate);
@@ -41,13 +44,43 @@ export function DecksIndex({
   const [busy, startTransition] = useTransition();
   const { ask, dialog } = useConfirm();
 
+  /**
+   * Категории для фильтра — корни, у которых действительно что-то есть.
+   * Показывать пустую ветку значило бы предлагать фильтр, который заведомо
+   * даёт пустой экран.
+   */
+  const categories = useMemo(() => {
+    const seen = new Map<string, { id: string; name: string; color: string; count: number }>();
+    for (const deck of decks) {
+      const entry = seen.get(deck.rootId) ?? {
+        id: deck.rootId,
+        name: deck.rootName,
+        color: deck.rootColor,
+        count: 0,
+      };
+      entry.count += 1;
+      seen.set(deck.rootId, entry);
+    }
+    return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [decks]);
+
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const list = q
-      ? decks.filter((d) =>
-          [d.name, d.description, d.category ?? ""].some((f) => f.toLowerCase().includes(q)),
-        )
-      : decks;
+    let list = decks;
+
+    // Ветка целиком, а не только прямые дети: выбрав «Psychology», человек
+    // ждёт увидеть и то, что лежит под «Cognitive Biases»
+    if (branch) {
+      list = list.filter((d) => d.id === branch || d.ancestors.includes(branch));
+    }
+    if (onlyUnfinished) {
+      list = list.filter((d) => d.total > d.memorized);
+    }
+    if (q) {
+      list = list.filter((d) =>
+        [d.name, d.description, d.category ?? ""].some((f) => f.toLowerCase().includes(q)),
+      );
+    }
 
     return [...list].sort((a, b) => {
       if (sort === "name") return a.name.localeCompare(b.name);
@@ -58,9 +91,9 @@ export function DecksIndex({
       }
       return (b.lastUsed ?? "").localeCompare(a.lastUsed ?? "");
     });
-  }, [decks, query, sort]);
+  }, [decks, query, sort, branch, onlyUnfinished]);
 
-  const totalCards = decks.reduce((sum, d) => sum + d.total, 0);
+  const totalCards = visible.reduce((sum, d) => sum + d.total, 0);
   const unmemorized = decks.reduce((sum, d) => sum + (d.total - d.memorized), 0);
 
   const create = () => {
@@ -133,6 +166,29 @@ export function DecksIndex({
         </div>
       )}
 
+      {/* Фильтры отдельной полосой над поиском: они сужают набор, а поиск и
+          сортировка работают уже внутри суженного. Смешивать их в одну строку
+          значило бы делать вид, что это равноправные элементы. */}
+      {categories.length > 1 && (
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+          <FilterChip active={branch === null} onClick={() => setBranch(null)}>
+            All
+            <span className="tabular-nums opacity-60">{decks.length}</span>
+          </FilterChip>
+          {categories.map((category) => (
+            <FilterChip
+              key={category.id}
+              active={branch === category.id}
+              color={category.color}
+              onClick={() => setBranch((prev) => (prev === category.id ? null : category.id))}
+            >
+              {category.name}
+              <span className="tabular-nums opacity-60">{category.count}</span>
+            </FilterChip>
+          ))}
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-0 flex-1">
           <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-faint">
@@ -160,6 +216,19 @@ export function DecksIndex({
             ))}
           </select>
         </label>
+        <button
+          type="button"
+          onClick={() => setOnlyUnfinished((v) => !v)}
+          aria-pressed={onlyUnfinished}
+          title="Hide sets where every card is already memorized"
+          className={`flex min-h-12 items-center gap-2 rounded-lg border-control px-4 text-sm font-semibold ${
+            onlyUnfinished
+              ? "border-accent bg-accent-soft text-accent"
+              : "border-field-line text-muted"
+          }`}
+        >
+          Unfinished
+        </button>
         {!readOnly && (
           <button
             type="button"
@@ -197,11 +266,26 @@ export function DecksIndex({
 
       {visible.length === 0 ? (
         <p className="rounded-xl border border-line bg-surface py-16 text-center text-sm text-muted">
-          {decks.length > 0
-            ? "Nothing matches the search."
-            : readOnly
-              ? "This library has nothing to show yet."
-              : "No sets yet — create the first one."}
+          {decks.length > 0 ? (
+            <>
+              Nothing matches these filters.{" "}
+              <button
+                type="button"
+                onClick={() => {
+                  setBranch(null);
+                  setOnlyUnfinished(false);
+                  setQuery("");
+                }}
+                className="text-accent underline underline-offset-4"
+              >
+                Clear them
+              </button>
+            </>
+          ) : readOnly ? (
+            "This library has nothing to show yet."
+          ) : (
+            "No sets yet — create the first one."
+          )}
         </p>
       ) : (
         <ul className={`grid gap-3 sm:grid-cols-2 lg:grid-cols-3 ${busy ? "opacity-60" : ""}`}>
@@ -243,5 +327,44 @@ export function DecksIndex({
       </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Пилюля фильтра.
+ *
+ * Цвет категории показан точкой, а не заливкой: заливка чужим цветом сломала
+ * бы контраст подписи, а сам оттенок здесь второй признак — имя категории
+ * видно всегда. Тот же приём, что у пилюль тегов.
+ */
+function FilterChip({
+  active,
+  color,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  color?: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`flex min-h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border-control px-4 text-sm font-semibold ${
+        active ? "border-accent bg-accent-soft text-accent" : "border-field-line text-muted"
+      }`}
+    >
+      {color && (
+        <span
+          aria-hidden
+          className="size-2 shrink-0 rounded-full"
+          style={{ background: color }}
+        />
+      )}
+      {children}
+    </button>
   );
 }

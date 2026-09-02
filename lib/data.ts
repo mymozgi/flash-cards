@@ -102,15 +102,34 @@ export async function getDeckSummaries(): Promise<DeckSummary[]> {
   );
   const byId = new Map(topics.map((t) => [t.id, t]));
 
+  /** Цепочка предков снизу вверх, с защитой от испорченного петлёй дерева. */
+  const ancestorsOf = (id: string): string[] => {
+    const chain: string[] = [];
+    const seen = new Set<string>([id]);
+    let parentId = byId.get(id)?.parent_id ?? null;
+    while (parentId && !seen.has(parentId)) {
+      seen.add(parentId);
+      chain.unshift(parentId);
+      parentId = byId.get(parentId)?.parent_id ?? null;
+    }
+    return chain;
+  };
+
   return topics.map((topic) => {
     const row = stats.get(topic.id);
     const parent = topic.parent_id ? byId.get(topic.parent_id) : undefined;
+    const ancestors = ancestorsOf(topic.id);
+    const root = byId.get(ancestors[0] ?? topic.id);
     return {
       id: topic.id,
       name: topic.name,
       description: topic.description ?? "",
       color: topic.color ?? "",
       cover: topic.image_path ? publicUrl(topic.image_path) : "",
+      ancestors,
+      rootId: root?.id ?? topic.id,
+      rootName: root?.name ?? topic.name,
+      rootColor: root?.color ?? "",
       category: parent?.name ?? null,
       total: row?.total ?? 0,
       memorized: row?.memorized ?? 0,
