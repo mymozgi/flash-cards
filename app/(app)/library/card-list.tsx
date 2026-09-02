@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { bulkUpdate, type BulkOp } from "./actions";
 import { useConfirm } from "@/components/ui/confirm";
 import { Button } from "@/components/ui/button";
+import { usePrompt } from "@/components/ui/prompt";
 import { TagChip } from "@/components/ui/tag-chip";
 import type { CardTag } from "@/lib/types";
 
@@ -40,6 +41,7 @@ export function CardList({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const { ask, dialog } = useConfirm();
+  const { ask: askText, dialog: promptDialog } = usePrompt();
   const router = useRouter();
 
   const toggle = (id: string) =>
@@ -78,6 +80,7 @@ export function CardList({
   return (
     <>
       {dialog}
+      {promptDialog}
       {!readOnly && selected.size > 0 && (
         <div className="sticky top-0 z-10 -mx-5 mb-3 flex flex-wrap items-center gap-2 border-b border-line bg-surface px-5 py-3 text-sm sm:mx-0 sm:rounded sm:border">
           <span className="font-mono text-xs tabular-nums text-faint">
@@ -91,8 +94,14 @@ export function CardList({
           </Button>
           <Button
             size="sm"
-            onClick={() => {
-              const tags = prompt("Tags, comma separated");
+            onClick={async () => {
+              const tags = await askText({
+                title: `Add tags to ${selected.size} ${selected.size === 1 ? "card" : "cards"}`,
+                label: "Tags",
+                placeholder: "biology, cells",
+                description: "Comma separated. Existing tags on these cards stay.",
+                confirmLabel: "Add tags",
+              });
               if (tags) run({ action: "add_tags", tags });
             }}
           >
@@ -100,12 +109,20 @@ export function CardList({
           </Button>
           <Button
             size="sm"
-            onClick={() => {
-              const topicPath = prompt("New topic — path separated by /");
+            onClick={async () => {
+              const topicPath = await askText({
+                title: `Move ${selected.size} ${selected.size === 1 ? "card" : "cards"}`,
+                label: "Category",
+                placeholder: "Psychology / Cognitive Biases",
+                description:
+                  "Path separated by /. Missing levels are created. Leave empty to take the cards out of every category.",
+                allowEmpty: true,
+                confirmLabel: "Move",
+              });
               if (topicPath !== null) run({ action: "move_topic", topicPath });
             }}
           >
-            Move to topic
+            Move to category
           </Button>
           <Button tone="danger" size="sm" onClick={() => run({ action: "delete" })}>
             Delete

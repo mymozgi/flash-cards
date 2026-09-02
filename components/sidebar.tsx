@@ -18,24 +18,35 @@ import {
   TrashIcon,
 } from "./icons";
 
+/*
+  Две группы, и граница между ними смысловая: сверху — «учиться», снизу —
+  «раскладывать по местам».
+
+  Дубли разведены. «Manage categories» отсюда убран: он показывал то же дерево
+  topics, что и Knowledge, только списком — две страницы над одной таблицей.
+  Старый адрес /topics теперь переадресует. «Knowledge areas» переименован в
+  «Tag statistics» и переехал вниз: он всегда был про теги, а с появлением
+  раздела Knowledge его название стало прямо вводить в заблуждение.
+*/
 const GROUPS: { items: { href: string; label: string; Icon: typeof GridIcon }[] }[] = [
   {
     items: [
       { href: "/", label: "Today", Icon: ListIcon },
-      { href: "/decks", label: "Flashcard sets", Icon: GridIcon },
       { href: "/review", label: "Review due", Icon: SearchIcon },
       // Свободная тренировка доступна всегда: расписание может быть пустым,
       // а желание повторить — нет
       { href: "/review?free=1", label: "Practice", Icon: PlusIcon },
-      { href: "/stats", label: "Knowledge areas", Icon: TableIcon },
+      { href: "/decks", label: "Study sets", Icon: GridIcon },
       { href: "/how-it-works", label: "How it works", Icon: TagIcon },
     ],
   },
   {
     items: [
-      { href: "/import", label: "Import CSV", Icon: TableIcon },
-      { href: "/topics", label: "Manage categories", Icon: ListIcon },
+      { href: "/knowledge", label: "Knowledge", Icon: ListIcon },
+      { href: "/library", label: "All cards", Icon: SearchIcon },
       { href: "/tags", label: "Manage tags", Icon: TagIcon },
+      { href: "/stats", label: "Tag statistics", Icon: TableIcon },
+      { href: "/import", label: "Import", Icon: TableIcon },
       { href: "/trash", label: "Deleted cards", Icon: TrashIcon },
       { href: "/settings", label: "Settings", Icon: SettingsIcon },
     ],
@@ -47,8 +58,8 @@ const GROUPS: { items: { href: string; label: string; Icon: typeof GridIcon }[] 
 const GUEST_GROUPS: typeof GROUPS = [
   {
     items: [
-      { href: "/decks", label: "Flashcard sets", Icon: GridIcon },
-      { href: "/library", label: "Browse cards", Icon: SearchIcon },
+      { href: "/decks", label: "Study sets", Icon: GridIcon },
+      { href: "/library", label: "All cards", Icon: SearchIcon },
       { href: "/how-it-works", label: "How it works", Icon: TagIcon },
     ],
   },

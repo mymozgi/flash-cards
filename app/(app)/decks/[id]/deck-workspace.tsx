@@ -26,6 +26,7 @@ import { Button, LinkButton } from "@/components/ui/button";
 import { cellInputClass, inputClass } from "@/components/ui/field";
 import { panelClass } from "@/components/ui/panel";
 import { useConfirm } from "@/components/ui/confirm";
+import { usePrompt } from "@/components/ui/prompt";
 import { useReorder } from "@/components/use-reorder";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -1297,10 +1298,18 @@ function ManageTags({
   const router = useRouter();
   const [busy, startTransition] = useTransition();
   const { ask, dialog } = useConfirm();
+  const { ask: askText, dialog: promptDialog } = usePrompt();
 
-  const rename = (tag: string) => {
-    const next = prompt(`Rename “${tag}” everywhere it is used:`, tag);
-    if (!next || next === tag) return;
+  const rename = async (tag: string) => {
+    const next = await askText({
+      title: `Rename “${tag}”`,
+      description:
+        "The tag is renamed everywhere it is used, not only in this set. Renaming into a tag that already exists merges the two.",
+      label: "New name",
+      initialValue: tag,
+      confirmLabel: "Rename",
+    });
+    if (next === null || next === tag) return;
     startTransition(async () => {
       const res = await renameTagEverywhere(tag, next);
       if (!res.ok) return onError(res.error ?? "Could not rename the tag");
@@ -1327,6 +1336,7 @@ function ManageTags({
   return (
     <div className={`mb-4 rounded-lg bg-surface-2 p-3 ${busy ? "opacity-60" : ""}`}>
       {dialog}
+      {promptDialog}
       {tags.length === 0 ? (
         <p className="text-sm text-muted">No tags in this deck yet.</p>
       ) : (

@@ -8,6 +8,7 @@ import { hueClass, slotName, TAG_SLOTS, type TagSlot } from "@/lib/tag-color";
 import { SearchIcon, TrashIcon } from "@/components/icons";
 import { useConfirm } from "@/components/ui/confirm";
 import { Button } from "@/components/ui/button";
+import { usePrompt } from "@/components/ui/prompt";
 import { inputClass } from "@/components/ui/field";
 import { TagChip } from "@/components/ui/tag-chip";
 
@@ -19,15 +20,23 @@ export function TagsManager({ tags }: { tags: TagRowView[] }) {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const { ask, dialog } = useConfirm();
+  const { ask: askText, dialog: promptDialog } = usePrompt();
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return q ? tags.filter((t) => t.name.includes(q)) : tags;
   }, [tags, query]);
 
-  const rename = (name: string) => {
-    const next = prompt(`Rename “${name}” everywhere it is used:`, name);
-    if (!next || next === name) return;
+  const rename = async (name: string) => {
+    const next = await askText({
+      title: `Rename “${name}”`,
+      description:
+        "The tag is renamed everywhere it is used. Renaming into a tag that already exists merges the two.",
+      label: "New name",
+      initialValue: name,
+      confirmLabel: "Rename",
+    });
+    if (next === null || next === name) return;
     startTransition(async () => {
       const res = await renameTagEverywhere(name, next);
       if (!res.ok) setError(res.error ?? "Could not rename the tag");
@@ -69,6 +78,7 @@ export function TagsManager({ tags }: { tags: TagRowView[] }) {
   return (
     <div className="mt-5">
       {dialog}
+      {promptDialog}
       <div className="relative max-w-md">
         <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-faint">
           <SearchIcon />

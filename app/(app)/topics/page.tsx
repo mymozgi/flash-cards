@@ -1,19 +1,12 @@
-import { getTopicTree } from "@/lib/data";
-import { TopicManager } from "./topic-manager";
+import { redirect } from "next/navigation";
 
-export default async function TopicsPage() {
-  const topics = await getTopicTree();
-
-  return (
-    <>
-      <header className="border-b border-line-strong pb-4">
-        <h1 className="font-display text-3xl font-semibold tracking-tight">Topics</h1>
-        <p className="mt-2 max-w-prose text-sm text-muted">
-          A topic answers “where is this from”, a tag answers “what is it about”. Topic names are
-          unique only among siblings, so identical subtopics in different branches never collide.
-        </p>
-      </header>
-      <TopicManager topics={topics} />
-    </>
-  );
+/**
+ * Прежний экран «Manage categories» переехал в раздел Knowledge.
+ *
+ * Здесь редирект, а не копия: две страницы над одной таблицей — это и есть
+ * тот дубль, ради устранения которого раздел затевался. Ссылки из закладок
+ * и из старых записей продолжают работать.
+ */
+export default function TopicsPage() {
+  redirect("/knowledge");
 }
