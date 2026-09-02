@@ -156,7 +156,7 @@ export function DecksIndex({
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && create()}
-            placeholder="Set name, or Category / Set to nest it"
+            placeholder="Topic name, or Category / Topic to file it"
             className={`${inputClass} min-w-0 flex-1`}
           />
           <Button tone="primary" onClick={create} loading={busy}>

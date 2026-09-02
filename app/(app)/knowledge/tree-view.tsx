@@ -60,10 +60,12 @@ export function TreeView({
     потомком, то есть создать петлю, которую триггер потом отклонял.
   */
   const flat = useMemo(() => {
-    const out: { id: string; parentId: string | null }[] = [];
+    const out: { id: string; parentId: string | null; kind: string }[] = [];
     const walk = (list: KnowledgeNode[]) => {
       for (const node of list) {
-        out.push({ id: node.id, parentId: node.parentId });
+        // роль нужна для проверки формы: категория не ложится в категорию,
+        // а внутрь темы не кладут ничего
+        out.push({ id: node.id, parentId: node.parentId, kind: node.kind });
         walk(node.children);
       }
     };

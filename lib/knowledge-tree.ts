@@ -14,6 +14,8 @@ export type TreeNode = {
   parentId: string | null;
   /** Порядок среди братьев. */
   position?: number;
+  /** Роль узла. Неизвестна до миграции — тогда форма не проверяется. */
+  kind?: string | null;
 };
 
 export type DropZone = "before" | "after" | "inside";
@@ -55,14 +57,33 @@ export function canDrop<T extends TreeNode>(
   zone: DropZone,
 ): boolean {
   if (dragId === targetId) return false;
-  const branch = branchOf(nodes, dragId);
-  if (zone === "inside") return !branch.has(targetId);
 
   const target = nodes.find((node) => node.id === targetId);
   if (!target) return false;
-  // встать рядом с собственным потомком значит переехать под него же —
-  // это та же петля, только выраженная иначе
-  return !branch.has(target.parentId ?? "");
+
+  const branch = branchOf(nodes, dragId);
+  if (zone === "inside" ? branch.has(targetId) : branch.has(target.parentId ?? "")) {
+    // вложить узел в себя или в своего потомка — петля; встать рядом с
+    // потомком значит переехать под него же, то есть та же петля иначе
+    return false;
+  }
+
+  /*
+    Форма дерева. Проверяется и здесь тоже — не вместо базы, а до неё:
+    подсвечивать цель, которую триггер заведомо отвергнет, значит предлагать
+    действие, обречённое на отказ. Роль может быть неизвестна (миграция не
+    применена) — тогда форма не проверяется и работает прежняя свобода.
+  */
+  const dragged = nodes.find((node) => node.id === dragId);
+  const newParentId = zone === "inside" ? target.id : target.parentId;
+  const newParent = newParentId ? nodes.find((node) => node.id === newParentId) : null;
+
+  // категория живёт только наверху
+  if (dragged?.kind === "area" && newParentId !== null) return false;
+  // внутри темы не лежит ничего, кроме карточек
+  if (newParent?.kind === "deck") return false;
+
+  return true;
 }
 
 /**
@@ -200,4 +221,30 @@ export function classify(path: string | null | undefined): Classification {
   // одиночный узел — это категория без темы: карточка лежит прямо в ней
   if (parts.length === 1) return { category: parts[0], topic: null };
   return { category: parts[0], topic: parts[parts.length - 1] };
+}
+
+/**
+ * Путь из CSV — в пару «категория и тема».
+ *
+ * Уровней в модели ровно два, а в чужом файле путь бывает любой глубины.
+ * Обрезать лишнее молча нельзя: пропавший сегмент — это потерянный смысл,
+ * и человек узнает о пропаже, только пересчитав карточки. Поэтому хвост не
+ * отбрасывается, а склеивается в имя темы.
+ *
+ *   «Medicine»                            → тема «Medicine» без категории
+ *   «Medicine / Pharmacology»             → Medicine › Pharmacology
+ *   «Medicine / Pharmacology / Blockers»  → Medicine › «Pharmacology — Blockers»
+ *
+ * Один сегмент даёт тему без категории, а не категорию без темы: карточке
+ * нужно куда-то лечь, а в категории она лежать не может.
+ */
+export function splitTopicPath(path: string): { category: string | null; topic: string | null } {
+  const parts = path
+    .split("/")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length === 0) return { category: null, topic: null };
+  if (parts.length === 1) return { category: null, topic: parts[0] };
+  return { category: parts[0], topic: parts.slice(1).join(" — ") };
 }

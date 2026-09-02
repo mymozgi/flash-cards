@@ -3,6 +3,7 @@ import {
   isStudySet,
   kindInEffect,
   classify,
+  splitTopicPath,
   branchOf,
   canDrop,
   depthOf,
@@ -262,5 +263,84 @@ describe("классификация карточки", () => {
   it("переименование категории меняет подпись само: она и есть путь", () => {
     // именно поэтому имя не копируется в карточку
     expect(classify("Biology / Pharmacology").category).toBe("Biology");
+  });
+});
+
+describe("путь из CSV в пару «категория и тема»", () => {
+  it("два сегмента раскладываются как есть", () => {
+    expect(splitTopicPath("Medicine / Pharmacology")).toEqual({
+      category: "Medicine",
+      topic: "Pharmacology",
+    });
+  });
+
+  it("один сегмент даёт тему без категории, а не категорию без темы", () => {
+    // карточке нужно куда-то лечь, а в категории она лежать не может
+    expect(splitTopicPath("Medicine")).toEqual({ category: null, topic: "Medicine" });
+  });
+
+  it("хвост склеивается, а не отбрасывается: пропавший сегмент — потерянный смысл", () => {
+    expect(splitTopicPath("Medicine / Pharmacology / Beta blockers")).toEqual({
+      category: "Medicine",
+      topic: "Pharmacology — Beta blockers",
+    });
+  });
+
+  it("пустой путь не создаёт ничего", () => {
+    expect(splitTopicPath("")).toEqual({ category: null, topic: null });
+    expect(splitTopicPath("  /  / ")).toEqual({ category: null, topic: null });
+  });
+
+  it("лишние пробелы и разделители не плодят пустых уровней", () => {
+    expect(splitTopicPath(" Medicine //  Pharmacology ")).toEqual({
+      category: "Medicine",
+      topic: "Pharmacology",
+    });
+  });
+});
+
+describe("форма дерева при переносе", () => {
+  const shaped: TreeNode[] = [
+    { id: "med", parentId: null, kind: "area", position: 0 },
+    { id: "pharm", parentId: "med", kind: "deck", position: 0 },
+    { id: "organs", parentId: "med", kind: "deck", position: 1 },
+    { id: "bio", parentId: null, kind: "area", position: 1 },
+    { id: "loose", parentId: null, kind: "deck", position: 2 },
+  ];
+
+  it("категорию нельзя вложить в категорию", () => {
+    expect(canDrop(shaped, "bio", "med", "inside")).toBe(false);
+  });
+
+  it("категорию нельзя поставить рядом с темой: она уехала бы внутрь", () => {
+    expect(canDrop(shaped, "bio", "pharm", "before")).toBe(false);
+  });
+
+  it("внутрь темы не кладут ничего", () => {
+    expect(canDrop(shaped, "organs", "pharm", "inside")).toBe(false);
+  });
+
+  it("тему можно переложить в другую категорию", () => {
+    expect(canDrop(shaped, "pharm", "bio", "inside")).toBe(true);
+  });
+
+  it("тему можно переставить среди сестёр", () => {
+    expect(canDrop(shaped, "organs", "pharm", "before")).toBe(true);
+  });
+
+  it("нераспределённую тему можно вложить в категорию", () => {
+    expect(canDrop(shaped, "loose", "med", "inside")).toBe(true);
+  });
+
+  it("категории можно менять местами наверху", () => {
+    expect(canDrop(shaped, "bio", "med", "before")).toBe(true);
+  });
+
+  it("без ролей форма не проверяется: миграция могла быть не применена", () => {
+    const plain: TreeNode[] = [
+      { id: "a", parentId: null },
+      { id: "b", parentId: null },
+    ];
+    expect(canDrop(plain, "b", "a", "inside")).toBe(true);
   });
 });

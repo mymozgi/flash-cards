@@ -1,5 +1,6 @@
 import "server-only";
 import { isMissingColumn } from "./schema";
+import { splitTopicPath } from "./knowledge-tree";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /** Теги нормализуются при вводе, иначе «На Собеседование» и «на-собеседование» разъезжаются. */
@@ -39,11 +40,14 @@ export async function resolveTopicPath(
   const key = path.trim();
   if (cache?.has(key)) return cache.get(key) ?? null;
 
-  const parts = key
-    .split("/")
-    .map((p) => p.trim())
-    .filter(Boolean)
-    .slice(0, 3);
+  /*
+    Модель ровно двухуровневая, поэтому путь любой глубины сводится к паре
+    «категория и тема». Прежде здесь бралось до трёх сегментов и все, кроме
+    последнего, создавались категориями — после введения формы дерева такой
+    импорт отклонялся бы целиком: категория внутри категории запрещена.
+  */
+  const { category, topic } = splitTopicPath(key);
+  const parts = [category, topic].filter((part): part is string => Boolean(part));
 
   if (parts.length === 0) {
     cache?.set(key, null);

@@ -107,7 +107,17 @@ export function KnowledgeIndex({
    * при первом же переносе.
    */
   const applyMove = ({ dragId, targetId, zone }: TreeMove) => {
-    const place = placeAfterDrop(flat, dragId, targetId, zone);
+    const place = placeAfterDrop(
+      flat.map((node) => ({
+        id: node.id,
+        parentId: node.parentId,
+        position: node.position,
+        kind: node.kind,
+      })),
+      dragId,
+      targetId,
+      zone,
+    );
     if (!place) {
       setError("A category cannot be placed inside itself");
       return;

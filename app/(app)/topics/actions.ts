@@ -2,38 +2,39 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient, requireUser } from "@/lib/supabase/server";
+import { resolveTopicPath } from "@/lib/cards";
 
 export type TopicState = { error: string | null };
 
+/**
+ * Создание набора по пути «Категория / Тема».
+ *
+ * Разбор пути делает resolveTopicPath — тот же, что в импорте и в выборе
+ * категории. Прежде здесь лежала вторая копия того же кода, и она успела
+ * разойтись с первой: копия создавала узлы без рода, то есть категориями, и
+ * после введения формы дерева «Psychology / Habits» отклонялось бы триггером —
+ * категория внутри категории.
+ *
+ * Две реализации одного правила — это две правды, и одна из них всегда
+ * устаревает молча.
+ */
 export async function createTopic(_prev: TopicState, formData: FormData): Promise<TopicState> {
   const user = await requireUser();
   const supabase = await createClient();
 
-  const parts = String(formData.get("path") ?? "")
-    .split("/")
-    .map((p) => p.trim())
-    .filter(Boolean)
-    .slice(0, 3);
-  if (parts.length === 0) return { error: "Enter a topic path" };
+  const path = String(formData.get("path") ?? "").trim();
+  if (!path) return { error: "Enter a name, or Category / Topic to nest it" };
 
-  let parentId: string | null = null;
-  for (const name of parts) {
-    const query = supabase.from("topics").select("id").eq("user_id", user.id).eq("name", name);
-    const { data: found } = await (
-      parentId === null ? query.is("parent_id", null) : query.eq("parent_id", parentId)
-    ).maybeSingle();
-
-    if (found) {
-      parentId = found.id as string;
-      continue;
-    }
-    const { data, error } = await supabase
-      .from("topics")
-      .insert({ user_id: user.id, parent_id: parentId, name })
-      .select("id")
-      .single();
-    if (error) return { error: error.message };
-    parentId = data.id as string;
+  try {
+    const id = await resolveTopicPath(supabase, user.id, path);
+    if (!id) return { error: "Enter a name, or Category / Topic to nest it" };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Could not create it";
+    return {
+      error: /already exists|23505/i.test(message)
+        ? "Something with this name already exists here"
+        : message,
+    };
   }
 
   revalidatePath("/", "layout");
