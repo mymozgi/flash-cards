@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient, currentUser } from "@/lib/supabase/server";
 import { getTags, getTopicTree } from "@/lib/data";
 import { publicUrl } from "@/lib/storage";
+import { hueClass, toSlot } from "@/lib/tag-color";
 import { CardList, type LibraryCard } from "./card-list";
 import { Button } from "@/components/ui/button";
 import { inputClass } from "@/components/ui/field";
@@ -34,7 +35,7 @@ export default async function LibraryPage(props: {
 
   let query = supabase
     .from("cards")
-    .select("id,front_md,back_md,topic_id,suspended, card_tags(tags(name)), scheduling(state), media(thumb_path,position)")
+    .select("id,front_md,back_md,topic_id,suspended, card_tags(tags(name,color)), scheduling(state), media(thumb_path,position)")
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(PAGE_SIZE);
@@ -55,7 +56,7 @@ export default async function LibraryPage(props: {
       back_md: string;
       topic_id: string | null;
       suspended: boolean;
-      card_tags: { tags: { name: string } }[];
+      card_tags: { tags: { name: string; color: number | null } }[];
       scheduling: { state: string } | { state: string }[] | null;
       media: { thumb_path: string; position: number }[];
     }[]
@@ -65,7 +66,7 @@ export default async function LibraryPage(props: {
     back: row.back_md,
     topicId: row.topic_id,
     topicPath: row.topic_id ? (pathById.get(row.topic_id) ?? null) : null,
-    tags: (row.card_tags ?? []).map((t) => t.tags.name),
+    tags: (row.card_tags ?? []).map((t) => ({ name: t.tags.name, slot: toSlot(t.tags.color) })),
     suspended: row.suspended,
     state: (Array.isArray(row.scheduling) ? row.scheduling[0]?.state : row.scheduling?.state) ?? "new",
     thumbUrl:
@@ -102,6 +103,9 @@ export default async function LibraryPage(props: {
         ))}
         {tags.map((tag) => (
           <Filter key={tag.id} href={`/library?tag=${tag.id}`} active={params.tag === tag.id}>
+            {hueClass(tag.slot) && (
+              <span aria-hidden className={`mr-1.5 inline-block size-2 rounded-full align-middle ${hueClass(tag.slot)}`} />
+            )}
             #{tag.name}
           </Filter>
         ))}

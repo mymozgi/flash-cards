@@ -3,13 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { deleteTagEverywhere, renameTagEverywhere } from "@/app/(app)/decks/[id]/actions";
+import { setTagColor } from "./actions";
+import { hueClass, slotName, TAG_SLOTS, type TagSlot } from "@/lib/tag-color";
 import { SearchIcon, TrashIcon } from "@/components/icons";
 import { useConfirm } from "@/components/ui/confirm";
 import { Button } from "@/components/ui/button";
 import { inputClass } from "@/components/ui/field";
 import { TagChip } from "@/components/ui/tag-chip";
 
-export type TagRowView = { id: string; name: string; count: number };
+export type TagRowView = { id: string; name: string; count: number; slot: TagSlot };
 
 export function TagsManager({ tags }: { tags: TagRowView[] }) {
   const router = useRouter();
@@ -29,6 +31,17 @@ export function TagsManager({ tags }: { tags: TagRowView[] }) {
     startTransition(async () => {
       const res = await renameTagEverywhere(name, next);
       if (!res.ok) setError(res.error ?? "Could not rename the tag");
+      else {
+        setError(null);
+        router.refresh();
+      }
+    });
+  };
+
+  const paint = (tagId: string, slot: TagSlot) => {
+    startTransition(async () => {
+      const res = await setTagColor(tagId, slot);
+      if (!res.ok) setError(res.error ?? "Could not set the colour");
       else {
         setError(null);
         router.refresh();
@@ -82,11 +95,12 @@ export function TagsManager({ tags }: { tags: TagRowView[] }) {
       ) : (
         <ul className={`mt-4 divide-y divide-line rounded-xl border border-line bg-surface ${busy ? "opacity-60" : ""}`}>
           {visible.map((tag) => (
-            <li key={tag.id} className="flex items-center gap-3 px-4 py-3 text-sm">
-              <TagChip name={tag.name} href={`/library?tag=${tag.id}`} />
+            <li key={tag.id} className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
+              <TagChip name={tag.name} slot={tag.slot} href={`/library?tag=${tag.id}`} />
               <span className="tabular-nums text-xs text-faint">
                 {tag.count} {tag.count === 1 ? "card" : "cards"}
               </span>
+              <Palette current={tag.slot} onPick={(slot) => paint(tag.id, slot)} />
               <Button size="sm" onClick={() => rename(tag.name)} className="ml-auto">
                 Rename
               </Button>
@@ -103,6 +117,51 @@ export function TagsManager({ tags }: { tags: TagRowView[] }) {
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+/**
+ * Выбор цвета: шесть проверенных оттенков плюс «без цвета».
+ *
+ * Группа радиокнопок, а не набор самостоятельных кнопок: выбор здесь
+ * взаимоисключающий, и стрелки внутри группы должны работать сами — это
+ * поведение даёт разметка, а не обработчики.
+ */
+function Palette({
+  current,
+  onPick,
+}: {
+  current: TagSlot;
+  onPick: (slot: TagSlot) => void;
+}) {
+  const options: TagSlot[] = [...Array(TAG_SLOTS).keys(), null];
+
+  return (
+    <div role="radiogroup" aria-label="Tag colour" className="flex items-center gap-1">
+      {options.map((slot) => {
+        const active = slot === current;
+        const hue = hueClass(slot);
+        return (
+          <button
+            key={slot ?? "none"}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            aria-label={slotName(slot)}
+            title={slotName(slot)}
+            onClick={() => onPick(slot)}
+            className={`grid size-7 place-items-center rounded-full transition-[box-shadow] ${
+              active ? "shadow-[0_0_0_2px_var(--accent)]" : "hover:shadow-[0_0_0_2px_var(--line-strong)]"
+            }`}
+          >
+            <span
+              aria-hidden
+              className={`size-3.5 rounded-full ${hue || "border-control border-field-line"}`}
+            />
+          </button>
+        );
+      })}
     </div>
   );
 }

@@ -6,6 +6,11 @@
 export const MAX_SOURCE_BYTES = 15 * 1024 * 1024;
 export const MAX_LONG_SIDE = 1600;
 export const THUMB_LONG_SIDE = 320;
+/**
+ * Обложка набора сжимается жёстче карточной картинки: на плитке шириной
+ * 320 px разницы с 1600 не видно, а гигабайт хранилища общий на всё.
+ */
+export const COVER_LONG_SIDE = 800;
 export const WEBP_QUALITY = 0.82;
 export const MAX_IMAGES_PER_SIDE = 4;
 
@@ -43,7 +48,10 @@ async function toWebp(bitmap: ImageBitmap, longSide: number): Promise<Blob> {
   return blob;
 }
 
-export async function processImage(file: File): Promise<ProcessedImage> {
+export async function processImage(
+  file: File,
+  longSide: number = MAX_LONG_SIDE,
+): Promise<ProcessedImage> {
   if (!file.type.startsWith("image/")) {
     throw new ImageError(`“${file.name}” is not an image`);
   }
@@ -65,9 +73,9 @@ export async function processImage(file: File): Promise<ProcessedImage> {
   }
 
   try {
-    const size = fit(bitmap.width, bitmap.height, MAX_LONG_SIDE);
+    const size = fit(bitmap.width, bitmap.height, longSide);
     const [full, thumb] = await Promise.all([
-      toWebp(bitmap, MAX_LONG_SIDE),
+      toWebp(bitmap, longSide),
       toWebp(bitmap, THUMB_LONG_SIDE),
     ]);
     return { full, thumb, width: size.width, height: size.height };

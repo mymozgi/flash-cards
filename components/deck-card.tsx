@@ -34,10 +34,22 @@ export function DeckCard({
 
   return (
     <div
-      className={`flex h-full flex-col rounded-xl border bg-surface p-5 shadow-card ${
+      className={`flex h-full flex-col overflow-hidden rounded-xl border bg-surface p-5 shadow-card ${
         selected ? "border-accent" : "border-line"
       }`}
     >
+      {deck.cover && (
+        /* Обложка полосой 16:9 над содержимым. Заглушки для наборов без
+           обложки нет намеренно: серый прямоугольник на каждой плитке хуже,
+           чем его отсутствие — он занимает место и ничего не сообщает. */
+        <img
+          src={deck.cover}
+          alt=""
+          loading="lazy"
+          className="-mx-5 -mt-5 mb-4 aspect-video w-[calc(100%+2.5rem)] rounded-t-xl object-cover"
+        />
+      )}
+
       <div className="flex items-start justify-between gap-2">
         <Badge
           style={

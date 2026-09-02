@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import { mediaForCards } from "@/lib/data";
+import { publicUrl } from "@/lib/storage";
 import type { DeckCard } from "./deck-workspace";
 import { DeckWorkspace } from "./deck-workspace";
 
@@ -29,7 +30,7 @@ export default async function DeckPage(props: { params: Promise<{ id: string }> 
 
   const { data: topic } = await supabase
     .from("topics")
-    .select("id,name,description,color,parent_id")
+    .select("id,name,description,color,image_path,parent_id")
     .eq("id", id)
     .maybeSingle();
 
@@ -108,6 +109,8 @@ export default async function DeckPage(props: { params: Promise<{ id: string }> 
             name: topic.name as string,
             description: (topic.description as string) ?? "",
             color: (topic.color as string) ?? "",
+            cover: (topic.image_path as string) ?? null,
+            coverUrl: topic.image_path ? publicUrl(topic.image_path as string) : "",
             parentName: (parent?.name as string) ?? null,
           }}
           initialCards={cards}

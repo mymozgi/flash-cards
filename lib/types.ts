@@ -9,6 +9,7 @@ export type TopicRow = {
   position: number;
   description: string | null;
   color: string | null;
+  image_path: string | null;
 };
 
 /** Тема вместе с полным путём — читаемый адрес узла (§6.1). */
@@ -24,6 +25,8 @@ export type DeckSummary = {
   name: string;
   description: string;
   color: string;
+  /** Готовый адрес обложки; пустая строка — обложки нет. */
+  cover: string;
   category: string | null;
   total: number;
   memorized: number;
@@ -33,6 +36,7 @@ export type DeckSummary = {
 export type TagRow = {
   id: string;
   name: string;
+  slot: number | null;
 };
 
 export type CardShape = "square" | "landscape" | "portrait";
@@ -100,10 +104,13 @@ export type MediaItem = {
 };
 
 /** Карточка в очереди повторения — всё, что нужно экрану сессии. */
+/** Тег в том виде, в каком его показывают: имя плюс ячейка палитры. */
+export type CardTag = { name: string; slot: number | null };
+
 export type QueueCard = {
   card: CardRow;
   scheduling: SchedulingRow;
   topicPath: string | null;
-  tags: string[];
+  tags: CardTag[];
   media: MediaItem[];
 };

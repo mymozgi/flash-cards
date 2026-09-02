@@ -328,8 +328,8 @@ export function ReviewSession({
         {current.tags.length > 0 && (
           <ul className="mt-6 flex flex-wrap gap-2">
             {current.tags.map((tag) => (
-              <li key={tag}>
-                <TagChip name={tag} />
+              <li key={tag.name}>
+                <TagChip name={tag.name} slot={tag.slot} />
               </li>
             ))}
           </ul>

@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "./supabase/server";
+import { toSlot } from "./tag-color";
 
 /**
  * Доли тегов для экрана статистики.
@@ -32,25 +33,65 @@ export type TagStats = {
 export async function getTagStats(): Promise<TagStats> {
   const supabase = await createClient();
 
-  const [{ data: rows }, { count: totalCards }, { data: links }] = await Promise.all([
-    supabase.from("tag_stats").select("tag_id,name,total,memorized").order("total", { ascending: false }),
+  // Цвет отдельной попыткой: до миграции 0014 его во вьюхе нет
+  const withColor = await supabase
+    .from("tag_stats")
+    .select("tag_id,name,color,total,memorized")
+    .order("total", { ascending: false });
+  const rowsResult = withColor.error
+    ? await supabase
+        .from("tag_stats")
+        .select("tag_id,name,total,memorized")
+        .order("total", { ascending: false })
+    : withColor;
+
+  if (rowsResult.error) {
+    // Отказ должен называть причину: непринятая миграция иначе выглядит
+    // как «тегов нет», хотя они есть
+    throw new Error(
+      `Knowledge areas need the tag_stats view — apply supabase/migrations/0014_tag_color.sql (${rowsResult.error.message})`,
+    );
+  }
+
+  const [{ count: totalCards }, { data: links }] = await Promise.all([
     supabase.from("cards").select("id", { count: "exact", head: true }).is("deleted_at", null),
     supabase.from("card_tags").select("card_id"),
   ]);
 
-  const stats = (rows ?? []) as { name: string; total: number; memorized: number }[];
+  const stats = (rowsResult.data ?? []) as {
+    name: string;
+    total: number;
+    memorized: number;
+    color?: number | null;
+  }[];
   // одна карточка может нести несколько тегов, поэтому сумма по тегам
   // больше числа карточек — для доли берём именно её
   const taggedCards = new Set((links ?? []).map((l: { card_id: string }) => l.card_id)).size;
   const sum = stats.reduce((acc, row) => acc + row.total, 0);
 
-  const all: TagSlice[] = stats.map((row, index) => ({
-    name: row.name,
-    total: row.total,
-    memorized: row.memorized,
-    share: sum === 0 ? 0 : row.total / sum,
-    slot: index < TAG_SLOTS ? index : -1,
-  }));
+  /*
+    Цвет берётся выбранный, а не по месту в рейтинге. Иначе один и тот же тег
+    был бы разного цвета на карточке и здесь.
+
+    Тегам без своего цвета раздаются оставшиеся свободные ячейки, а не первые
+    по порядку: иначе тег без цвета мог бы получить оттенок, уже занятый
+    соседом, и на полосе они слились бы в один кусок.
+  */
+  const taken = new Set(
+    stats.map((row) => toSlot(row.color)).filter((slot): slot is number => slot !== null),
+  );
+  const free = Array.from({ length: TAG_SLOTS }, (_, i) => i).filter((i) => !taken.has(i));
+
+  const all: TagSlice[] = stats.map((row) => {
+    const chosen = toSlot(row.color);
+    return {
+      name: row.name,
+      total: row.total,
+      memorized: row.memorized,
+      share: sum === 0 ? 0 : row.total / sum,
+      slot: chosen ?? free.shift() ?? -1,
+    };
+  });
 
   const head = all.slice(0, TAG_SLOTS);
   const tail = all.slice(TAG_SLOTS);

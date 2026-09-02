@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   deleteTagEverywhere,
@@ -21,7 +21,7 @@ import {
 import { ImageStrip } from "@/components/image-strip";
 import type { EditorImage } from "@/lib/types";
 import { ImageError, MAX_IMAGES_PER_SIDE } from "@/lib/image";
-import { discardUpload, uploadImage } from "@/lib/upload";
+import { discardUpload, uploadCover, uploadImage } from "@/lib/upload";
 import { Button, LinkButton } from "@/components/ui/button";
 import { cellInputClass, inputClass } from "@/components/ui/field";
 import { panelClass } from "@/components/ui/panel";
@@ -34,6 +34,7 @@ import {
   GripIcon,
   CloseIcon,
   GridIcon,
+  ImageIcon,
   ListIcon,
   PencilIcon,
   PlusIcon,
@@ -78,6 +79,9 @@ export type Deck = {
   name: string;
   description: string;
   color: string;
+  /** Ключ обложки в хранилище; null — обложки нет. */
+  cover: string | null;
+  coverUrl: string;
   parentName: string | null;
 };
 
@@ -294,6 +298,7 @@ export function DeckWorkspace({
       {dialog}
       <DeckHeader
         deck={deck}
+        userId={userId}
         count={cards.length}
         editing={details}
         onEdit={() => setDetails(deck)}
@@ -305,6 +310,7 @@ export function DeckWorkspace({
             name: details.name,
             description: details.description,
             color: details.color,
+            cover: details.cover,
           });
           if (!res.ok) {
             setStatus({ kind: "error", text: res.error ?? "Could not save the deck" });
@@ -483,9 +489,84 @@ export function DeckWorkspace({
   );
 }
 
+function CoverField({
+  url,
+  userId,
+  topicId,
+  onChange,
+}: {
+  url: string;
+  userId: string;
+  topicId: string;
+  onChange: (cover: string | null, coverUrl: string) => void;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const pick = async (file: File | undefined) => {
+    if (!file) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const uploaded = await uploadCover(userId, topicId, file);
+      onChange(uploaded.storagePath, uploaded.url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not upload the cover");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div>
+      <Label>Cover</Label>
+      <input
+        ref={input}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => void pick(e.target.files?.[0])}
+      />
+      {url ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <img src={url} alt="" className="h-20 w-32 rounded-lg object-cover" />
+          <Button size="sm" onClick={() => input.current?.click()} loading={busy}>
+            Replace
+          </Button>
+          <Button size="sm" tone="danger" onClick={() => onChange(null, "")}>
+            Remove
+          </Button>
+        </div>
+      ) : (
+        /* Та же зона, что у картинок карточки: попасть в область проще,
+           чем в строчку текста */
+        <button
+          type="button"
+          onClick={() => input.current?.click()}
+          disabled={busy}
+          className="flex min-h-24 w-full flex-col items-center justify-center gap-1.5 rounded-lg border-control border-dashed border-line-strong px-4 py-5 text-center disabled:opacity-60"
+        >
+          <ImageIcon className="size-6 text-faint" />
+          <span className="text-sm font-semibold text-accent">
+            {busy ? "Uploading…" : "Add a cover"}
+          </span>
+          <span className="text-2xs text-faint">Shown on the deck tile and above the title</span>
+        </button>
+      )}
+      {error && (
+        <p role="alert" className="mt-1.5 text-2xs text-rust">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function DeckHeader({
   deck,
   count,
+  userId,
   editing,
   onEdit,
   onCancel,
@@ -494,6 +575,7 @@ function DeckHeader({
 }: {
   deck: Deck;
   count: number;
+  userId: string;
   editing: Deck | null;
   onEdit: () => void;
   onCancel: () => void;
@@ -517,13 +599,20 @@ function DeckHeader({
             placeholder="What is this deck about?"
             className={`${FIELD} resize-y`}
           />
+          <CoverField
+            url={editing.coverUrl}
+            userId={userId}
+            topicId={deck.id}
+            onChange={(cover, coverUrl) => onChange({ cover, coverUrl })}
+          />
+
           <label className="flex items-center gap-2 text-sm text-muted">
             Colour
             <input
               type="color"
               value={editing.color || "#2563eb"}
               onChange={(e) => onChange({ color: e.target.value })}
-              className="h-8 w-14 rounded-lg border border-line bg-surface"
+              className="h-8 w-14 rounded-lg border-control border-field-line bg-surface"
             />
           </label>
           <div className="flex gap-2">
@@ -535,6 +624,15 @@ function DeckHeader({
         </div>
       ) : (
         <>
+          {deck.coverUrl && (
+            /* Обложка над названием, а не рядом: на 360 px рядом ей места нет,
+               а сверху она одинаково работает на любой ширине */
+            <img
+              src={deck.coverUrl}
+              alt=""
+              className="mb-4 h-32 w-full rounded-lg object-cover sm:h-40"
+            />
+          )}
           <div className="flex items-start justify-between gap-3">
             <h1 className="text-3xl font-semibold tracking-tight">{deck.name}</h1>
             <div className="flex shrink-0 items-center gap-3">

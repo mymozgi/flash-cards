@@ -2,8 +2,10 @@ import "server-only";
 import { createClient, requireUser } from "./supabase/server";
 import { startOfDay } from "./day";
 import { publicUrl } from "./storage";
+import { toSlot } from "./tag-color";
 import type {
   CardRow,
+  CardTag,
   DeckSummary,
   MediaItem,
   QueueCard,
@@ -45,7 +47,11 @@ export async function getTopicTree(): Promise<TopicNode[]> {
   const supabase = await createClient();
 
   const [{ data: topics }, { data: counts }] = await Promise.all([
-    supabase.from("topics").select("id,parent_id,name,position,description,color").order("position").order("name"),
+    supabase
+      .from("topics")
+      .select("id,parent_id,name,position,description,color,image_path")
+      .order("position")
+      .order("name"),
     supabase.from("topic_card_counts").select("topic_id,card_count"),
   ]);
 
@@ -103,6 +109,7 @@ export async function getDeckSummaries(): Promise<DeckSummary[]> {
       name: topic.name,
       description: topic.description ?? "",
       color: topic.color ?? "",
+      cover: topic.image_path ? publicUrl(topic.image_path) : "",
       category: parent?.name ?? null,
       total: row?.total ?? 0,
       memorized: row?.memorized ?? 0,
@@ -113,8 +120,20 @@ export async function getDeckSummaries(): Promise<DeckSummary[]> {
 
 export async function getTags(): Promise<TagRow[]> {
   const supabase = await createClient();
-  const { data } = await supabase.from("tags").select("id,name").order("name");
-  return (data ?? []) as TagRow[];
+  // Цвет тянем отдельной попыткой: до миграции 0014 колонки нет, и жёсткий
+  // запрос обрушил бы список тегов целиком
+  const withColor = await supabase.from("tags").select("id,name,color").order("name");
+  const data = (
+    withColor.error
+      ? (await supabase.from("tags").select("id,name").order("name")).data
+      : withColor.data
+  ) as { id: string; name: string; color?: number | null }[] | null;
+
+  return (data ?? []).map((tag) => ({
+    id: tag.id,
+    name: tag.name,
+    slot: toSlot(tag.color),
+  }));
 }
 
 export type TodayCounts = {
@@ -309,17 +328,28 @@ export async function mediaForCards(cardIds: string[]): Promise<Map<string, Medi
   return map;
 }
 
-async function tagsForCards(cardIds: string[]): Promise<Map<string, string[]>> {
+async function tagsForCards(cardIds: string[]): Promise<Map<string, CardTag[]>> {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("card_tags")
-    .select("card_id, tags!inner(name)")
-    .in("card_id", cardIds);
 
-  const map = new Map<string, string[]>();
-  for (const row of (data ?? []) as unknown as { card_id: string; tags: { name: string } }[]) {
+  // Цвет запрашивается отдельной попыткой: до миграции 0014 колонки нет, и
+  // жёсткий запрос обрушил бы теги совсем. Без цвета они просто нейтральные —
+  // ровно то, что «колонки нет» и означает.
+  const withColor = await supabase
+    .from("card_tags")
+    .select("card_id, tags!inner(name,color)")
+    .in("card_id", cardIds);
+  const rows = withColor.error
+    ? await supabase.from("card_tags").select("card_id, tags!inner(name)").in("card_id", cardIds)
+    : withColor;
+
+  const map = new Map<string, CardTag[]>();
+  const data = (rows.data ?? []) as unknown as {
+    card_id: string;
+    tags: { name: string; color?: number | null };
+  }[];
+  for (const row of data) {
     const list = map.get(row.card_id) ?? [];
-    list.push(row.tags.name);
+    list.push({ name: row.tags.name, slot: toSlot(row.tags.color) });
     map.set(row.card_id, list);
   }
   return map;

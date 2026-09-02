@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
-import { processImage, type ProcessedImage } from "@/lib/image";
+import { COVER_LONG_SIDE, processImage, type ProcessedImage } from "@/lib/image";
 import { MEDIA_BUCKET, publicUrl } from "@/lib/storage";
 
 export type UploadedImage = {
@@ -59,6 +59,37 @@ export async function uploadImage(
     bytes: processed.full.size,
     caption: "",
   };
+}
+
+/**
+ * Обложка набора.
+ *
+ * Тот же бакет и тот же конвейер, что у карточек. Новой политики хранилища не
+ * нужно: она проверяет только первый сегмент пути, а он по-прежнему
+ * идентификатор владельца. Превью не заводится — обложку показывают одного
+ * размера везде, второй файл был бы мусором.
+ */
+export async function uploadCover(
+  userId: string,
+  topicId: string,
+  file: File,
+): Promise<{ storagePath: string; url: string }> {
+  const processed = await processImage(file, COVER_LONG_SIDE);
+  const supabase = createClient();
+
+  const storagePath = `${userId}/topics/${topicId}/${crypto.randomUUID()}.webp`;
+
+  // помечаем сиротой сразу: бросят набор не сохранив — файл найдёт уборка
+  await supabase
+    .from("media_orphans")
+    .upsert([{ storage_path: storagePath, user_id: userId }], { onConflict: "storage_path" });
+
+  const { error } = await supabase.storage
+    .from(MEDIA_BUCKET)
+    .upload(storagePath, processed.full, { contentType: "image/webp", upsert: false });
+  if (error) throw new Error(`Upload failed: ${error.message}`);
+
+  return { storagePath, url: publicUrl(storagePath) };
 }
 
 /** Удаление ещё не сохранённого изображения: файлы уже помечены сиротами. */

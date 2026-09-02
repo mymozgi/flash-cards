@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { hueClass, slotName, type TagSlot } from "@/lib/tag-color";
 
 /**
  * Пилюля тега.
@@ -8,17 +9,21 @@ import Link from "next/link";
  * компонент, потому что иначе они разойдутся снова — как когда-то разошлись
  * два редактора карточки.
  *
- * Цвета у тегов здесь пока нет намеренно: он требует колонки в базе и решения
- * о палитре (F7 в спецификации). Когда решение будет принято, красить придётся
- * это место, а не шесть.
+ * Цвет показывается точкой, а не заливкой под текстом. Так оттенок не влияет
+ * на контраст надписи, а сами цвета работают ровно в том виде, в каком их
+ * проверяли на различимость, — рядом друг с другом. И имя тега остаётся
+ * видно всегда: цвет здесь второй признак, а не единственный.
  */
 export function TagChip({
   name,
+  slot = null,
   href,
   onRemove,
   className = "",
 }: {
   name: string;
+  /** Ячейка палитры или null — тогда пилюля нейтральная, как раньше. */
+  slot?: TagSlot;
   /** Ссылка на отбор по тегу. Без неё — просто метка. */
   href?: string;
   /** Крестик снятия. Появляется только там, где тег можно снять. */
@@ -29,7 +34,19 @@ export function TagChip({
     "inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-3 py-1 " +
     "text-2xs font-semibold text-muted";
 
-  const body = <span className="font-mono">#{name}</span>;
+  const hue = hueClass(slot);
+  const body = (
+    <>
+      {hue && (
+        <span
+          aria-hidden
+          className={`size-2 shrink-0 rounded-full ${hue}`}
+          title={slotName(slot)}
+        />
+      )}
+      <span className="font-mono">#{name}</span>
+    </>
+  );
 
   if (onRemove) {
     return (

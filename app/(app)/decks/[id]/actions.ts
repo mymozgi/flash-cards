@@ -128,7 +128,7 @@ export async function removeCard(cardId: string): Promise<SaveResult> {
 
 export async function updateDeck(
   topicId: string,
-  details: { name: string; description: string; color: string },
+  details: { name: string; description: string; color: string; cover: string | null },
 ): Promise<SaveResult> {
   const user = await requireUser();
   const supabase = await createClient();
@@ -136,12 +136,22 @@ export async function updateDeck(
   const name = details.name.trim();
   if (!name) return { ok: false, error: "The deck needs a name" };
 
+  // Прежняя обложка нужна до записи: если её сменили или сняли, старый файл
+  // надо отправить в очередь на уборку, иначе он останется в хранилище навсегда
+  const { data: before } = await supabase
+    .from("topics")
+    .select("image_path")
+    .eq("id", topicId)
+    .eq("user_id", user.id)
+    .single();
+
   const { error } = await supabase
     .from("topics")
     .update({
       name,
       description: details.description.trim() || null,
       color: details.color || null,
+      image_path: details.cover,
     })
     .eq("id", topicId)
     .eq("user_id", user.id);
@@ -151,6 +161,17 @@ export async function updateDeck(
       ok: false,
       error: error.code === "23505" ? "A sibling deck already has this name" : error.message,
     };
+  }
+
+  const previous = (before as { image_path: string | null } | null)?.image_path ?? null;
+  if (previous && previous !== details.cover) {
+    await supabase
+      .from("media_orphans")
+      .upsert([{ storage_path: previous, user_id: user.id }], { onConflict: "storage_path" });
+  }
+  // Сохранённая обложка сиротой быть перестаёт
+  if (details.cover) {
+    await supabase.from("media_orphans").delete().eq("storage_path", details.cover);
   }
 
   revalidatePath("/", "layout");

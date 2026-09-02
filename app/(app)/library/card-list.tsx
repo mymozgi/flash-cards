@@ -6,6 +6,8 @@ import { useState, useTransition } from "react";
 import { bulkUpdate, type BulkOp } from "./actions";
 import { useConfirm } from "@/components/ui/confirm";
 import { Button } from "@/components/ui/button";
+import { TagChip } from "@/components/ui/tag-chip";
+import type { CardTag } from "@/lib/types";
 
 export type LibraryCard = {
   id: string;
@@ -13,7 +15,7 @@ export type LibraryCard = {
   back: string;
   topicId: string | null;
   topicPath: string | null;
-  tags: string[];
+  tags: CardTag[];
   suspended: boolean;
   state: string;
   thumbUrl: string | null;
@@ -162,12 +164,14 @@ export function CardList({
                 <span>·</span>
                 <span>{STATE_LABELS[card.state] ?? card.state}</span>
                 {card.suspended && <span className="text-rust">· suspended</span>}
-                {card.tags.map((tag) => (
-                  <span key={tag} className="normal-case tracking-normal">
-                    #{tag}
-                  </span>
-                ))}
               </p>
+              {card.tags.length > 0 && (
+                <span className="mt-1.5 flex flex-wrap gap-1.5">
+                  {card.tags.map((tag) => (
+                    <TagChip key={tag.name} name={tag.name} slot={tag.slot} />
+                  ))}
+                </span>
+              )}
             </Link>
           </li>
         ))}
