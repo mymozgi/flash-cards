@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import type { KnowledgeNode } from "@/lib/knowledge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClass } from "@/components/ui/button";
 import { panelClass } from "@/components/ui/panel";
 import { inputClass } from "@/components/ui/field";
 import { usePrompt } from "@/components/ui/prompt";
@@ -271,6 +271,9 @@ export function KnowledgeIndex({
             ))}
           </div>
 
+          <Link href="/knowledge/map" className={`${buttonClass("secondary", "md")} min-h-10`}>
+            Map
+          </Link>
           <Button tone="primary" onClick={() => setEditing({ node: null, parentId: null })}>
             <PlusIcon />
             Add
@@ -365,7 +368,10 @@ export function KnowledgeIndex({
 
       {!empty && (
         <p className="text-sm text-muted">
-          The map arrives next.{" "}
+          <Link href="/knowledge/map" className="text-accent underline underline-offset-4">
+            Open the map
+          </Link>{" "}
+          to see the whole structure and attach cards to a category.{" "}
           <Link href="/decks" className="text-accent underline underline-offset-4">
             Study sets
           </Link>{" "}

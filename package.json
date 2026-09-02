@@ -13,9 +13,11 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@dagrejs/dagre": "^3.1.1",
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.109.0",
     "@types/papaparse": "^5.5.2",
+    "@xyflow/react": "^12.11.6",
     "next": "16.3.3",
     "papaparse": "^5.7.0",
     "react": "19.2.8",
