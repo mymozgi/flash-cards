@@ -227,18 +227,33 @@ export async function deleteTagEverywhere(name: string): Promise<SaveResult> {
 }
 
 /** Перетаскивание меняет порядок и у нетронутых карточек — пишем его отдельно. */
+/**
+ * Порядок карточек — одним вызовом.
+ *
+ * Прежде здесь был цикл с UPDATE на каждую карточку: шестьдесят запросов на
+ * набор в шестьдесят карточек, и обрыв посередине оставлял половину порядка
+ * новой, а половину прежней. Теперь это одна функция в базе и одна транзакция.
+ */
 export async function saveOrder(topicId: string, order: string[]): Promise<SaveResult> {
-  const user = await requireUser();
-  const supabase = await createClient();
+  await requireUser();
+  if (order.length === 0) return { ok: true };
 
-  for (const [index, id] of order.entries()) {
-    const { error } = await supabase
-      .from("cards")
-      .update({ position: index })
-      .eq("id", id)
-      .eq("topic_id", topicId)
-      .eq("user_id", user.id);
-    if (error) return { ok: false, error: error.message };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_card_order", {
+    p_topic_id: topicId,
+    p_ids: order,
+  });
+
+  if (error) {
+    // Отказ должен называть причину: непринятая миграция иначе выглядит как
+    // «порядок почему-то не сохраняется»
+    const missing = error.code === "PGRST202" || /set_card_order/i.test(error.message);
+    return {
+      ok: false,
+      error: missing
+        ? "Card order could not be saved: apply supabase/migrations/0013_card_order.sql"
+        : error.message,
+    };
   }
 
   revalidatePath("/", "layout");

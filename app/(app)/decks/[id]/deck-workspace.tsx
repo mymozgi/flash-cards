@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   deleteTagEverywhere,
@@ -26,6 +26,7 @@ import { Button, LinkButton } from "@/components/ui/button";
 import { cellInputClass, inputClass } from "@/components/ui/field";
 import { panelClass } from "@/components/ui/panel";
 import { useConfirm } from "@/components/ui/confirm";
+import { useReorder } from "@/components/use-reorder";
 import { Switch } from "@/components/ui/switch";
 import {
   CheckIcon,
@@ -102,7 +103,6 @@ export function DeckWorkspace({
   const [details, setDetails] = useState<Deck | null>(null);
   const [showTags, setShowTags] = useState(false);
   const [orderDirty, setOrderDirty] = useState(false);
-  const [dragId, setDragId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const { ask, dialog } = useConfirm();
 
@@ -213,19 +213,16 @@ export function DeckWorkspace({
     update(card.id, { [key]: next } as Partial<DeckCard>);
   };
 
-  const reorder = (targetId: string) => {
-    if (!dragId || dragId === targetId) return;
+  const move = useCallback((from: number, to: number) => {
     setCards((prev) => {
+      if (from === to || from < 0 || to < 0 || from >= prev.length || to >= prev.length) return prev;
       const next = [...prev];
-      const from = next.findIndex((c) => c.id === dragId);
-      const to = next.findIndex((c) => c.id === targetId);
-      if (from < 0 || to < 0) return prev;
       const [moved] = next.splice(from, 1);
       next.splice(to, 0, moved);
       return next;
     });
     setOrderDirty(true);
-  };
+  }, []);
 
   const save = async () => {
     const pending = cards.filter((card) => dirty.has(card.id));
@@ -238,11 +235,17 @@ export function DeckWorkspace({
 
     const order = cards.map((card) => card.id);
     const res = await saveDeck(deck.id, pending, order);
-    if (res.ok && orderDirty) await saveOrder(deck.id, order);
+    // Отказ сохранения порядка больше не проглатывается: раньше он был не
+    // виден, и карточки молча возвращались к прежней расстановке
+    const ordered = res.ok && orderDirty ? await saveOrder(deck.id, order) : { ok: true as const };
     setSaving(false);
 
     if (!res.ok) {
       setStatus({ kind: "error", text: res.error ?? "Could not save" });
+      return;
+    }
+    if (!ordered.ok) {
+      setStatus({ kind: "error", text: ordered.error ?? "Could not save the card order" });
       return;
     }
     setOrderDirty(false);
@@ -261,6 +264,20 @@ export function DeckWorkspace({
       ),
     );
   }, [cards, query]);
+
+  /**
+   * Порядок меняется только в неотфильтрованном списке. При активном поиске
+   * видна часть колоды, и перестановка внутри неё дала бы порядок, которого
+   * пользователь не видит и не может проверить.
+   */
+  const canReorder = query.trim() === "";
+  const cardIds = useMemo(() => cards.map((card) => card.id), [cards]);
+  const reorderable = useReorder({
+    ids: cardIds,
+    onMove: move,
+    enabled: canReorder,
+    simple: view === "grid",
+  });
 
   const deckTags = useMemo(() => {
     const counts = new Map<string, number>();
@@ -402,27 +419,34 @@ export function DeckWorkspace({
           />
         ) : (
           <div className={view === "grid" ? "grid gap-4 sm:grid-cols-2 xl:grid-cols-3" : "flex flex-col gap-4"}>
-            {visible.map((card) => (
+            {visible.map((card, index) => (
               <div
                 key={card.id}
-                draggable={dragId === card.id}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={() => {
-                  reorder(card.id);
-                  setDragId(null);
-                }}
-                onDragEnd={() => setDragId(null)}
-                className={dragId === card.id ? "opacity-50" : ""}
+                ref={reorderable.register(card.id)}
+                style={reorderable.itemStyle(card.id, index)}
+                className={
+                  reorderable.insertionAt === index && reorderable.draggingId !== card.id
+                    ? "rounded-xl outline-2 outline-offset-4 outline-accent"
+                    : undefined
+                }
               >
                 <CardBlock
                   card={card}
-                  index={cards.indexOf(card) + 1}
+                  index={index + 1}
                   compact={view === "grid"}
                   collapsed={collapsed.has(card.id)}
                   onToggleCollapse={() => toggleCollapsed(card.id)}
                   allTags={allTags}
                   uploading={uploading}
-                  onGrab={() => setDragId(card.id)}
+                  lifted={reorderable.draggingId === card.id}
+                  grip={
+                    canReorder
+                      ? {
+                          ...reorderable.grabProps(card.id, index),
+                          ...reorderable.keyProps(card.id, index),
+                        }
+                      : null
+                  }
                   onUpdate={update}
                   onOption={setOption}
                   onDelete={drop}
@@ -433,6 +457,12 @@ export function DeckWorkspace({
             ))}
           </div>
         )}
+
+        {/* Перенос без мыши должен быть слышен: без этого стрелки двигают
+            карточку молча и понять, куда она приехала, невозможно */}
+        <p aria-live="polite" className="sr-only">
+          {reorderable.announcement}
+        </p>
 
         {visible.length === 0 && (
           <p className="py-12 text-center text-sm text-muted">
@@ -548,7 +578,8 @@ function CardBlock({
   onToggleCollapse,
   allTags,
   uploading,
-  onGrab,
+  lifted,
+  grip,
   onUpdate,
   onOption,
   onDelete,
@@ -562,7 +593,10 @@ function CardBlock({
   onToggleCollapse: () => void;
   allTags: string[];
   uploading: boolean;
-  onGrab: () => void;
+  /** Карточку сейчас несут: приподнимаем её над соседями. */
+  lifted: boolean;
+  /** Обработчики ручки переноса. `null` — переносить сейчас нельзя. */
+  grip: React.HTMLAttributes<HTMLSpanElement> | null;
   onUpdate: (id: string, patch: Partial<DeckCard>) => void;
   onOption: (card: DeckCard, index: number, value: string) => void;
   onDelete: (card: DeckCard) => void;
@@ -570,17 +604,22 @@ function CardBlock({
   onPatchImages: (card: DeckCard, side: "front" | "back", next: EditorImage[]) => void;
 }) {
   return (
-    <article className="rounded-xl border border-line p-4">
+    <article
+      className={`rounded-xl border p-4 transition-shadow ${
+        lifted ? "border-accent bg-surface shadow-raised" : "border-line"
+      }`}
+    >
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
-          <span
-            onPointerDown={onGrab}
-            aria-label="Drag to reorder"
-            title="Drag to reorder"
-            className="cursor-grab px-0.5 text-faint active:cursor-grabbing"
-          >
-            <GripIcon />
-          </span>
+          {grip && (
+            <span
+              {...grip}
+              title="Drag to reorder, or press space to move it with the arrow keys"
+              className="-m-1 cursor-grab touch-none rounded p-1 text-faint hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:cursor-grabbing"
+            >
+              <GripIcon />
+            </span>
+          )}
           <button
             type="button"
             onClick={onToggleCollapse}

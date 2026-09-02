@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { renderMarkdown } from "@/lib/markdown";
 import { CardRenderer, type CardImage, type CardLayout, type CardShape, type ImagePosition } from "@/components/card-renderer";
 import { ArrowLeftIcon, ArrowRightIcon, CloseIcon, GridIcon } from "@/components/icons";
+import { AXIS_SLOP, followX, swipeVerdict } from "@/lib/swipe";
 import { Button, LinkButton } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 
@@ -84,19 +85,58 @@ export function StudyDeck({
     return () => window.removeEventListener("keydown", onKey);
   }, [go]);
 
-  const touch = useRef<{ x: number; y: number } | null>(null);
-  const onTouchStart = (e: React.TouchEvent) => {
-    const t = e.changedTouches[0];
-    touch.current = { x: t.clientX, y: t.clientY };
+  /**
+   * Свайп на указателях, а не на касаниях: одна ветка кода на палец, мышь и
+   * перо. Карточка идёт за пальцем, а решение «зачесть или вернуть» принимает
+   * чистая функция — её можно проверить тестом, в отличие от жеста.
+   */
+  const scene = useRef<HTMLDivElement>(null);
+  const gesture = useRef<{ id: number; x: number; y: number; at: number; axis: "?" | "x" | "y" } | null>(null);
+  const [dx, setDx] = useState(0);
+  const [dragging, setDragging] = useState(false);
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    gesture.current = { id: e.pointerId, x: e.clientX, y: e.clientY, at: performance.now(), axis: "?" };
   };
-  const onTouchEnd = (e: React.TouchEvent) => {
-    const start = touch.current;
-    if (!start) return;
-    const t = e.changedTouches[0];
-    const dx = t.clientX - start.x;
-    const dy = t.clientY - start.y;
-    touch.current = null;
-    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)) go(dx < 0 ? 1 : -1);
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    const g = gesture.current;
+    if (!g || g.id !== e.pointerId) return;
+    const moveX = e.clientX - g.x;
+    const moveY = e.clientY - g.y;
+
+    if (g.axis === "?") {
+      // Ось выбирается один раз и навсегда. Пока она не выбрана, жест ничей:
+      // так вертикальная прокрутка не превращается в листание на полпути.
+      if (Math.abs(moveX) < AXIS_SLOP && Math.abs(moveY) < AXIS_SLOP) return;
+      g.axis = Math.abs(moveX) > Math.abs(moveY) ? "x" : "y";
+      if (g.axis === "y") {
+        gesture.current = null;
+        return;
+      }
+      e.currentTarget.setPointerCapture(e.pointerId);
+      setDragging(true);
+    }
+    setDx(followX(moveX, atFirst, atLast));
+  };
+
+  const endGesture = (e: React.PointerEvent) => {
+    const g = gesture.current;
+    gesture.current = null;
+    setDragging(false);
+    setDx(0);
+    if (!g || g.axis !== "x") return;
+    const verdict = swipeVerdict({
+      dx: e.clientX - g.x,
+      dy: e.clientY - g.y,
+      width: scene.current?.offsetWidth ?? window.innerWidth,
+      elapsed: performance.now() - g.at,
+      atFirst,
+      atLast,
+    });
+    if (verdict === "next") go(1);
+    if (verdict === "prev") go(-1);
   };
 
   const frontHtml = useMemo(() => (card ? renderMarkdown(card.term) : ""), [card]);
@@ -141,9 +181,12 @@ export function StudyDeck({
       <Progress value={at + 1} max={total} label={`Card ${at + 1} of ${total}`} />
 
       <div
-        className="deck-scene relative mx-auto w-full max-w-2xl"
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
+        ref={scene}
+        className="deck-scene relative mx-auto w-full max-w-2xl touch-pan-y"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endGesture}
+        onPointerCancel={endGesture}
       >
         {/* слои позади: видно, что карточка лежит в стопке */}
         {!atLast && (
@@ -152,7 +195,22 @@ export function StudyDeck({
             <div className="deck-stack-layer" style={{ transform: "translateY(20px) scale(0.93)" }} />
           </>
         )}
-        <div key={step} className="deck-card relative" data-dir={dir}>
+        {/* Пока палец ведёт — карточка следует за ним и слегка гаснет, чтобы
+            было видно: жест засчитывается, а не проваливается в пустоту.
+            Отпустили — пружина назад за 200 мс. */}
+        <div
+          key={step}
+          className={`deck-card relative ${dragging ? "" : "transition-transform duration-200 motion-reduce:transition-none"}`}
+          data-dir={dragging ? undefined : dir}
+          style={
+            dx === 0
+              ? undefined
+              : {
+                  transform: `translate3d(${dx}px, 0, 0) rotate(${dx * 0.015}deg)`,
+                  opacity: Math.max(0.55, 1 - Math.abs(dx) / 700),
+                }
+          }
+        >
           <CardRenderer
             shape={card.shape}
             layout={card.layout}

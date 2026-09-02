@@ -107,6 +107,33 @@ async function checkColumns(client) {
   return broken;
 }
 
+/**
+ * Функции в базе. Проверяются пустым вызовом: порядок из нуля карточек
+ * ничего не меняет, но отсутствие самой функции видно сразу — иначе непринятая
+ * миграция всплывёт только когда пользователь переставит карточки.
+ */
+const REQUIRED_FUNCTIONS = [
+  { name: "set_card_order", args: { p_topic_id: null, p_ids: [] }, file: "0013_card_order.sql" },
+];
+
+async function checkFunctions(client) {
+  console.log("");
+  console.log("Функции, которые нужны коду:");
+  let broken = 0;
+
+  for (const fn of REQUIRED_FUNCTIONS) {
+    const { error } = await client.rpc(fn.name, fn.args);
+    if (!error) {
+      ok(`${fn.name} — на месте`);
+      continue;
+    }
+    broken++;
+    bad(`${fn.name} — ${error.message}`);
+    console.log(`    Примените supabase/migrations/${fn.file}`);
+  }
+  return broken;
+}
+
 const email = process.env.KARTOTEKA_EMAIL;
 const password = process.env.KARTOTEKA_PASSWORD;
 
@@ -123,6 +150,7 @@ if (email && password) {
   } else {
     ok(`вход выполнен: ${auth.user.email}`);
     failures += await checkColumns(supabase);
+    failures += await checkFunctions(supabase);
     console.log("");
     const userId = auth.user.id;
     let cardId = null;

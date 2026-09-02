@@ -209,21 +209,18 @@ export function ReviewSession({
     return () => window.removeEventListener("keydown", onKey);
   }, [grade, revealed, skip, undo, zoomed]);
 
-  // Свайп: влево — «Снова», вправо — «Хорошо» (§11)
-  const touchStart = useRef<{ x: number; y: number } | null>(null);
-  const onTouchStart = (event: React.TouchEvent) => {
-    const t = event.changedTouches[0];
-    touchStart.current = { x: t.clientX, y: t.clientY };
-  };
-  const onTouchEnd = (event: React.TouchEvent) => {
-    const start = touchStart.current;
-    if (!start || !revealed || zoomed) return;
-    const t = event.changedTouches[0];
-    const dx = t.clientX - start.x;
-    const dy = t.clientY - start.y;
-    if (Math.abs(dx) > 70 && Math.abs(dy) < 50) grade(dx < 0 ? 1 : 3);
-    touchStart.current = null;
-  };
+  /*
+    Свайпа здесь больше нет, и это осознанный отказ от §11 спеки.
+    Причина появилась вместе со стрелками: вправо стрелка откладывает
+    карточку, а свайп вправо ставил оценку «Хорошо» — одно направление,
+    два несовместимых смысла на одном экране. Развести их подписями значит
+    объяснять противоречие, а не убирать его.
+    Выбран смысл, который работает везде: горизонтальный жест перемещает по
+    карточкам, и живёт он там, где есть куда перемещаться, — в просмотре
+    набора. Оценка ставится кнопками и клавишами 1–4. Побочная выгода
+    измерима: случайный жест больше не может записать оценку в расписание,
+    а отменять её потом дороже, чем поставить.
+  */
 
   if (!current) {
     return (
@@ -268,7 +265,7 @@ export function ReviewSession({
   }
 
   return (
-    <div className="flex min-h-[calc(100dvh-8rem)] flex-col" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+    <div className="flex min-h-[calc(100dvh-8rem)] flex-col">
       {zoomed && <Lightbox image={zoomed} onClose={() => setZoomed(null)} />}
       <div className="flex items-center justify-between gap-4 pb-2.5">
         <span className="label-micro truncate">{current.topicPath ?? "No topic"}</span>
