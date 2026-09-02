@@ -2,6 +2,7 @@ import "server-only";
 import { createClient, requireUser } from "./supabase/server";
 import { startOfDay } from "./day";
 import { publicUrl } from "./storage";
+import { isMissingColumn, rememberSourceColumn, withSource } from "./schema";
 import { toSlot } from "./tag-color";
 import type {
   CardRow,
@@ -19,7 +20,7 @@ import type {
 const SCHEDULING_FIELDS =
   "card_id,state,due,stability,difficulty,elapsed_days,scheduled_days,learning_steps,reps,lapses,last_review";
 const CARD_FIELDS =
-  "id,topic_id,front_md,back_md,note_md,link_url,kind,shape,layout,image_position,suspended,created_at,updated_at";
+  "id,topic_id,front_md,back_md,note_md,kind,shape,layout,image_position,suspended,created_at,updated_at";
 
 export async function getSettings(): Promise<SettingsRow> {
   const supabase = await createClient();
@@ -226,10 +227,13 @@ export async function getQueue(
     if (cardIdFilter.length === 0) return [];
   }
 
+  // Source — украшение под карточкой, очередь — суть. Пока миграция 0018 не
+  // применена, колонки нет, и запрос с ней отклоняется целиком: экран
+  // повторения переставал показывать карточки из-за строчки со ссылкой.
   const base = () => {
     let q = supabase
       .from("scheduling")
-      .select(`${SCHEDULING_FIELDS}, cards!inner(${CARD_FIELDS})`)
+      .select(`${SCHEDULING_FIELDS}, cards!inner(${withSource(CARD_FIELDS)})`)
       .eq("user_id", user.id)
       .eq("cards.suspended", false)
       .is("cards.deleted_at", null);
@@ -241,15 +245,36 @@ export async function getQueue(
   const reviewLimit = options.ignoreSchedule ? (options.limit ?? 500) : counts.due;
   const newLimit = options.ignoreSchedule ? 0 : counts.newAvailable;
 
-  const dueQuery = base().neq("state", "new").order("due", { ascending: true });
   const rows: SchedulingWithCard[] = [];
 
-  if (reviewLimit > 0) {
-    const q = options.ignoreSchedule ? dueQuery : dueQuery.lte("due", nowIso);
-    const { data, error } = await q.limit(reviewLimit);
+  /**
+   * Один запрос с повтором без необязательной колонки.
+   *
+   * Source — украшение под карточкой, очередь — суть. Пока миграция 0018 не
+   * применена, колонки нет, и PostgREST отклоняет запрос целиком: экран
+   * повторения переставал показывать карточки из-за строчки со ссылкой.
+   */
+  const fetchRows = async (
+    build: () => PromiseLike<{ data: unknown; error: { code?: string; message: string } | null }>,
+    what: string,
+  ) => {
+    let attempt = await build();
+    if (attempt.error && isMissingColumn(attempt.error)) {
+      rememberSourceColumn(false);
+      attempt = await build();
+    } else if (!attempt.error) {
+      rememberSourceColumn(true);
+    }
     // Молча вернуть пустую очередь — худший вид отказа: выглядит как «всё выучено»
-    if (error) throw new Error(`Could not build the queue: ${error.message}`);
-    rows.push(...((data ?? []) as unknown as SchedulingWithCard[]));
+    if (attempt.error) throw new Error(`${what}: ${attempt.error.message}`);
+    rows.push(...((attempt.data ?? []) as unknown as SchedulingWithCard[]));
+  };
+
+  if (reviewLimit > 0) {
+    await fetchRows(() => {
+      const q = base().neq("state", "new").order("due", { ascending: true });
+      return (options.ignoreSchedule ? q : q.lte("due", nowIso)).limit(reviewLimit);
+    }, "Could not build the queue");
   }
 
   const newRoom = options.ignoreSchedule
@@ -257,12 +282,10 @@ export async function getQueue(
     : Math.min(newLimit, 500);
 
   if (newRoom > 0) {
-    const { data, error } = await base()
-      .eq("state", "new")
-      .order("due", { ascending: true })
-      .limit(newRoom);
-    if (error) throw new Error(`Could not load new cards: ${error.message}`);
-    rows.push(...((data ?? []) as unknown as SchedulingWithCard[]));
+    await fetchRows(
+      () => base().eq("state", "new").order("due", { ascending: true }).limit(newRoom),
+      "Could not load new cards",
+    );
   }
 
   if (rows.length === 0) return [];

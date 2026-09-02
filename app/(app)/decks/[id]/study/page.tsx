@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { mediaForCards } from "@/lib/data";
+import { withSource } from "@/lib/schema";
 import { StudyDeck, type StudyCard } from "./study-deck";
 import type { CardLayout, CardShape, ImagePosition } from "@/components/card-renderer";
 
@@ -9,7 +10,7 @@ type Row = {
   front_md: string;
   back_md: string;
   example_md: string | null;
-  link_url: string | null;
+  link_url?: string | null;
   shape: CardShape;
   layout: CardLayout;
   image_position: ImagePosition;
@@ -23,7 +24,7 @@ export default async function StudyPage(props: { params: Promise<{ id: string }>
     supabase.from("topics").select("id,name").eq("id", id).maybeSingle(),
     supabase
       .from("cards")
-      .select("id,front_md,back_md,example_md,link_url,shape,layout,image_position")
+      .select(withSource("id,front_md,back_md,example_md,shape,layout,image_position"))
       .eq("topic_id", id)
       .is("deleted_at", null)
       .eq("suspended", false)

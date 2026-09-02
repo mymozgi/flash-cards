@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import { safeUrl } from "@/lib/url";
+import { isMissingColumn, rememberSourceColumn, trySourceColumn } from "@/lib/schema";
 import {
   coerceImages,
   parseTags,
@@ -43,7 +44,13 @@ export type DeckCardInput = {
   backImages: IncomingImage[];
 };
 
-export type SaveResult = { ok: boolean; error?: string; saved?: number };
+export type SaveResult = {
+  ok: boolean;
+  error?: string;
+  saved?: number;
+  /** Карточки сохранены, но Source потерян: колонки нет. Молчать нельзя. */
+  warning?: string;
+};
 
 export async function saveDeck(
   topicId: string,
@@ -53,6 +60,7 @@ export async function saveDeck(
   const user = await requireUser();
   const supabase = await createClient();
   const tagCache = new Map<string, string>();
+  let sourceSkipped = false;
   const positionOf = new Map(order.map((id, index) => [id, index]));
   let saved = 0;
 
@@ -79,10 +87,6 @@ export async function saveDeck(
       back_md: correct,
       example_md: card.example.trim() || null,
       note_md: card.note.trim() || null,
-      // Схему проверяет ещё и ограничение в базе: href с javascript: — это
-      // исполнение чужого кода, и такой запрет обязан жить там, куда не
-      // дотянется ни один клиент
-      link_url: safeUrl(card.source),
       suspended: card.suspended,
       mcq: card.mcq,
       shape: card.shape,
@@ -92,18 +96,38 @@ export async function saveDeck(
       distractors,
     };
 
-    if (card.isNew) {
-      const { error } = await supabase
-        .from("cards")
-        .insert({ ...payload, id: card.id, user_id: user.id });
-      if (error) return { ok: false, error: `Could not create the card: ${error.message}` };
-    } else {
-      const { error } = await supabase
-        .from("cards")
-        .update(payload)
-        .eq("id", card.id)
-        .eq("user_id", user.id);
-      if (error) return { ok: false, error: `Could not save the card: ${error.message}` };
+    /*
+      Source пишется отдельной попыткой, а не в общем наборе полей.
+      Причина оплачена поломкой: пока миграция 0018 не применена, колонки
+      link_url нет, и запрос с ней отклоняется целиком — то есть карточка
+      не сохраняется вовсе из-за необязательной ссылки. Схему проверяет и
+      ограничение в базе: href с javascript: — исполнение чужого кода, и
+      такой запрет обязан жить там, куда не дотянется ни один клиент.
+    */
+    const withLink = trySourceColumn()
+      ? { ...payload, link_url: safeUrl(card.source) }
+      : payload;
+
+    const write = (body: Record<string, unknown>) =>
+      card.isNew
+        ? supabase.from("cards").insert({ ...body, id: card.id, user_id: user.id })
+        : supabase.from("cards").update(body).eq("id", card.id).eq("user_id", user.id);
+
+    let { error } = await write(withLink);
+    if (error && isMissingColumn(error)) {
+      rememberSourceColumn(false);
+      sourceSkipped = true;
+      ({ error } = await write(payload));
+    } else if (!error) {
+      rememberSourceColumn(true);
+    }
+    if (error) {
+      return {
+        ok: false,
+        error: card.isNew
+          ? `Could not create the card: ${error.message}`
+          : `Could not save the card: ${error.message}`,
+      };
     }
 
     const tagIds = await resolveTags(supabase, user.id, parseTags(card.tags), tagCache);
@@ -114,7 +138,13 @@ export async function saveDeck(
   }
 
   revalidatePath("/", "layout");
-  return { ok: true, saved };
+  return {
+    ok: true,
+    saved,
+    warning: sourceSkipped
+      ? "Cards saved, but Source was not — apply supabase/migrations/0018_card_source.sql"
+      : undefined,
+  };
 }
 
 /** Мягкое удаление: карточка уходит в корзину, файлы остаются до уборки. */

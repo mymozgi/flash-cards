@@ -258,6 +258,11 @@ export function DeckWorkspace({
     setOrderDirty(false);
     setCards((prev) => prev.map((card) => ({ ...card, isNew: false })));
     setDirty(new Set());
+    // Потерянный Source — не отказ, но и не норма: сказать об этом обязаны
+    if (res.warning) {
+      setStatus({ kind: "error", text: res.warning });
+      return;
+    }
     setStatus({ kind: "ok", text: `Saved ${res.saved} card${res.saved === 1 ? "" : "s"}` });
     router.refresh();
   };
