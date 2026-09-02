@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   isStudySet,
+  kindInEffect,
   branchOf,
   canDrop,
   depthOf,
@@ -198,5 +199,27 @@ describe("род узла сильнее догадки по данным", () =
   it("без рода работает прежняя догадка: миграция могла быть не применена", () => {
     expect(isStudySet({ ownCards: 0, hasChildren: true })).toBe(false);
     expect(isStudySet({ ownCards: 3, hasChildren: true, kind: null })).toBe(true);
+  });
+});
+
+describe("введено ли разделение на роды", () => {
+  it("сразу после добавления колонки все узлы — категории, и разделение не действует", () => {
+    // именно это состояние и спрятало весь список наборов: миграция 0015
+    // ставит area по умолчанию, а перевод в deck делает следующая
+    expect(kindInEffect(["area", "area", "area"])).toBe(false);
+  });
+
+  it("колонки ещё нет — тем более не действует", () => {
+    expect(kindInEffect([undefined, undefined])).toBe(false);
+    expect(kindInEffect([null, null])).toBe(false);
+    expect(kindInEffect([])).toBe(false);
+  });
+
+  it("появилась хотя бы одна группа — правило включается", () => {
+    expect(kindInEffect(["area", "deck", "area"])).toBe(true);
+  });
+
+  it("источники разделения не вводят: они были и до него", () => {
+    expect(kindInEffect(["area", "source"])).toBe(false);
   });
 });

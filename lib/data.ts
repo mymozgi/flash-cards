@@ -3,7 +3,7 @@ import { createClient, requireUser } from "./supabase/server";
 import { startOfDay } from "./day";
 import { publicUrl } from "./storage";
 import { isMissingColumn, rememberSourceColumn, withSource } from "./schema";
-import { isStudySet } from "./knowledge-tree";
+import { isStudySet, kindInEffect } from "./knowledge-tree";
 import { toSlot } from "./tag-color";
 import type {
   CardRow,
@@ -137,12 +137,17 @@ export async function getDeckSummaries(): Promise<DeckSummary[]> {
     Отбор стоит здесь, а не в двух экранах: «Сегодня» и «My flashcards»
     задают базе один и тот же вопрос, и разойтись в ответе они не должны.
   */
+  // Пока в базе нет ни одной группы, род ничего не различает: сразу после
+  // миграции 0015 все узлы числятся категориями, и читать род буквально
+  // значило бы спрятать весь список
+  const split = kindInEffect(topics.map((topic) => topic.kind));
+
   return topics
     .filter((topic) =>
       isStudySet({
         ownCards: stats.get(topic.id)?.total ?? 0,
         hasChildren: hasChildren.has(topic.id),
-        kind: topic.kind,
+        kind: split ? topic.kind : null,
       }),
     )
     .map((topic) => {

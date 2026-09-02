@@ -148,7 +148,7 @@ export function depthOf<T extends TreeNode>(nodes: T[], id: string): number {
 export function isStudySet(node: {
   ownCards: number;
   hasChildren: boolean;
-  /** Явный род, если база о нём уже знает. */
+  /** Явный род. Учитывается, только когда разделение уже введено. */
   kind?: string | null;
 }): boolean {
   // Явное намерение сильнее догадки по данным: пустая группа остаётся группой,
@@ -156,4 +156,21 @@ export function isStudySet(node: {
   if (node.kind === "deck") return true;
   if (node.kind === "area" || node.kind === "source") return false;
   return node.ownCards > 0 || !node.hasChildren;
+}
+
+/**
+ * Введено ли разделение на роды в этой базе.
+ *
+ * Вопрос не праздный, и он оплачен поломкой. Миграция 0015 добавляет колонку
+ * рода со значением по умолчанию `area` — то есть сразу после неё КАЖДЫЙ узел
+ * числится категорией. Перевод в `deck` делает следующая миграция, и между
+ * ними база находится в состоянии «колод нет ни одной». Код, читающий род
+ * буквально, в этот промежуток прятал из списка вообще всё.
+ *
+ * Признак того, что разделение действует, — существование хотя бы одной
+ * группы. Пока её нет, род ничего не различает, и работает прежняя догадка
+ * по данным. Как только перенос выполнен, правило включается само.
+ */
+export function kindInEffect(kinds: (string | null | undefined)[]): boolean {
+  return kinds.some((kind) => kind === "deck");
 }
