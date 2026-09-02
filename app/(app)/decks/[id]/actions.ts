@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient, requireUser } from "@/lib/supabase/server";
+import { safeUrl } from "@/lib/url";
 import {
   coerceImages,
   parseTags,
@@ -32,6 +33,8 @@ export type DeckCardInput = {
   mcq: boolean;
   tags: string;
   note: string;
+  /** Откуда знание: книга, статья, видео. Только http(s). */
+  source: string;
   suspended: boolean;
   shape: CardShape;
   layout: CardLayout;
@@ -76,6 +79,10 @@ export async function saveDeck(
       back_md: correct,
       example_md: card.example.trim() || null,
       note_md: card.note.trim() || null,
+      // Схему проверяет ещё и ограничение в базе: href с javascript: — это
+      // исполнение чужого кода, и такой запрет обязан жить там, куда не
+      // дотянется ни один клиент
+      link_url: safeUrl(card.source),
       suspended: card.suspended,
       mcq: card.mcq,
       shape: card.shape,

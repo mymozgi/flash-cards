@@ -22,7 +22,12 @@ export default async function KnowledgePage() {
         </p>
       </header>
 
-      <KnowledgeIndex roots={tree.roots} legacy={tree.legacy} countsReady={tree.countsReady} />
+      <KnowledgeIndex
+        roots={tree.roots}
+        flat={tree.flat}
+        legacy={tree.legacy}
+        countsReady={tree.countsReady}
+      />
     </>
   );
 }

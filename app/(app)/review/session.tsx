@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Grade } from "ts-fsrs";
 import { fromFsrsCard, previewIntervals, RATINGS, scheduler, toFsrsCard } from "@/lib/fsrs";
 import { renderMarkdown } from "@/lib/markdown";
+import { hostLabel, safeUrl } from "@/lib/url";
 import type { QueueCard } from "@/lib/types";
 import { ASPECT, ASPECT_RATIO, CardRenderer } from "@/components/card-renderer";
 import { Button, LinkButton } from "@/components/ui/button";
@@ -83,6 +84,9 @@ export function ReviewSession({
     () => (current?.card.note_md ? renderMarkdown(current.card.note_md) : ""),
     [current],
   );
+
+  const sourceUrl = useMemo(() => safeUrl(current?.card.link_url), [current]);
+  const sourceHost = useMemo(() => hostLabel(current?.card.link_url), [current]);
 
   const frontMedia = useMemo(
     () => (current?.media ?? []).filter((m) => m.side === "front"),
@@ -341,6 +345,25 @@ export function ReviewSession({
             />
           </div>
         </div>
+
+        {/*
+          Источник живёт под полотном, а не на нём. На полотне ссылка
+          перехватывала бы нажатие, которое переворачивает карточку, — а
+          переворот здесь главное действие. Открывается в новой вкладке, чтобы
+          сессия не потерялась.
+        */}
+        {sourceUrl && (
+          <a
+            href={sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(event) => event.stopPropagation()}
+            className="mt-5 inline-flex max-w-full items-center gap-1.5 text-sm text-accent hover:underline"
+          >
+            <span className="label-micro shrink-0 text-accent">Source</span>
+            <span className="truncate">{sourceHost}</span>
+          </a>
+        )}
 
         {current.tags.length > 0 && (
           <ul className="mt-6 flex flex-wrap gap-2">

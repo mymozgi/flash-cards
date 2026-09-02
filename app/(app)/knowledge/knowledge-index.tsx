@@ -2,23 +2,43 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import type { KnowledgeNode } from "@/lib/knowledge";
 import { Button } from "@/components/ui/button";
 import { panelClass } from "@/components/ui/panel";
-import { inputClass, Label } from "@/components/ui/field";
+import { inputClass } from "@/components/ui/field";
 import { usePrompt } from "@/components/ui/prompt";
-import { PlusIcon } from "@/components/icons";
-import { createCategory, createStarterCategories, updateCategory } from "./actions";
+import { useConfirm } from "@/components/ui/confirm";
+import { GridIcon, ListIcon, PlusIcon, SearchIcon, TableIcon } from "@/components/icons";
+import {
+  createCategory,
+  createStarterCategories,
+  moveCategory,
+  removeCategory,
+  updateCategory,
+} from "./actions";
 import { STARTERS } from "./starters";
 import { CategoryCard } from "./category-card";
+import { TreeView, type TreeMove } from "./tree-view";
+import { NodeMenu, type MenuAction } from "./node-menu";
+import { EditDialog, type CategoryDraft } from "./edit-dialog";
+
+type View = "cards" | "tree" | "list";
+
+const VIEWS: { key: View; label: string; Icon: typeof GridIcon }[] = [
+  { key: "cards", label: "Cards", Icon: GridIcon },
+  { key: "tree", label: "Tree", Icon: ListIcon },
+  { key: "list", label: "List", Icon: TableIcon },
+];
 
 export function KnowledgeIndex({
   roots,
+  flat,
   legacy,
   countsReady,
 }: {
   roots: KnowledgeNode[];
+  flat: KnowledgeNode[];
   /** Миграция 0015 не применена: иконки и архив база ещё не умеет. */
   legacy: boolean;
   /** Миграция 0017 не применена: объём ветки неизвестен, нули не показываем. */
@@ -27,12 +47,18 @@ export function KnowledgeIndex({
   const router = useRouter();
   const [busy, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
-  const [draft, setDraft] = useState({ name: "", icon: "", color: "#2563eb" });
+  const [view, setView] = useState<View>("cards");
+  const [query, setQuery] = useState("");
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [picks, setPicks] = useState<Set<string>>(new Set());
-  const { ask, dialog } = usePrompt();
+  const [menu, setMenu] = useState<{ node: KnowledgeNode; at: { x: number; y: number } } | null>(null);
+  const [editing, setEditing] = useState<{ node: KnowledgeNode | null; parentId: string | null } | null>(
+    null,
+  );
+  const { ask: askText, dialog: promptDialog } = usePrompt();
+  const { ask: askChoice, dialog: confirmDialog } = useConfirm<"cascade" | "reparent">();
 
-  const refresh = (res: { ok: boolean; error?: string }) => {
+  const settle = (res: { ok: boolean; error?: string }) => {
     if (!res.ok) {
       setError(res.error ?? "Something went wrong");
       return false;
@@ -42,56 +68,165 @@ export function KnowledgeIndex({
     return true;
   };
 
-  const create = () => {
+  const found = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return null;
+    return flat.filter((node) => node.path.toLowerCase().includes(q));
+  }, [flat, query]);
+
+  /** Куда можно положить узел: всё дерево без него самого и его потомков. */
+  const parentOptions = useMemo(() => {
+    const banned = new Set<string>();
+    const target = editing?.node;
+    if (target) {
+      const walk = (node: KnowledgeNode) => {
+        banned.add(node.id);
+        node.children.forEach(walk);
+      };
+      walk(target);
+    }
+    return flat.filter((n) => !banned.has(n.id)).map((n) => ({ id: n.id, path: n.path }));
+  }, [flat, editing]);
+
+  const toggle = (id: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  /** Перенос: превращаем «куда уронили» в родителя и порядок братьев. */
+  const applyMove = ({ dragId, targetId, zone }: TreeMove) => {
+    const target = flat.find((n) => n.id === targetId);
+    const dragged = flat.find((n) => n.id === dragId);
+    if (!target || !dragged) return;
+
+    const parentId = zone === "inside" ? target.id : target.parentId;
+    const siblings = flat
+      .filter((n) => n.parentId === parentId && n.id !== dragId)
+      .map((n) => n.id);
+
+    if (zone === "inside") {
+      siblings.push(dragId);
+    } else {
+      const at = siblings.indexOf(targetId);
+      siblings.splice(zone === "before" ? at : at + 1, 0, dragId);
+    }
+
     startTransition(async () => {
-      const res = await createCategory(draft);
-      if (!refresh(res)) return;
-      setDraft({ name: "", icon: "", color: "#2563eb" });
-      setCreating(false);
+      settle(await moveCategory(dragId, parentId, siblings));
     });
   };
 
   const rename = async (node: KnowledgeNode) => {
-    const name = await ask({
+    const name = await askText({
       title: `Rename “${node.name}”`,
       label: "Name",
       initialValue: node.name,
       confirmLabel: "Rename",
     });
     if (name === null || name === node.name) return;
-    startTransition(async () => {
-      refresh(await updateCategory(node.id, { name }));
-    });
+    startTransition(async () => void settle(await updateCategory(node.id, { name })));
   };
 
-  const archive = (node: KnowledgeNode) => {
+  const drop = async (node: KnowledgeNode) => {
+    const choice = await askChoice({
+      title: `Delete “${node.name}”?`,
+      description:
+        "Its cards and subcategories have to go somewhere. Move them up to the parent, or delete the whole branch. Cards themselves are never deleted here.",
+      actions: [
+        { value: "reparent", label: "Move contents up", tone: "secondary" },
+        { value: "cascade", label: "Delete the branch", tone: "danger" },
+      ],
+    });
+    if (choice !== "cascade" && choice !== "reparent") return;
+    startTransition(async () => void settle(await removeCategory(node.id, choice)));
+  };
+
+  const onMenuPick = (node: KnowledgeNode, action: MenuAction) => {
+    setMenu(null);
+    if (action === "open") router.push(`/knowledge/${node.id}`);
+    if (action === "cards") router.push(`/library?topic=${node.id}`);
+    if (action === "study") router.push(`/review?free=1&topic=${node.id}`);
+    if (action === "rename") void rename(node);
+    if (action === "edit") setEditing({ node, parentId: node.parentId });
+    if (action === "subcategory") setEditing({ node: null, parentId: node.id });
+    if (action === "delete") void drop(node);
+    if (action === "archive") {
+      startTransition(async () => void settle(await updateCategory(node.id, { archived: true })));
+    }
+    if (action === "unarchive") {
+      startTransition(async () => void settle(await updateCategory(node.id, { archived: false })));
+    }
+  };
+
+  const save = (draft: CategoryDraft) => {
+    const target = editing?.node;
     startTransition(async () => {
-      refresh(await updateCategory(node.id, { archived: true }));
+      const res = target
+        ? await updateCategory(target.id, {
+            name: draft.name,
+            icon: draft.icon,
+            color: draft.color,
+            description: draft.description,
+            parentId: draft.parentId,
+          })
+        : await createCategory({
+            name: draft.name,
+            icon: draft.icon,
+            color: draft.color,
+            parentId: draft.parentId,
+          });
+      if (settle(res)) setEditing(null);
     });
   };
 
   const addStarters = () => {
     const chosen = STARTERS.filter((s) => picks.has(s.name));
     startTransition(async () => {
-      if (refresh(await createStarterCategories(chosen))) setPicks(new Set());
+      if (settle(await createStarterCategories(chosen))) setPicks(new Set());
     });
   };
 
+  const empty = roots.length === 0;
+
   return (
     <div className="mt-6 flex flex-col gap-4">
-      {dialog}
+      {promptDialog}
+      {confirmDialog}
+
+      <EditDialog
+        open={editing !== null}
+        node={editing?.node ?? null}
+        parentId={editing?.parentId ?? null}
+        options={parentOptions}
+        busy={busy}
+        onSave={save}
+        onClose={() => setEditing(null)}
+      />
+
+      {menu && (
+        <NodeMenu
+          node={menu.node}
+          at={menu.at}
+          onPick={(action) => onMenuPick(menu.node, action)}
+          onClose={() => setMenu(null)}
+        />
+      )}
 
       {(legacy || !countsReady) && (
         <p role="alert" className={`${panelClass} border-amber bg-amber-soft p-4 text-sm`}>
           {legacy && (
             <>
-              Icons and archiving need <code>supabase/migrations/0015_knowledge_nodes.sql</code>.{" "}
+              Icons, archiving and node kinds need{" "}
+              <code>supabase/migrations/0015_knowledge_nodes.sql</code>.{" "}
             </>
           )}
           {!countsReady && (
             <>
-              Branch counts need <code>supabase/migrations/0017_topic_rollup.sql</code> — until it
-              is applied they are hidden rather than shown as zero.{" "}
+              Branch counts need <code>supabase/migrations/0017_topic_rollup.sql</code> — until it is
+              applied they are hidden rather than shown as zero.{" "}
             </>
           )}
           Everything else on this page works without them.
@@ -104,63 +239,46 @@ export function KnowledgeIndex({
         </p>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold tracking-tight">
-          {roots.length > 0 ? `${roots.length} ${roots.length === 1 ? "category" : "categories"}` : "No categories yet"}
-        </h2>
-        <div className="flex flex-wrap gap-2">
-          <Button tone="primary" onClick={() => setCreating((c) => !c)}>
-            <PlusIcon />
-            Add category
-          </Button>
-        </div>
-      </div>
+      {!empty && (
+        <div className={`${panelClass} flex flex-wrap items-center gap-2 p-2`}>
+          <div className="relative w-full min-w-0 sm:flex-1">
+            <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-faint">
+              <SearchIcon />
+            </span>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search categories…"
+              aria-label="Search categories"
+              className={`${inputClass} pl-11`}
+            />
+          </div>
 
-      {creating && (
-        <div className={`${panelClass} flex flex-col gap-3 p-4`}>
-          <div className="flex flex-wrap items-end gap-3">
-            <label className="w-20">
-              <Label>Icon</Label>
-              <input
-                value={draft.icon}
-                onChange={(e) => setDraft((d) => ({ ...d, icon: e.target.value.slice(0, 4) }))}
-                placeholder="🧠"
-                aria-label="Category icon"
-                className={`${inputClass} text-center text-xl`}
-              />
-            </label>
-            <label className="min-w-48 flex-1">
-              <Label>Name</Label>
-              <input
-                autoFocus
-                value={draft.name}
-                onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-                onKeyDown={(e) => e.key === "Enter" && create()}
-                placeholder="Psychology"
-                className={inputClass}
-              />
-            </label>
-            <label className="flex flex-col">
-              <Label>Colour</Label>
-              <input
-                type="color"
-                value={draft.color}
-                onChange={(e) => setDraft((d) => ({ ...d, color: e.target.value }))}
-                aria-label="Category colour"
-                className="h-12 w-16 rounded-lg border-control border-field-line bg-surface"
-              />
-            </label>
+          <div className="flex gap-1 rounded-lg border border-line bg-surface-2 p-1">
+            {VIEWS.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setView(item.key)}
+                aria-pressed={view === item.key}
+                className={`flex min-h-10 items-center gap-1.5 rounded-md px-3 text-sm font-semibold ${
+                  view === item.key ? "bg-surface text-ink shadow-card" : "text-muted hover:text-ink"
+                }`}
+              >
+                <item.Icon className="size-3.5" />
+                {item.label}
+              </button>
+            ))}
           </div>
-          <div className="flex gap-2">
-            <Button tone="primary" onClick={create} loading={busy}>
-              Create
-            </Button>
-            <Button onClick={() => setCreating(false)}>Cancel</Button>
-          </div>
+
+          <Button tone="primary" onClick={() => setEditing({ node: null, parentId: null })}>
+            <PlusIcon />
+            Add
+          </Button>
         </div>
       )}
 
-      {roots.length === 0 && !creating ? (
+      {empty ? (
         /*
           Пустой экран предлагает заготовки, но не создаёт их молча. Отмеченные
           становятся обычными категориями: их можно переименовать, перекрасить
@@ -204,11 +322,29 @@ export function KnowledgeIndex({
 
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <Button tone="primary" onClick={addStarters} loading={busy} disabled={picks.size === 0}>
-              Create {picks.size > 0 ? picks.size : ""} {picks.size === 1 ? "category" : "categories"}
+              Create {picks.size > 0 ? picks.size : ""}{" "}
+              {picks.size === 1 ? "category" : "categories"}
             </Button>
-            <Button onClick={() => setCreating(true)}>Name my own instead</Button>
+            <Button onClick={() => setEditing({ node: null, parentId: null })}>
+              Name my own instead
+            </Button>
           </div>
         </div>
+      ) : found ? (
+        <SearchResults nodes={found} onOpen={(id) => router.push(`/knowledge/${id}`)} />
+      ) : view === "tree" ? (
+        <div className={`${panelClass} p-2 sm:p-3`}>
+          <TreeView
+            roots={roots}
+            collapsed={collapsed}
+            onToggle={toggle}
+            onMove={applyMove}
+            onOpenMenu={(node, at) => setMenu({ node, at })}
+            busy={busy}
+          />
+        </div>
+      ) : view === "list" ? (
+        <SearchResults nodes={flat} onOpen={(id) => router.push(`/knowledge/${id}`)} />
       ) : (
         <ul className={`grid gap-3 sm:grid-cols-2 lg:grid-cols-3 ${busy ? "opacity-60" : ""}`}>
           {roots.map((node) => (
@@ -218,22 +354,70 @@ export function KnowledgeIndex({
                 counts={countsReady}
                 canArchive={!legacy}
                 onRename={() => void rename(node)}
-                onArchive={() => archive(node)}
+                onArchive={() =>
+                  startTransition(async () => void settle(await updateCategory(node.id, { archived: true })))
+                }
               />
             </li>
           ))}
         </ul>
       )}
 
-      {roots.length > 0 && (
+      {!empty && (
         <p className="text-sm text-muted">
-          Nesting, drag and drop and the map arrive next.{" "}
+          The map arrives next.{" "}
           <Link href="/decks" className="text-accent underline underline-offset-4">
             Study sets
           </Link>{" "}
-          still work exactly as before.
+          and review work exactly as before.
         </p>
       )}
     </div>
+  );
+}
+
+/** Плоский список: и результат поиска, и вид List — это одно и то же зрелище. */
+function SearchResults({
+  nodes,
+  onOpen,
+}: {
+  nodes: KnowledgeNode[];
+  onOpen: (id: string) => void;
+}) {
+  if (nodes.length === 0) {
+    return (
+      <p className="rounded-xl border border-line bg-surface py-16 text-center text-sm text-muted">
+        Nothing matches.
+      </p>
+    );
+  }
+
+  return (
+    <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+      {nodes.map((node) => (
+        <li key={node.id}>
+          <button
+            type="button"
+            onClick={() => onOpen(node.id)}
+            className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-2"
+          >
+            <span
+              aria-hidden
+              className="grid size-8 shrink-0 place-items-center rounded-md text-sm"
+              style={{
+                background: `color-mix(in srgb, ${node.color || "var(--accent)"} 16%, var(--surface))`,
+              }}
+            >
+              {node.icon || node.name.trim().charAt(0).toUpperCase()}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-medium">{node.name}</span>
+              <span className="label-micro block truncate">{node.path}</span>
+            </span>
+            <span className="label-micro shrink-0 tabular-nums">{node.cards}</span>
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }

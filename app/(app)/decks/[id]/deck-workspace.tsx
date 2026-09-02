@@ -21,6 +21,7 @@ import {
 import { ImageStrip } from "@/components/image-strip";
 import type { EditorImage } from "@/lib/types";
 import { COVER_ASPECT, COVER_LONG_SIDE, ImageError, MAX_IMAGES_PER_SIDE } from "@/lib/image";
+import { safeUrl } from "@/lib/url";
 import { discardUpload, uploadCover, uploadImage } from "@/lib/upload";
 import { Button, LinkButton } from "@/components/ui/button";
 import { cellInputClass, inputClass } from "@/components/ui/field";
@@ -151,6 +152,7 @@ export function DeckWorkspace({
       mcq: false,
       tags: "",
       note: "",
+      source: "",
       suspended: false,
       shape: "square",
       layout: "split",
@@ -1006,9 +1008,26 @@ function CardBlock({
         value={card.note}
         onChange={(e) => onUpdate(card.id, { note: e.target.value })}
         rows={2}
-        placeholder="Source, mnemonic, counter-example…"
+        placeholder="Mnemonic, counter-example…"
         className={`${FIELD} resize-y`}
       />
+
+      <Label>Source — where this came from</Label>
+      {/* Ссылка, а не текст: у источника есть адрес, и половина смысла поля
+          в том, чтобы вернуться к нему одним нажатием. Схему можно не писать,
+          допишется https:// */}
+      <input
+        value={card.source}
+        onChange={(e) => onUpdate(card.id, { source: e.target.value })}
+        placeholder="goodreads.com/book/… · a chapter, an article, a video"
+        inputMode="url"
+        className={FIELD}
+      />
+      {card.source.trim() !== "" && safeUrl(card.source) === null && (
+        <p role="alert" className="mt-1.5 text-2xs text-rust">
+          Only http and https links are saved — this one will be dropped.
+        </p>
+      )}
 
       <Label>Tags</Label>
       <TagEditor value={card.tags} allTags={allTags} onChange={(tags) => onUpdate(card.id, { tags })} />

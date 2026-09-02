@@ -118,3 +118,111 @@ export async function updateCategory(id: string, patch: NodePatch): Promise<Node
   revalidatePath("/", "layout");
   return { ok: true };
 }
+
+/**
+ * Перемещение узла: новый родитель и новое место среди братьев.
+ *
+ * Порядок пересчитывается для всей новой ветки, а не только для тронутого
+ * узла: position — это позиция среди братьев, и если её не переписать целиком,
+ * два узла получат одинаковое число и порядок станет зависеть от того, как
+ * база вернула строки.
+ *
+ * Петля и превышение глубины не проверяются здесь: это делает триггер в базе.
+ * Проверка в приложении была бы второй копией правила, которая однажды
+ * разойдётся с первой — а обойти её можно любым другим клиентом.
+ */
+export async function moveCategory(
+  id: string,
+  parentId: string | null,
+  siblingsInOrder: string[],
+): Promise<NodeResult> {
+  const user = await requireUser();
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("topics")
+    .update({ parent_id: parentId })
+    .eq("id", id)
+    .eq("user_id", user.id);
+
+  if (error) return { ok: false, error: explain(error) };
+
+  for (const [index, siblingId] of siblingsInOrder.entries()) {
+    const { error: orderError } = await supabase
+      .from("topics")
+      .update({ position: index })
+      .eq("id", siblingId)
+      .eq("user_id", user.id);
+    if (orderError) return { ok: false, error: explain(orderError) };
+  }
+
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/** Порядок среди братьев без смены родителя. */
+export async function reorderCategories(siblingsInOrder: string[]): Promise<NodeResult> {
+  const user = await requireUser();
+  const supabase = await createClient();
+
+  for (const [index, id] of siblingsInOrder.entries()) {
+    const { error } = await supabase
+      .from("topics")
+      .update({ position: index })
+      .eq("id", id)
+      .eq("user_id", user.id);
+    if (error) return { ok: false, error: explain(error) };
+  }
+
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/**
+ * Удаление категории. Содержимое должно куда-то деться, и выбор из двух
+ * исходов делает пользователь — молча снести ветку нельзя.
+ */
+export async function removeCategory(
+  id: string,
+  strategy: "reparent" | "cascade",
+): Promise<NodeResult> {
+  const user = await requireUser();
+  const supabase = await createClient();
+
+  const { data: node } = await supabase
+    .from("topics")
+    .select("id,parent_id")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!node) return { ok: false, error: "Category not found" };
+
+  if (strategy === "cascade") {
+    // Каскад делает сама база: parent_id объявлен on delete cascade,
+    // а карточки — on delete set null, то есть они остаются
+    const { error } = await supabase.from("topics").delete().eq("id", id).eq("user_id", user.id);
+    if (error) return { ok: false, error: explain(error) };
+    revalidatePath("/", "layout");
+    return { ok: true };
+  }
+
+  const parentId = (node as { parent_id: string | null }).parent_id;
+  const { error: lift } = await supabase
+    .from("topics")
+    .update({ parent_id: parentId })
+    .eq("parent_id", id)
+    .eq("user_id", user.id);
+  if (lift) return { ok: false, error: explain(lift) };
+
+  await supabase
+    .from("cards")
+    .update({ topic_id: parentId })
+    .eq("topic_id", id)
+    .eq("user_id", user.id);
+
+  const { error } = await supabase.from("topics").delete().eq("id", id).eq("user_id", user.id);
+  if (error) return { ok: false, error: explain(error) };
+
+  revalidatePath("/", "layout");
+  return { ok: true };
+}

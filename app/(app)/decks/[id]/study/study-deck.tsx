@@ -6,6 +6,7 @@ import { renderMarkdown } from "@/lib/markdown";
 import { CardRenderer, type CardImage, type CardLayout, type CardShape, type ImagePosition } from "@/components/card-renderer";
 import { ArrowLeftIcon, ArrowRightIcon, CloseIcon, GridIcon } from "@/components/icons";
 import { AXIS_SLOP, followX, swipeVerdict } from "@/lib/swipe";
+import { hostLabel, safeUrl } from "@/lib/url";
 import { Lightbox } from "@/components/lightbox";
 import { Button, LinkButton } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -15,6 +16,8 @@ export type StudyCard = {
   term: string;
   answer: string;
   example: string;
+  /** Откуда знание. Пустая строка — источник не указан. */
+  source: string;
   shape: CardShape;
   layout: CardLayout;
   imagePosition: ImagePosition;
@@ -253,6 +256,17 @@ export function StudyDeck({
           </div>
         )}
         {card.example && <p className="mt-2 text-sm italic text-muted">{card.example}</p>}
+        {safeUrl(card.source) && (
+          <a
+            href={safeUrl(card.source) as string}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 inline-flex max-w-full items-center gap-1.5 text-sm text-accent hover:underline"
+          >
+            <span className="label-micro shrink-0 text-accent">Source</span>
+            <span className="truncate">{hostLabel(card.source)}</span>
+          </a>
+        )}
       </section>
 
       <p className="text-center text-xs text-faint">

@@ -45,6 +45,8 @@ export type CardLayout = "full_image" | "split";
 export type ImagePosition = "left" | "right" | "top" | "bottom";
 
 export type CardRow = {
+  /** Источник знания. Колонка исторически называется link_url. */
+  link_url?: string | null;
   id: string;
   topic_id: string | null;
   shape: CardShape;

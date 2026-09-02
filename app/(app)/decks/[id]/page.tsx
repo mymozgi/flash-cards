@@ -15,6 +15,7 @@ type CardRow = {
   back_md: string;
   example_md: string | null;
   note_md: string | null;
+  link_url: string | null;
   suspended: boolean;
   mcq: boolean;
   shape: "square" | "landscape" | "portrait";
@@ -43,7 +44,7 @@ export default async function DeckPage(props: { params: Promise<{ id: string }> 
     supabase
       .from("cards")
       .select(
-        "id,front_md,back_md,note_md,suspended,example_md,mcq,shape,layout,image_position,distractors, card_tags(tags(name))",
+        "id,front_md,back_md,note_md,link_url,suspended,example_md,mcq,shape,layout,image_position,distractors, card_tags(tags(name))",
       )
       .eq("topic_id", id)
       .is("deleted_at", null)
@@ -86,6 +87,7 @@ export default async function DeckPage(props: { params: Promise<{ id: string }> 
       correctIndex: 0,
       example: row.example_md ?? "",
       note: row.note_md ?? "",
+      source: row.link_url ?? "",
       suspended: row.suspended,
       mcq: row.mcq,
       tags: (row.card_tags ?? []).map((t) => t.tags.name).join(", "),
