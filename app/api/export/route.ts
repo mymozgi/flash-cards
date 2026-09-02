@@ -18,7 +18,6 @@ type CardExport = {
   distractors: string[];
   suspended: boolean;
   created_at: string;
-  card_tags: { tags: { name: string } }[];
   scheduling: { state: string; due: string; reps: number; lapses: number } | null;
 };
 
@@ -31,7 +30,7 @@ export async function GET(request: Request) {
     supabase
       .from("cards")
       .select(
-        "id,topic_id,front_md,back_md,note_md,kind,distractors,suspended,created_at, card_tags(tags(name)), scheduling(state,due,reps,lapses)",
+        "id,topic_id,front_md,back_md,note_md,kind,distractors,suspended,created_at, scheduling(state,due,reps,lapses)",
       )
       .eq("user_id", user.id)
       .is("deleted_at", null)
@@ -70,8 +69,6 @@ export async function GET(request: Request) {
         cards: rows.map((card) => ({
           ...card,
           topic_path: pathOf(card.topic_id),
-          tags: (card.card_tags ?? []).map((t) => t.tags.name),
-          card_tags: undefined,
         })),
         reviews: reviews ?? [],
       },
@@ -92,7 +89,6 @@ export async function GET(request: Request) {
       front: card.front_md,
       back: card.back_md,
       topic: pathOf(card.topic_id),
-      tags: (card.card_tags ?? []).map((t) => t.tags.name).join(", "),
       note: card.note_md ?? "",
       reversed: card.kind === "reversed_of" ? 1 : 0,
       choice1: card.distractors?.[0] ?? "",

@@ -52,7 +52,6 @@ const GROUPS: { items: { href: string; label: string; Icon: typeof GridIcon }[] 
         исчез вместе с дублем дерева.
       */
       { href: "/knowledge", label: "Categories", Icon: ListIcon },
-      { href: "/tags", label: "Tags", Icon: TagIcon },
       { href: "/import", label: "Import", Icon: TableIcon },
       { href: "/trash", label: "Deleted cards", Icon: TrashIcon },
       { href: "/how-it-works", label: "How it works", Icon: TagIcon },

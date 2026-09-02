@@ -9,26 +9,28 @@ import { panelClass } from "@/components/ui/panel";
 import { inputClass } from "@/components/ui/field";
 import { usePrompt } from "@/components/ui/prompt";
 import { useConfirm } from "@/components/ui/confirm";
-import { GridIcon, ListIcon, PlusIcon, SearchIcon, TableIcon } from "@/components/icons";
+import { GridIcon, PlusIcon, SearchIcon, TableIcon } from "@/components/icons";
 import {
   createCategory,
   createStarterCategories,
-  moveCategory,
   removeCategory,
   updateCategory,
 } from "./actions";
-import { placeAfterDrop } from "@/lib/knowledge-tree";
 import { STARTERS } from "./starters";
 import { CategoryCard } from "./category-card";
-import { TreeView, type TreeMove } from "./tree-view";
 import { NodeMenu, type MenuAction } from "./node-menu";
 import { EditDialog, type CategoryDraft } from "./edit-dialog";
 
-type View = "cards" | "tree" | "list";
+type View = "cards" | "list";
 
+/*
+  Видов два, а не три. «Tree» показывал то же самое дерево, что и плитки, но
+  строчками — и мешал: два способа смотреть на одно и то же заставляют
+  выбирать между ними вместо того, чтобы работать. Перенос узлов переехал
+  туда, где он и нужен, — в саму структуру категорий.
+*/
 const VIEWS: { key: View; label: string; Icon: typeof GridIcon }[] = [
   { key: "cards", label: "Cards", Icon: GridIcon },
-  { key: "tree", label: "Tree", Icon: ListIcon },
   { key: "list", label: "List", Icon: TableIcon },
 ];
 
@@ -50,7 +52,6 @@ export function KnowledgeIndex({
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>("cards");
   const [query, setQuery] = useState("");
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [picks, setPicks] = useState<Set<string>>(new Set());
   const [menu, setMenu] = useState<{ node: KnowledgeNode; at: { x: number; y: number } } | null>(null);
   const [editing, setEditing] = useState<{
@@ -89,43 +90,12 @@ export function KnowledgeIndex({
       };
       walk(target);
     }
-    return flat.filter((n) => !banned.has(n.id)).map((n) => ({ id: n.id, path: n.path }));
+    // В список попадают только категории: тему внутрь темы база не пустит,
+    // и предлагать такой выбор значит предлагать заведомый отказ
+    return flat
+      .filter((n) => !banned.has(n.id) && n.kind !== "deck" && n.parentId === null)
+      .map((n) => ({ id: n.id, path: n.path }));
   }, [flat, editing]);
-
-  const toggle = (id: string) =>
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-
-  /**
-   * Перенос: «куда уронили» превращается в родителя и порядок братьев.
-   * Расчёт — в lib/knowledge-tree, под тестами: здесь он был копией, которая
-   * не сортировала братьев по position и потому могла переставить их местами
-   * при первом же переносе.
-   */
-  const applyMove = ({ dragId, targetId, zone }: TreeMove) => {
-    const place = placeAfterDrop(
-      flat.map((node) => ({
-        id: node.id,
-        parentId: node.parentId,
-        position: node.position,
-        kind: node.kind,
-      })),
-      dragId,
-      targetId,
-      zone,
-    );
-    if (!place) {
-      setError("A category cannot be placed inside itself");
-      return;
-    }
-    startTransition(async () => {
-      void settle(await moveCategory(dragId, place.parentId, place.siblings));
-    });
-  };
 
   const rename = async (node: KnowledgeNode) => {
     const name = await askText({
@@ -184,22 +154,50 @@ export function KnowledgeIndex({
 
   const save = (draft: CategoryDraft) => {
     const target = editing?.node;
+    const kind = editing?.kind ?? "area";
+
     startTransition(async () => {
-      const res = target
-        ? await updateCategory(target.id, {
-            name: draft.name,
-            icon: draft.icon,
-            color: draft.color,
-            description: draft.description,
-            parentId: draft.parentId,
-          })
-        : await createCategory({
-            name: draft.name,
-            icon: draft.icon,
-            color: draft.color,
-            parentId: draft.parentId,
-            kind: editing?.kind ?? "area",
-          });
+      if (target) {
+        if (settle(await updateCategory(target.id, {
+          name: draft.name,
+          icon: draft.icon,
+          color: draft.color,
+          description: draft.description,
+          parentId: draft.parentId,
+        }))) {
+          setEditing(null);
+        }
+        return;
+      }
+
+      /*
+        Тема без категории не создаётся. Если категорий ещё нет, она заводится
+        здесь же по введённому имени — отправлять человека на другой экран за
+        категорией, чтобы вернуться и создать тему, значит требовать два
+        действия там, где достаточно одного.
+      */
+      let parentId = draft.parentId;
+      if (kind === "deck" && !parentId) {
+        const name = draft.newCategory.trim();
+        if (!name) {
+          setError("Pick a category, or name a new one");
+          return;
+        }
+        const created = await createCategory({ name, kind: "area" });
+        if (!created.ok || !created.id) {
+          setError(created.error ?? "Could not create the category");
+          return;
+        }
+        parentId = created.id;
+      }
+
+      const res = await createCategory({
+        name: draft.name,
+        icon: draft.icon,
+        color: draft.color,
+        parentId,
+        kind,
+      });
       if (settle(res)) setEditing(null);
     });
   };
@@ -361,17 +359,6 @@ export function KnowledgeIndex({
         </div>
       ) : found ? (
         <SearchResults nodes={found} onOpen={(id) => router.push(`/knowledge/${id}`)} />
-      ) : view === "tree" ? (
-        <div className={`${panelClass} p-2 sm:p-3`}>
-          <TreeView
-            roots={roots}
-            collapsed={collapsed}
-            onToggle={toggle}
-            onMove={applyMove}
-            onOpenMenu={(node, at) => setMenu({ node, at })}
-            busy={busy}
-          />
-        </div>
       ) : view === "list" ? (
         <SearchResults nodes={flat} onOpen={(id) => router.push(`/knowledge/${id}`)} />
       ) : (

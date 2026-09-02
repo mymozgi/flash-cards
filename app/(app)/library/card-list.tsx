@@ -6,11 +6,8 @@ import { useState, useTransition } from "react";
 import { bulkUpdate, createCategoryFromPath, type BulkOp } from "./actions";
 import { useConfirm } from "@/components/ui/confirm";
 import { Button } from "@/components/ui/button";
-import { usePrompt } from "@/components/ui/prompt";
 import { useCategoryPicker, type PickableCategory } from "@/components/ui/category-picker";
-import { TagChip } from "@/components/ui/tag-chip";
 import { Classification } from "@/components/ui/classification";
-import type { CardTag } from "@/lib/types";
 
 export type LibraryCard = {
   id: string;
@@ -18,7 +15,6 @@ export type LibraryCard = {
   back: string;
   topicId: string | null;
   topicPath: string | null;
-  tags: CardTag[];
   suspended: boolean;
   state: string;
   thumbUrl: string | null;
@@ -46,7 +42,6 @@ export function CardList({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const { ask, dialog } = useConfirm();
-  const { ask: askText, dialog: promptDialog } = usePrompt();
   const { ask: pickCategory, dialog: pickerDialog } = useCategoryPicker(
     categories,
     createCategoryFromPath,
@@ -89,7 +84,6 @@ export function CardList({
   return (
     <>
       {dialog}
-      {promptDialog}
       {pickerDialog}
       {!readOnly && selected.size > 0 && (
         <div className="sticky top-0 z-10 -mx-5 mb-3 flex flex-wrap items-center gap-2 border-b border-line bg-surface px-5 py-3 text-sm sm:mx-0 sm:rounded sm:border">
@@ -105,25 +99,10 @@ export function CardList({
           <Button
             size="sm"
             onClick={async () => {
-              const tags = await askText({
-                title: `Add tags to ${selected.size} ${selected.size === 1 ? "card" : "cards"}`,
-                label: "Tags",
-                placeholder: "biology, cells",
-                description: "Comma separated. Existing tags on these cards stay.",
-                confirmLabel: "Add tags",
-              });
-              if (tags) run({ action: "add_tags", tags });
-            }}
-          >
-            Add tags
-          </Button>
-          <Button
-            size="sm"
-            onClick={async () => {
               const topicId = await pickCategory({
                 title: `Move ${selected.size} ${selected.size === 1 ? "card" : "cards"}`,
                 description:
-                  "Pick where these cards belong. Their tags and review history are untouched.",
+                  "Pick where these cards belong. Their review history is untouched.",
                 allowNone: true,
                 noneLabel: "Take them out of every category",
               });
@@ -193,13 +172,6 @@ export function CardList({
                 <span className="label-micro">{STATE_LABELS[card.state] ?? card.state}</span>
                 {card.suspended && <span className="label-micro text-rust">suspended</span>}
               </span>
-              {card.tags.length > 0 && (
-                <span className="mt-1.5 flex flex-wrap gap-1.5">
-                  {card.tags.map((tag) => (
-                    <TagChip key={tag.name} name={tag.name} slot={tag.slot} />
-                  ))}
-                </span>
-              )}
             </Link>
           </li>
         ))}

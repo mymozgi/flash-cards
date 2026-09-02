@@ -4,10 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import {
   normalizeFront,
-  parseTags,
-  resolveTags,
   resolveTopicPath,
-  syncCardTags,
 } from "@/lib/cards";
 
 export type ImportRow = {
@@ -16,7 +13,6 @@ export type ImportRow = {
   front: string;
   back: string;
   topic: string;
-  tags: string;
   note: string;
   reversed: boolean;
   choices: string[];
@@ -89,7 +85,6 @@ export async function importRows(
   const result: BatchResult = { created: 0, skipped: 0, errors: [] };
 
   const topicCache = new Map<string, string | null>();
-  const tagCache = new Map<string, string>();
 
   // существующие карточки ищем один раз на всю порцию, а не построчно
   const norms = rows.map((r) => normalizeFront(r.front)).filter(Boolean);
@@ -123,7 +118,6 @@ export async function importRows(
 
     try {
       const topicId = await resolveTopicPath(supabase, user.id, row.topic, topicCache);
-      const tagIds = await resolveTags(supabase, user.id, parseTags(row.tags), tagCache);
       const distractors = row.choices.map((c) => c.trim()).filter(Boolean).slice(0, 3);
 
       const payload = {
@@ -141,7 +135,6 @@ export async function importRows(
           .eq("id", duplicateId)
           .eq("user_id", user.id);
         if (error) throw new Error(error.message);
-        await syncCardTags(supabase, user.id, duplicateId, tagIds);
         result.created += 1;
         continue;
       }
@@ -154,7 +147,6 @@ export async function importRows(
       if (error) throw new Error(error.message);
 
       const cardId = created.id as string;
-      await syncCardTags(supabase, user.id, cardId, tagIds);
       result.created += 1;
 
       if (row.reversed) {
@@ -172,10 +164,7 @@ export async function importRows(
           })
           .select("id")
           .single();
-        if (reverse) {
-          await syncCardTags(supabase, user.id, reverse.id as string, tagIds);
-          result.created += 1;
-        }
+        if (reverse) result.created += 1;
       }
     } catch (e) {
       result.errors.push({

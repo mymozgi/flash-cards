@@ -47,12 +47,6 @@ export type DeckSummary = {
   lastUsed: string | null;
 };
 
-export type TagRow = {
-  id: string;
-  name: string;
-  slot: number | null;
-};
-
 export type CardShape = "square" | "landscape" | "portrait";
 
 export type CardLayout = "full_image" | "split";
@@ -121,12 +115,9 @@ export type MediaItem = {
 
 /** Карточка в очереди повторения — всё, что нужно экрану сессии. */
 /** Тег в том виде, в каком его показывают: имя плюс ячейка палитры. */
-export type CardTag = { name: string; slot: number | null };
-
 export type QueueCard = {
   card: CardRow;
   scheduling: SchedulingRow;
   topicPath: string | null;
-  tags: CardTag[];
   media: MediaItem[];
 };

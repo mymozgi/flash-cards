@@ -4,16 +4,13 @@ import { startOfDay } from "./day";
 import { publicUrl } from "./storage";
 import { isMissingColumn, rememberSourceColumn, withSource } from "./schema";
 import { isStudySet, kindInEffect } from "./knowledge-tree";
-import { toSlot } from "./tag-color";
 import type {
   CardRow,
-  CardTag,
   DeckSummary,
   MediaItem,
   QueueCard,
   SchedulingRow,
   SettingsRow,
-  TagRow,
   TopicNode,
   TopicRow,
 } from "./types";
@@ -173,24 +170,6 @@ export async function getDeckSummaries(): Promise<DeckSummary[]> {
   });
 }
 
-export async function getTags(): Promise<TagRow[]> {
-  const supabase = await createClient();
-  // Цвет тянем отдельной попыткой: до миграции 0014 колонки нет, и жёсткий
-  // запрос обрушил бы список тегов целиком
-  const withColor = await supabase.from("tags").select("id,name,color").order("name");
-  const data = (
-    withColor.error
-      ? (await supabase.from("tags").select("id,name").order("name")).data
-      : withColor.data
-  ) as { id: string; name: string; color?: number | null }[] | null;
-
-  return (data ?? []).map((tag) => ({
-    id: tag.id,
-    name: tag.name,
-    slot: toSlot(tag.color),
-  }));
-}
-
 export type TodayCounts = {
   due: number;
   newAvailable: number;
@@ -256,7 +235,6 @@ type SchedulingWithCard = SchedulingRow & { cards: CardRow };
 
 export type QueueOptions = {
   topicIds?: string[];
-  tagIds?: string[];
   /** Свободная тренировка: берём карточки независимо от срока (§8.2, FR-53/56). */
   ignoreSchedule?: boolean;
   limit?: number;
@@ -271,16 +249,6 @@ export async function getQueue(
   const nowIso = new Date().toISOString();
   const counts = await getTodayCounts(settings);
 
-  let cardIdFilter: string[] | null = null;
-  if (options.tagIds?.length) {
-    const { data } = await supabase
-      .from("card_tags")
-      .select("card_id")
-      .in("tag_id", options.tagIds);
-    cardIdFilter = [...new Set((data ?? []).map((r: { card_id: string }) => r.card_id))];
-    if (cardIdFilter.length === 0) return [];
-  }
-
   // Source — украшение под карточкой, очередь — суть. Пока миграция 0018 не
   // применена, колонки нет, и запрос с ней отклоняется целиком: экран
   // повторения переставал показывать карточки из-за строчки со ссылкой.
@@ -292,7 +260,6 @@ export async function getQueue(
       .eq("cards.suspended", false)
       .is("cards.deleted_at", null);
     if (options.topicIds?.length) q = q.in("cards.topic_id", options.topicIds);
-    if (cardIdFilter) q = q.in("card_id", cardIdFilter);
     return q;
   };
 
@@ -345,11 +312,7 @@ export async function getQueue(
   if (rows.length === 0) return [];
 
   const cardIds = rows.map((r) => r.card_id);
-  const [topics, tagsByCard, mediaByCard] = await Promise.all([
-    getTopicTree(),
-    tagsForCards(cardIds),
-    mediaForCards(cardIds),
-  ]);
+  const [topics, mediaByCard] = await Promise.all([getTopicTree(), mediaForCards(cardIds)]);
   const pathById = new Map(topics.map((t) => [t.id, t.path]));
 
   const queue: QueueCard[] = rows.map((row) => {
@@ -358,7 +321,6 @@ export async function getQueue(
       card: cards,
       scheduling: scheduling as SchedulingRow,
       topicPath: cards.topic_id ? (pathById.get(cards.topic_id) ?? null) : null,
-      tags: tagsByCard.get(row.card_id) ?? [],
       media: mediaByCard.get(row.card_id) ?? [],
     };
   });
@@ -400,33 +362,6 @@ export async function mediaForCards(cardIds: string[]): Promise<Map<string, Medi
       caption: row.caption,
       position: row.position,
     });
-    map.set(row.card_id, list);
-  }
-  return map;
-}
-
-async function tagsForCards(cardIds: string[]): Promise<Map<string, CardTag[]>> {
-  const supabase = await createClient();
-
-  // Цвет запрашивается отдельной попыткой: до миграции 0014 колонки нет, и
-  // жёсткий запрос обрушил бы теги совсем. Без цвета они просто нейтральные —
-  // ровно то, что «колонки нет» и означает.
-  const withColor = await supabase
-    .from("card_tags")
-    .select("card_id, tags!inner(name,color)")
-    .in("card_id", cardIds);
-  const rows = withColor.error
-    ? await supabase.from("card_tags").select("card_id, tags!inner(name)").in("card_id", cardIds)
-    : withColor;
-
-  const map = new Map<string, CardTag[]>();
-  const data = (rows.data ?? []) as unknown as {
-    card_id: string;
-    tags: { name: string; color?: number | null };
-  }[];
-  for (const row of data) {
-    const list = map.get(row.card_id) ?? [];
-    list.push({ name: row.tags.name, slot: toSlot(row.tags.color) });
     map.set(row.card_id, list);
   }
   return map;

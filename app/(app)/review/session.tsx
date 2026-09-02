@@ -10,7 +10,6 @@ import type { QueueCard } from "@/lib/types";
 import { ASPECT, ASPECT_RATIO, CardRenderer } from "@/components/card-renderer";
 import { Button, LinkButton } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { TagChip } from "@/components/ui/tag-chip";
 import { Classification } from "@/components/ui/classification";
 import { ArrowLeftIcon, ArrowRightIcon, FlipIcon } from "@/components/icons";
 import {
@@ -368,15 +367,6 @@ export function ReviewSession({
           </a>
         )}
 
-        {current.tags.length > 0 && (
-          <ul className="mt-6 flex flex-wrap gap-2">
-            {current.tags.map((tag) => (
-              <li key={tag.name}>
-                <TagChip name={tag.name} slot={tag.slot} />
-              </li>
-            ))}
-          </ul>
-        )}
       </div>
 
       <div className="sticky bottom-4 flex flex-col gap-2 sm:bottom-6">

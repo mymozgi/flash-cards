@@ -6,10 +6,7 @@ import { safeUrl } from "@/lib/url";
 import { isMissingColumn, rememberSourceColumn, trySourceColumn } from "@/lib/schema";
 import {
   coerceImages,
-  parseTags,
-  resolveTags,
   syncCardMedia,
-  syncCardTags,
   type IncomingImage,
 } from "@/lib/cards";
 
@@ -32,7 +29,6 @@ export type DeckCardInput = {
   correctIndex: number;
   example: string;
   mcq: boolean;
-  tags: string;
   note: string;
   /** Откуда знание: книга, статья, видео. Только http(s). */
   source: string;
@@ -59,7 +55,6 @@ export async function saveDeck(
 ): Promise<SaveResult> {
   const user = await requireUser();
   const supabase = await createClient();
-  const tagCache = new Map<string, string>();
   let sourceSkipped = false;
   const positionOf = new Map(order.map((id, index) => [id, index]));
   let saved = 0;
@@ -130,8 +125,6 @@ export async function saveDeck(
       };
     }
 
-    const tagIds = await resolveTags(supabase, user.id, parseTags(card.tags), tagCache);
-    await syncCardTags(supabase, user.id, card.id, tagIds);
     await syncCardMedia(supabase, user.id, card.id, "front", coerceImages(card.frontImages, user.id));
     await syncCardMedia(supabase, user.id, card.id, "back", coerceImages(card.backImages, user.id));
     saved += 1;
@@ -211,75 +204,6 @@ export async function updateDeck(
     await supabase.from("media_orphans").delete().eq("storage_path", details.cover);
   }
 
-  revalidatePath("/", "layout");
-  return { ok: true };
-}
-
-/** Переименование тега по всей базе, а не только в этой колоде (FR-25). */
-export async function renameTagEverywhere(from: string, to: string): Promise<SaveResult> {
-  const user = await requireUser();
-  const supabase = await createClient();
-
-  const [target] = parseTags(to);
-  if (!target) return { ok: false, error: "The new tag name is empty" };
-
-  const { data: existing } = await supabase
-    .from("tags")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("name", target)
-    .maybeSingle();
-
-  const { data: source } = await supabase
-    .from("tags")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("name", from)
-    .maybeSingle();
-
-  if (!source) return { ok: false, error: `Tag “${from}” not found` };
-
-  // Целевой тег уже есть — это слияние: переносим связи и убираем исходный
-  if (existing && existing.id !== source.id) {
-    const { data: links } = await supabase
-      .from("card_tags")
-      .select("card_id")
-      .eq("tag_id", source.id);
-
-    for (const link of (links ?? []) as { card_id: string }[]) {
-      await supabase
-        .from("card_tags")
-        .upsert(
-          { card_id: link.card_id, tag_id: existing.id, user_id: user.id },
-          { onConflict: "card_id,tag_id", ignoreDuplicates: true },
-        );
-    }
-    await supabase.from("tags").delete().eq("id", source.id).eq("user_id", user.id);
-  } else {
-    const { error } = await supabase
-      .from("tags")
-      .update({ name: target })
-      .eq("id", source.id)
-      .eq("user_id", user.id);
-    if (error) return { ok: false, error: error.message };
-  }
-
-  revalidatePath("/", "layout");
-  return { ok: true };
-}
-
-/** Удаление тега целиком: связи с карточками уходят каскадом. */
-export async function deleteTagEverywhere(name: string): Promise<SaveResult> {
-  const user = await requireUser();
-  const supabase = await createClient();
-
-  const { error } = await supabase
-    .from("tags")
-    .delete()
-    .eq("user_id", user.id)
-    .eq("name", name);
-
-  if (error) return { ok: false, error: error.message };
   revalidatePath("/", "layout");
   return { ok: true };
 }

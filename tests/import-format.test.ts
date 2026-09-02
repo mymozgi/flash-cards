@@ -39,7 +39,6 @@ describe("собственная выгрузка", () => {
         note_md: "cliché but true",
         kind: "basic",
         topic_path: "Biology / Cells",
-        tags: ["biology", "organelles"],
         distractors: ["Ribosome", "Nucleus"],
         scheduling: { state: "review", reps: 12 },
       },
@@ -50,7 +49,6 @@ describe("собственная выгрузка", () => {
         note_md: null,
         kind: "reversed_of",
         topic_path: null,
-        tags: [],
         distractors: [],
       },
     ],
@@ -74,10 +72,6 @@ describe("собственная выгрузка", () => {
     expect(first.choice3).toBe("");
   });
 
-  it("список тегов превращается в строку, которую разбирает мастер", () => {
-    expect(parseJson(dump).rows[0].tags).toBe("biology, organelles");
-  });
-
   it("обратная карточка помечается тем, что мастер считает истиной", () => {
     const [, second] = parseJson(dump).rows;
     expect(second.reversed).toBe("1");
@@ -88,7 +82,6 @@ describe("собственная выгрузка", () => {
     const [, second] = parseJson(dump).rows;
     expect(second.note).toBe("");
     expect(second.topic).toBe("");
-    expect(second.tags).toBe("");
   });
 });
 

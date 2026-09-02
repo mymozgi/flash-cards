@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { createClient, currentUser } from "@/lib/supabase/server";
-import { getTags, getTopicTree } from "@/lib/data";
+import { getTopicTree } from "@/lib/data";
 import { publicUrl } from "@/lib/storage";
-import { hueClass, toSlot } from "@/lib/tag-color";
 import { CardList, type LibraryCard } from "./card-list";
 import { Button } from "@/components/ui/button";
 import { inputClass } from "@/components/ui/field";
@@ -10,11 +9,11 @@ import { inputClass } from "@/components/ui/field";
 const PAGE_SIZE = 100;
 
 export default async function LibraryPage(props: {
-  searchParams: Promise<{ topic?: string; tag?: string; q?: string }>;
+  searchParams: Promise<{ topic?: string; q?: string }>;
 }) {
   const params = await props.searchParams;
   const supabase = await createClient();
-  const [topics, tags, user] = await Promise.all([getTopicTree(), getTags(), currentUser()]);
+  const [topics, user] = await Promise.all([getTopicTree(), currentUser()]);
 
   // фильтр по теме включает всех её потомков
   let topicIds: string[] | null = null;
@@ -39,23 +38,15 @@ export default async function LibraryPage(props: {
     : undefined;
   const childTopics = activeRoot ? topics.filter((t) => t.parent_id === activeRoot.id) : [];
 
-  let cardIds: string[] | null = null;
-  if (params.tag) {
-    const { data } = await supabase.from("card_tags").select("card_id").eq("tag_id", params.tag);
-    cardIds = (data ?? []).map((r: { card_id: string }) => r.card_id);
-  }
-
   let query = supabase
     .from("cards")
-    .select("id,front_md,back_md,topic_id,suspended, card_tags(tags(name,color)), scheduling(state), media(thumb_path,position)")
+    .select("id,front_md,back_md,topic_id,suspended, scheduling(state), media(thumb_path,position)")
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(PAGE_SIZE);
 
   if (topicIds) query = query.in("topic_id", topicIds);
   // пустой список нельзя отдавать в .in по uuid-колонке — Postgres ругнётся на ''
-  if (cardIds && cardIds.length === 0) cardIds = ["00000000-0000-0000-0000-000000000000"];
-  if (cardIds) query = query.in("id", cardIds);
   if (params.q?.trim()) query = query.textSearch("search", params.q.trim(), { config: "russian" });
 
   const { data, error } = await query;
@@ -68,7 +59,6 @@ export default async function LibraryPage(props: {
       back_md: string;
       topic_id: string | null;
       suspended: boolean;
-      card_tags: { tags: { name: string; color: number | null } }[];
       scheduling: { state: string } | { state: string }[] | null;
       media: { thumb_path: string; position: number }[];
     }[]
@@ -78,7 +68,6 @@ export default async function LibraryPage(props: {
     back: row.back_md,
     topicId: row.topic_id,
     topicPath: row.topic_id ? (pathById.get(row.topic_id) ?? null) : null,
-    tags: (row.card_tags ?? []).map((t) => ({ name: t.tags.name, slot: toSlot(t.tags.color) })),
     suspended: row.suspended,
     state: (Array.isArray(row.scheduling) ? row.scheduling[0]?.state : row.scheduling?.state) ?? "new",
     thumbUrl:
@@ -93,7 +82,6 @@ export default async function LibraryPage(props: {
         <h1 className="font-display text-3xl font-semibold tracking-tight">Library</h1>
         <form className="mt-4 flex gap-2">
           {params.topic && <input type="hidden" name="topic" value={params.topic} />}
-          {params.tag && <input type="hidden" name="tag" value={params.tag} />}
           <input
             name="q"
             defaultValue={params.q ?? ""}
@@ -105,7 +93,7 @@ export default async function LibraryPage(props: {
       </header>
 
       <div className="mt-4 flex flex-wrap gap-1.5 text-xs">
-        <Filter href="/library" active={!params.topic && !params.tag}>
+        <Filter href="/library" active={!params.topic}>
           All
         </Filter>
         {/*
@@ -143,16 +131,6 @@ export default async function LibraryPage(props: {
         </div>
       )}
 
-      <div className="mt-2 flex flex-wrap gap-1.5 border-t border-line pt-2 text-xs">
-        {tags.map((tag) => (
-          <Filter key={tag.id} href={`/library?tag=${tag.id}`} active={params.tag === tag.id}>
-            {hueClass(tag.slot) && (
-              <span aria-hidden className={`mr-1.5 inline-block size-2 rounded-full align-middle ${hueClass(tag.slot)}`} />
-            )}
-            #{tag.name}
-          </Filter>
-        ))}
-      </div>
 
       <div className="mt-5">
         {error ? (

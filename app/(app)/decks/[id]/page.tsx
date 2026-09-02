@@ -23,7 +23,6 @@ type CardRow = {
   layout: "full_image" | "split";
   image_position: "left" | "right" | "top" | "bottom";
   distractors: string[] | null;
-  card_tags: { tags: { name: string } }[];
 };
 
 export default async function DeckPage(props: { params: Promise<{ id: string }> }) {
@@ -38,7 +37,7 @@ export default async function DeckPage(props: { params: Promise<{ id: string }> 
 
   if (!topic) notFound();
 
-  const [{ data: parent }, { data: rows }, { data: tagRows }] = await Promise.all([
+  const [{ data: parent }, { data: rows }] = await Promise.all([
     topic.parent_id
       ? supabase.from("topics").select("name").eq("id", topic.parent_id).maybeSingle()
       : Promise.resolve({ data: null }),
@@ -46,14 +45,13 @@ export default async function DeckPage(props: { params: Promise<{ id: string }> 
       .from("cards")
       .select(
         withSource(
-          "id,front_md,back_md,note_md,suspended,example_md,mcq,shape,layout,image_position,distractors, card_tags(tags(name))",
+          "id,front_md,back_md,note_md,suspended,example_md,mcq,shape,layout,image_position,distractors",
         ),
       )
       .eq("topic_id", id)
       .is("deleted_at", null)
       .order("position")
       .order("created_at"),
-    supabase.from("tags").select("name").order("name"),
   ]);
 
   const [user, media] = await Promise.all([
@@ -93,7 +91,6 @@ export default async function DeckPage(props: { params: Promise<{ id: string }> 
       source: row.link_url ?? "",
       suspended: row.suspended,
       mcq: row.mcq,
-      tags: (row.card_tags ?? []).map((t) => t.tags.name).join(", "),
       shape: row.shape,
       layout: row.layout,
       imagePosition: row.image_position,
@@ -119,7 +116,6 @@ export default async function DeckPage(props: { params: Promise<{ id: string }> 
             parentName: (parent?.name as string) ?? null,
           }}
           initialCards={cards}
-          allTags={((tagRows ?? []) as { name: string }[]).map((t) => t.name)}
           userId={user.id}
         />
       </div>

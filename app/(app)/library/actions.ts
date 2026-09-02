@@ -2,12 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient, requireUser } from "@/lib/supabase/server";
-import { parseTags, resolveTags, resolveTopicPath } from "@/lib/cards";
+import { resolveTopicPath } from "@/lib/cards";
 
 export type BulkOp = {
   cardIds: string[];
-  action: "suspend" | "unsuspend" | "delete" | "add_tags" | "move_topic";
-  tags?: string;
+  action: "suspend" | "unsuspend" | "delete" | "move_topic";
   /**
    * Куда переносим. `null` — вынуть из всех категорий.
    *
@@ -42,18 +41,6 @@ export async function bulkUpdate(op: BulkOp): Promise<{ ok: boolean; error?: str
           .update({ deleted_at: new Date().toISOString() })
           .eq("user_id", user.id)
           .in("id", op.cardIds);
-        if (error) throw new Error(error.message);
-        break;
-      }
-      case "add_tags": {
-        const tagIds = await resolveTags(supabase, user.id, parseTags(op.tags ?? ""));
-        if (tagIds.length === 0) break;
-        const rows = op.cardIds.flatMap((cardId) =>
-          tagIds.map((tagId) => ({ card_id: cardId, tag_id: tagId, user_id: user.id })),
-        );
-        const { error } = await supabase
-          .from("card_tags")
-          .upsert(rows, { onConflict: "card_id,tag_id", ignoreDuplicates: true });
         if (error) throw new Error(error.message);
         break;
       }

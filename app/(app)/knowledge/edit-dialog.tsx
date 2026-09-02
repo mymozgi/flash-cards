@@ -18,6 +18,8 @@ export type CategoryDraft = {
   color: string;
   description: string;
   parentId: string | null;
+  /** Имя категории, которую надо создать вместе с темой. */
+  newCategory: string;
 };
 
 const DEFAULT: CategoryDraft = {
@@ -26,6 +28,7 @@ const DEFAULT: CategoryDraft = {
   color: "#2563eb",
   description: "",
   parentId: null,
+  newCategory: "",
 };
 
 export function EditDialog({
@@ -68,6 +71,7 @@ export function EditDialog({
             color: node.color || "#2563eb",
             description: node.description,
             parentId: node.parentId,
+            newCategory: "",
           }
         : { ...DEFAULT, parentId },
     );
@@ -158,21 +162,70 @@ export function EditDialog({
           />
         </label>
 
-        <label className="block">
-          <Label>Parent category</Label>
-          <select
-            value={draft.parentId ?? ""}
-            onChange={(e) => setDraft((d) => ({ ...d, parentId: e.target.value || null }))}
-            className={selectClass}
-          >
-            <option value="">None — top level</option>
-            {options.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.path}
-              </option>
-            ))}
-          </select>
-        </label>
+        {/*
+          У темы категория обязательна, у категории её быть не может.
+          Раньше здесь стоял один список с пунктом «None — top level», и он
+          позволял создать тему нигде: карточки складывались в узел, который
+          потом не находился ни под одной областью.
+
+          Если категорий ещё нет, выбирать не из чего — тогда поле превращается
+          в ввод имени, и категория создаётся вместе с темой. Отправлять
+          человека на другой экран за категорией, чтобы вернуться и создать
+          тему, — это два действия там, где достаточно одного.
+        */}
+        {kind === "deck" && !node && (
+          <label className="block">
+            <Label>Category</Label>
+            {options.length > 0 ? (
+              <select
+                required
+                value={draft.parentId ?? ""}
+                onChange={(e) => setDraft((d) => ({ ...d, parentId: e.target.value || null }))}
+                className={selectClass}
+              >
+                <option value="" disabled>
+                  Choose a category…
+                </option>
+                {options.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.path}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <>
+                <input
+                  required
+                  value={draft.newCategory}
+                  onChange={(e) => setDraft((d) => ({ ...d, newCategory: e.target.value }))}
+                  placeholder="Medicine"
+                  className={inputClass}
+                />
+                <span className="mt-1.5 block text-2xs text-faint">
+                  No categories yet — this one is created together with the topic.
+                </span>
+              </>
+            )}
+          </label>
+        )}
+
+        {kind === "deck" && node && (
+          <label className="block">
+            <Label>Category</Label>
+            <select
+              value={draft.parentId ?? ""}
+              onChange={(e) => setDraft((d) => ({ ...d, parentId: e.target.value || null }))}
+              className={selectClass}
+            >
+              <option value="">Not filed into a category</option>
+              {options.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.path}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
         <div className="mt-1 flex flex-wrap justify-end gap-2">
           <Button type="button" onClick={onClose}>

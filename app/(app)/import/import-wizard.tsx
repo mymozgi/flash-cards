@@ -34,7 +34,6 @@ type Field =
   | "front"
   | "back"
   | "topic"
-  | "tags"
   | "note"
   | "reversed"
   | "choice1"
@@ -45,7 +44,6 @@ const FIELDS: { key: Field; label: string; required?: boolean; hint: string }[] 
   { key: "front", label: "Question", required: true, hint: "front side" },
   { key: "back", label: "Answer", required: true, hint: "back side" },
   { key: "topic", label: "Topic", hint: "path separated by /, levels are created as needed" },
-  { key: "tags", label: "Tags", hint: "comma or space separated" },
   { key: "note", label: "Note", hint: "shown after the answer" },
   { key: "reversed", label: "Reversed", hint: "1 / true / yes — also create the reverse card" },
   { key: "choice1", label: "Wrong answer 1", hint: "for multiple choice" },
@@ -58,7 +56,6 @@ const ALIASES: Record<Field, string[]> = {
   front: ["front", "question", "term", "word", "prompt", "q", "вопрос", "термин"],
   back: ["back", "answer", "definition", "translation", "meaning", "a", "ответ", "перевод"],
   topic: ["topic", "deck", "category", "subject", "тема", "категория"],
-  tags: ["tags", "tag", "labels", "теги", "тег"],
   note: ["note", "notes", "comment", "hint", "source", "заметка"],
   reversed: ["reversed", "reverse", "both", "bidirectional", "обратная"],
   choice1: ["choice1", "wrong1", "distractor1", "option1"],
@@ -174,7 +171,6 @@ export function ImportWizard() {
     front: raw[mapping.front] ?? "",
     back: raw[mapping.back] ?? "",
     topic: mapping.topic ? (raw[mapping.topic] ?? "") : "",
-    tags: mapping.tags ? (raw[mapping.tags] ?? "") : "",
     note: mapping.note ? (raw[mapping.note] ?? "") : "",
     reversed: mapping.reversed ? TRUTHY.has((raw[mapping.reversed] ?? "").trim().toLowerCase()) : false,
     choices: [mapping.choice1, mapping.choice2, mapping.choice3]
@@ -456,7 +452,6 @@ export function ImportWizard() {
                 />
                 <p className="mt-1 label-micro">
                   {row.topic || "no topic"}
-                  {row.tags && ` · ${row.tags}`}
                   {row.reversed && " · reversed"}
                   {row.choices.filter(Boolean).length > 0 &&
                     ` · ${row.choices.filter(Boolean).length} wrong answers`}

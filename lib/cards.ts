@@ -3,31 +3,16 @@ import { isMissingColumn } from "./schema";
 import { splitTopicPath } from "./knowledge-tree";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-/** Теги нормализуются при вводе, иначе «На Собеседование» и «на-собеседование» разъезжаются. */
-export function normalizeTag(raw: string): string {
-  return raw
-    .trim()
-    .replace(/^#/, "")
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^\p{L}\p{N}_-]/gu, "");
-}
-
 /**
- * Та же нормализация, что у генерируемой колонки cards.front_norm:
- * нижний регистр, всё кроме букв и цифр выброшено. Используется для
- * поиска дублей при импорте (§7.3).
+ * Нормализованный вопрос: нижний регистр, всё кроме букв и цифр выброшено.
+ * Используется для поиска дублей при импорте (§7.3).
  */
 export function normalizeFront(raw: string): string {
   return raw.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
 }
 
-export function parseTags(raw: string): string[] {
-  return [...new Set(raw.split(/[,\s]+/).map(normalizeTag).filter(Boolean))];
-}
-
 /**
- * «Английский / Грамматика / Времена» → id листа, недостающие узлы создаются.
+ * «Категория / Тема» → id темы, недостающие узлы создаются.
  * cache переиспользуется между строками импорта: без него каждая строка
  * стоила бы отдельного круга запросов.
  */
@@ -93,51 +78,6 @@ export async function resolveTopicPath(
 
   cache?.set(key, parentId);
   return parentId;
-}
-
-export async function resolveTags(
-  supabase: SupabaseClient,
-  userId: string,
-  names: string[],
-  cache?: Map<string, string>,
-): Promise<string[]> {
-  const wanted = [...new Set(names)];
-  if (wanted.length === 0) return [];
-
-  const known = wanted.filter((n) => cache?.has(n));
-  const unknown = wanted.filter((n) => !cache?.has(n));
-  const ids = known.map((n) => cache!.get(n)!);
-
-  if (unknown.length > 0) {
-    const { data, error } = await supabase
-      .from("tags")
-      .upsert(
-        unknown.map((name) => ({ user_id: userId, name })),
-        { onConflict: "user_id,name" },
-      )
-      .select("id,name");
-    if (error) throw new Error(`Could not save tags: ${error.message}`);
-
-    for (const row of (data ?? []) as { id: string; name: string }[]) {
-      cache?.set(row.name, row.id);
-      ids.push(row.id);
-    }
-  }
-
-  return ids;
-}
-
-export async function syncCardTags(
-  supabase: SupabaseClient,
-  userId: string,
-  cardId: string,
-  tagIds: string[],
-) {
-  await supabase.from("card_tags").delete().eq("card_id", cardId);
-  if (tagIds.length === 0) return;
-  await supabase
-    .from("card_tags")
-    .insert(tagIds.map((tagId) => ({ card_id: cardId, tag_id: tagId, user_id: userId })));
 }
 
 export type IncomingImage = {

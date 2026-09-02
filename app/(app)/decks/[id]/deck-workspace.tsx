@@ -1,11 +1,9 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  deleteTagEverywhere,
   removeCard,
-  renameTagEverywhere,
   saveDeck,
   saveOrder,
   updateDeck,
@@ -27,14 +25,12 @@ import { Button, LinkButton } from "@/components/ui/button";
 import { cellInputClass, inputClass } from "@/components/ui/field";
 import { panelClass } from "@/components/ui/panel";
 import { useConfirm } from "@/components/ui/confirm";
-import { usePrompt } from "@/components/ui/prompt";
 import { useReorder } from "@/components/use-reorder";
 import { Switch } from "@/components/ui/switch";
 import {
   CheckIcon,
   ChevronIcon,
   GripIcon,
-  CloseIcon,
   GridIcon,
   ImageIcon,
   ListIcon,
@@ -42,7 +38,6 @@ import {
   PlusIcon,
   SearchIcon,
   TableIcon,
-  TagIcon,
   TrashIcon,
 } from "@/components/icons";
 
@@ -90,12 +85,10 @@ export type Deck = {
 export function DeckWorkspace({
   deck,
   initialCards,
-  allTags,
   userId,
 }: {
   deck: Deck;
   initialCards: DeckCard[];
-  allTags: string[];
   userId: string;
 }) {
   const router = useRouter();
@@ -107,7 +100,6 @@ export function DeckWorkspace({
   const [status, setStatus] = useState<{ kind: "error" | "ok"; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [details, setDetails] = useState<Deck | null>(null);
-  const [showTags, setShowTags] = useState(false);
   const [orderDirty, setOrderDirty] = useState(false);
   const [uploading, setUploading] = useState(false);
   const { ask, dialog } = useConfirm();
@@ -150,7 +142,6 @@ export function DeckWorkspace({
       correctIndex: 0,
       example: "",
       mcq: false,
-      tags: "",
       note: "",
       source: "",
       suspended: false,
@@ -271,7 +262,7 @@ export function DeckWorkspace({
     const q = query.trim().toLowerCase();
     if (!q) return cards;
     return cards.filter((card) =>
-      [card.term, card.example, card.tags, ...card.options].some((field) =>
+      [card.term, card.example, ...card.options].some((field) =>
         field.toLowerCase().includes(q),
       ),
     );
@@ -290,16 +281,6 @@ export function DeckWorkspace({
     enabled: canReorder,
     simple: view === "grid",
   });
-
-  const deckTags = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const card of cards) {
-      for (const tag of card.tags.split(",").map((t) => t.trim()).filter(Boolean)) {
-        counts.set(tag, (counts.get(tag) ?? 0) + 1);
-      }
-    }
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]);
-  }, [cards]);
 
   return (
     /*
@@ -411,27 +392,14 @@ export function DeckWorkspace({
             >
               {collapsed.size === cards.length && cards.length > 0 ? "Expand all" : "Collapse all"}
             </Button>
-            <Button size="sm" onClick={() => setShowTags((v) => !v)} aria-expanded={showTags}>
-              <TagIcon />
-              Manage tags
-            </Button>
           </div>
         </div>
 
-        {showTags && (
-          <ManageTags
-            tags={deckTags}
-            onFilter={setQuery}
-            onDone={(text) => setStatus({ kind: "ok", text })}
-            onError={(text) => setStatus({ kind: "error", text })}
-          />
-        )}
 
         {view === "sheet" ? (
           <Spreadsheet
             cards={visible}
             columns={columns}
-            allTags={allTags}
             onToggleColumn={(key) =>
               setColumns((prev) => {
                 const next = new Set(prev);
@@ -463,8 +431,7 @@ export function DeckWorkspace({
                   compact={view === "grid"}
                   collapsed={collapsed.has(card.id)}
                   onToggleCollapse={() => toggleCollapsed(card.id)}
-                  allTags={allTags}
-                  uploading={uploading}
+                        uploading={uploading}
                   lifted={reorderable.draggingId === card.id}
                   grip={
                     canReorder
@@ -723,7 +690,6 @@ function CardBlock({
   compact,
   collapsed,
   onToggleCollapse,
-  allTags,
   uploading,
   lifted,
   grip,
@@ -738,7 +704,6 @@ function CardBlock({
   compact: boolean;
   collapsed: boolean;
   onToggleCollapse: () => void;
-  allTags: string[];
   uploading: boolean;
   /** Карточку сейчас несут: приподнимаем её над соседями. */
   lifted: boolean;
@@ -1034,8 +999,6 @@ function CardBlock({
         </p>
       )}
 
-      <Label>Tags</Label>
-      <TagEditor value={card.tags} allTags={allTags} onChange={(tags) => onUpdate(card.id, { tags })} />
         </div>
 
         {!compact && (
@@ -1062,7 +1025,6 @@ function CardBlock({
 function Spreadsheet({
   cards,
   columns,
-  allTags,
   onToggleColumn,
   onUpdate,
   onOption,
@@ -1070,7 +1032,6 @@ function Spreadsheet({
 }: {
   cards: DeckCard[];
   columns: Set<Column>;
-  allTags: string[];
   onToggleColumn: (key: Column) => void;
   onUpdate: (id: string, patch: Partial<DeckCard>) => void;
   onOption: (card: DeckCard, index: number, value: string) => void;
@@ -1144,16 +1105,6 @@ function Spreadsheet({
                     />
                   </td>
                 )}
-                {columns.has("tags") && (
-                  <td className={`${cell} w-32`}>
-                    <TagEditor
-                      value={card.tags}
-                      allTags={allTags}
-                      onChange={(tags) => onUpdate(card.id, { tags })}
-                      compact
-                    />
-                  </td>
-                )}
                 {columns.has("answers") && (
                   <td className={`${cell} w-72`}>
                     <ul className="flex flex-col gap-1">
@@ -1205,198 +1156,8 @@ function Spreadsheet({
   );
 }
 
-function splitTags(value: string): string[] {
-  return [...new Set(value.split(",").map((t) => t.trim()).filter(Boolean))];
-}
-
 /**
  * Теги карточки как чипы. Пустое состояние честно говорит «тегов нет»,
  * а не притворяется полем ввода, — так видно, что добавить их можно.
  * Нормализация та же, что на сервере: нижний регистр, пробелы в дефисы.
  */
-function TagEditor({
-  value,
-  allTags,
-  onChange,
-  compact,
-}: {
-  value: string;
-  allTags: string[];
-  onChange: (value: string) => void;
-  compact?: boolean;
-}) {
-  const tags = splitTags(value);
-  const [adding, setAdding] = useState(false);
-  const [draft, setDraft] = useState("");
-
-  const commit = () => {
-    const tag = draft.trim().toLowerCase().replace(/\s+/g, "-");
-    if (tag && !tags.includes(tag)) onChange([...tags, tag].join(", "));
-    setDraft("");
-    setAdding(false);
-  };
-
-  const remove = (tag: string) => onChange(tags.filter((t) => t !== tag).join(", "));
-  const suggestions = allTags.filter((t) => !tags.includes(t));
-
-  return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      {tags.length === 0 && !adding && (
-        <span className={compact ? "text-xs text-faint" : "text-sm text-faint"}>No tags yet</span>
-      )}
-
-      {tags.map((tag) => (
-        <span
-          key={tag}
-          className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2.5 py-1 text-xs text-accent"
-        >
-          {tag}
-          <button
-            type="button"
-            onClick={() => remove(tag)}
-            aria-label={`Remove tag ${tag}`}
-            className="opacity-60 hover:opacity-100"
-          >
-            <CloseIcon className="size-3" />
-          </button>
-        </span>
-      ))}
-
-      {adding ? (
-        <>
-          <input
-            autoFocus
-            value={draft}
-            list="deck-tag-suggestions"
-            onChange={(e) => setDraft(e.target.value)}
-            onBlur={commit}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                commit();
-              }
-              if (e.key === "Escape") {
-                setDraft("");
-                setAdding(false);
-              }
-            }}
-            placeholder="tag name"
-            className="w-32 rounded-full border-control border-field-line bg-surface px-3 py-1.5 text-xs"
-          />
-          <datalist id="deck-tag-suggestions">
-            {suggestions.map((tag) => (
-              <option key={tag} value={tag} />
-            ))}
-          </datalist>
-        </>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setAdding(true)}
-          className="inline-flex items-center gap-1 rounded-full border border-line px-2.5 py-1 text-xs text-muted hover:text-ink"
-        >
-          <PlusIcon className="size-3" />
-          Add tag
-        </button>
-      )}
-    </div>
-  );
-}
-
-/**
- * Управление тегами: переименование и удаление действуют по всей базе,
- * а не только в этой колоде. Переименование в уже существующий тег
- * работает как слияние — иначе накопились бы дубли-синонимы.
- */
-function ManageTags({
-  tags,
-  onFilter,
-  onDone,
-  onError,
-}: {
-  tags: [string, number][];
-  onFilter: (tag: string) => void;
-  onDone: (text: string) => void;
-  onError: (text: string) => void;
-}) {
-  const router = useRouter();
-  const [busy, startTransition] = useTransition();
-  const { ask, dialog } = useConfirm();
-  const { ask: askText, dialog: promptDialog } = usePrompt();
-
-  const rename = async (tag: string) => {
-    const next = await askText({
-      title: `Rename “${tag}”`,
-      description:
-        "The tag is renamed everywhere it is used, not only in this set. Renaming into a tag that already exists merges the two.",
-      label: "New name",
-      initialValue: tag,
-      confirmLabel: "Rename",
-    });
-    if (next === null || next === tag) return;
-    startTransition(async () => {
-      const res = await renameTagEverywhere(tag, next);
-      if (!res.ok) return onError(res.error ?? "Could not rename the tag");
-      onDone(`Tag renamed to “${next}”`);
-      router.refresh();
-    });
-  };
-
-  const drop = async (tag: string) => {
-    const confirmed = await ask({
-      title: `Delete the tag “${tag}”?`,
-      description: "It is removed from every card that uses it. The cards themselves stay.",
-      confirmLabel: "Delete tag",
-    });
-    if (!confirmed) return;
-    startTransition(async () => {
-      const res = await deleteTagEverywhere(tag);
-      if (!res.ok) return onError(res.error ?? "Could not delete the tag");
-      onDone(`Tag “${tag}” removed`);
-      router.refresh();
-    });
-  };
-
-  return (
-    <div className={`mb-4 rounded-lg bg-surface-2 p-3 ${busy ? "opacity-60" : ""}`}>
-      {dialog}
-      {promptDialog}
-      {tags.length === 0 ? (
-        <p className="text-sm text-muted">No tags in this deck yet.</p>
-      ) : (
-        <ul className="flex flex-col gap-1.5">
-          {tags.map(([tag, count]) => (
-            <li key={tag} className="flex items-center gap-2 text-sm">
-              <button
-                type="button"
-                onClick={() => onFilter(tag)}
-                className="rounded-full bg-accent-soft px-2.5 py-1 text-xs text-accent"
-              >
-                {tag}
-              </button>
-              <span className="tabular-nums text-xs text-faint">{count}</span>
-              <button
-                type="button"
-                onClick={() => rename(tag)}
-                className="ml-auto text-xs text-muted hover:text-ink"
-              >
-                Rename
-              </button>
-              <button
-                type="button"
-                onClick={() => drop(tag)}
-                aria-label={`Delete tag ${tag}`}
-                className="text-faint hover:text-rust"
-              >
-                <TrashIcon className="size-3.5" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <p className="mt-2 text-xs text-faint">
-        Renaming into an existing tag merges the two. Changes apply to every card, not just this deck.
-      </p>
-    </div>
-  );
-}
