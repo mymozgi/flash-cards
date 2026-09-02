@@ -139,6 +139,29 @@ export const ImageIcon = (p: IconProps) => (
   </Svg>
 );
 
+/** Шаг назад и шаг вперёд. Стержень во всю ширину, чтобы направление читалось
+ *  и в размере 16, и когда иконка стоит одна в квадратной кнопке. */
+export const ArrowLeftIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M13 8H3M6.5 4.5 3 8l3.5 3.5" />
+  </Svg>
+);
+
+export const ArrowRightIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M3 8h10M9.5 4.5 13 8l-3.5 3.5" />
+  </Svg>
+);
+
+/** Переворот: карточка со стрелкой внутри. Круговая стрелка читалась бы как
+ *  «обновить», а здесь речь о другой стороне того же. */
+export const FlipIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="2" y="3.5" width="12" height="9" rx="1.6" />
+    <path d="M5.4 8h5.2M9.1 6.4 10.7 8 9.1 9.6" />
+  </Svg>
+);
+
 export const CloseIcon = (p: IconProps) => (
   <Svg {...p}>
     <path d="M4 4l8 8M12 4l-8 8" />

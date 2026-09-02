@@ -9,16 +9,19 @@ import type { MediaItem, QueueCard } from "@/lib/types";
 import { CardRenderer, ASPECT } from "@/components/card-renderer";
 import { Lightbox } from "@/components/card-media";
 import { Button, LinkButton } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { TagChip } from "@/components/ui/tag-chip";
+import { ArrowLeftIcon, ArrowRightIcon, FlipIcon } from "@/components/icons";
+import {
+  nextSpan,
+  queueAfterGrade,
+  queueAfterSkip,
+  RELEARN_HORIZON_MS,
+  SKIP_LIMIT,
+} from "@/lib/session";
 import { gradeCard, undoReview, type GradeResult } from "./actions";
 
-/** Карточка, провалившаяся сейчас, возвращается в этой же сессии (§8.1). */
-const RELEARN_HORIZON_MS = 20 * 60 * 1000;
-const RELEARN_GAP = 3;
-
-
-
-type HistoryEntry = { card: QueueCard; pending: Promise<GradeResult> };
+type HistoryEntry = { card: QueueCard; pending: Promise<GradeResult>; relearn: boolean };
 
 export function ReviewSession({
   initialQueue,
@@ -32,6 +35,15 @@ export function ReviewSession({
   const [queue, setQueue] = useState(initialQueue);
   const [revealed, setRevealed] = useState(false);
   const [done, setDone] = useState(0);
+  /**
+   * Знаменатель полосы прогресса. Не `done + queue.length`, потому что очередь
+   * растёт: проваленная карточка возвращается в эту же сессию. Здесь копится
+   * наибольшая работа, какую сессия себя показала, — так полоса не дёргается
+   * от каждого провала.
+   */
+  const [span, setSpan] = useState(initialQueue.length);
+  /** Часть уже сделанного, что пришлось переучивать. Рисуется янтарным. */
+  const [lapses, setLapses] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [zoomed, setZoomed] = useState<MediaItem | null>(null);
   const history = useRef<HistoryEntry[]>([]);
@@ -47,6 +59,15 @@ export function ReviewSession({
   const previews = useMemo(
     () => (current ? previewIntervals(current.scheduling, requestRetention) : null),
     [current, requestRetention],
+  );
+
+  /** Полосу нужно не только видеть: без этого скринридер скажет «графика». */
+  const progressLabel = useMemo(
+    () =>
+      lapses > 0
+        ? `${done} of ${span} cards graded, ${lapses} sent back to relearn`
+        : `${done} of ${span} cards graded`,
+    [done, lapses, span],
   );
 
   const frontHtml = useMemo(
@@ -95,26 +116,40 @@ export function ReviewSession({
       pending.then((res) => {
         if (!res.ok) setError(res.error);
       });
-      history.current.push({ card: current, pending });
+      const dueIn = new Date(nextScheduling.due).getTime() - now.getTime();
+      const relearn = !free && dueIn < RELEARN_HORIZON_MS;
+      history.current.push({ card: current, pending, relearn });
 
-      setQueue((prev) => {
-        const rest = prev.slice(1);
-        const dueIn = new Date(nextScheduling.due).getTime() - now.getTime();
-        if (!free && dueIn < RELEARN_HORIZON_MS) {
-          const at = Math.min(RELEARN_GAP, rest.length);
-          return [
-            ...rest.slice(0, at),
-            { ...current, scheduling: nextScheduling },
-            ...rest.slice(at),
-          ];
-        }
-        return rest;
-      });
+      setQueue((prev) => queueAfterGrade(prev, relearn, { ...current, scheduling: nextScheduling }));
       setRevealed(false);
       setDone((d) => d + 1);
+      // Карточка вернулась — работы в сессии стало на одну больше, и эта одна
+      // честно помечена как повторная
+      if (relearn) {
+        setSpan((n) => nextSpan(n, done, "relearn"));
+        setLapses((n) => n + 1);
+      }
     },
-    [current, free, requestRetention],
+    [current, done, free, requestRetention],
   );
+
+  /**
+   * Пропуск: карточка уезжает в конец очереди без оценки. Расписание при этом
+   * не трогается вовсе — в том и смысл: «сейчас не хочу» не то же самое, что
+   * «не помню», и алгоритму об этом знать нечего.
+   */
+  const skips = useRef(new Map<string, number>());
+  const skip = useCallback(() => {
+    if (!current || queue.length < 2) return;
+    const times = (skips.current.get(current.card.id) ?? 0) + 1;
+    skips.current.set(current.card.id, times);
+    const drop = times >= SKIP_LIMIT;
+    setQueue((prev) => queueAfterSkip(prev, times));
+    // выбывшая карточка перестаёт быть работой этой сессии — иначе полоса
+    // никогда не дойдёт до конца
+    if (drop) setSpan((n) => nextSpan(n, done, "skip-drop"));
+    setRevealed(false);
+  }, [current, done, queue.length]);
 
   const undo = useCallback(async () => {
     const last = history.current.pop();
@@ -130,6 +165,8 @@ export function ReviewSession({
     setQueue((prev) => [last.card, ...prev.filter((c) => c.card.id !== last.card.card.id)]);
     setRevealed(false);
     setDone((d) => Math.max(0, d - 1));
+    // `span` не уменьшаем: это отметка наибольшей работы, а не текущий счёт
+    if (last.relearn) setLapses((n) => Math.max(0, n - 1));
   }, []);
 
   useEffect(() => {
@@ -146,9 +183,18 @@ export function ReviewSession({
         if (!revealed) setRevealed(true);
         return;
       }
-      if (event.key.toLowerCase() === "z" || event.key.toLowerCase() === "я") {
+      if (
+        event.key.toLowerCase() === "z" ||
+        event.key.toLowerCase() === "я" ||
+        event.key === "ArrowLeft"
+      ) {
         event.preventDefault();
         void undo();
+        return;
+      }
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        skip();
         return;
       }
       if (revealed) {
@@ -161,7 +207,7 @@ export function ReviewSession({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [grade, revealed, undo, zoomed]);
+  }, [grade, revealed, skip, undo, zoomed]);
 
   // Свайп: влево — «Снова», вправо — «Хорошо» (§11)
   const touchStart = useRef<{ x: number; y: number } | null>(null);
@@ -224,12 +270,18 @@ export function ReviewSession({
   return (
     <div className="flex min-h-[calc(100dvh-8rem)] flex-col" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       {zoomed && <Lightbox image={zoomed} onClose={() => setZoomed(null)} />}
-      <div className="flex items-center justify-between gap-4 border-b border-line pb-3">
+      <div className="flex items-center justify-between gap-4 pb-2.5">
         <span className="label-micro truncate">{current.topicPath ?? "No topic"}</span>
         <span className="label-micro tabular-nums">
-          {done} / {done + queue.length}
+          {done} / {span}
         </span>
       </div>
+      <Progress
+        value={done}
+        max={span}
+        warn={lapses}
+        label={progressLabel}
+      />
 
       {error && (
         <p role="alert" className="mt-3 rounded border-l-[3px] border-rust bg-rust-soft px-3 py-2 text-sm">
@@ -288,11 +340,7 @@ export function ReviewSession({
       </div>
 
       <div className="sticky bottom-4 flex flex-col gap-2 sm:bottom-6">
-        {!revealed ? (
-          <Button tone="primary" size="lg" onClick={() => setRevealed(true)} className="w-full">
-            Flip the card
-          </Button>
-        ) : (
+        {revealed && (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {RATINGS.map((rating) => (
               <button
@@ -310,15 +358,40 @@ export function ReviewSession({
           </div>
         )}
 
-        <div className="flex items-center justify-between gap-4 text-sm text-faint">
-          <button
-            type="button"
+        {/*
+          Переворот перестал быть плитой во всю ширину: он занимает столько,
+          сколько занимает его подпись. По бокам — шаг назад и шаг вперёд.
+          «Предыдущей карточки» в повторении не существует, очередь
+          односторонняя, поэтому стрелка назад делает единственное честное:
+          отменяет последнюю оценку. Стрелка вперёд откладывает карточку в
+          конец очереди, не оценивая её.
+        */}
+        <div className="flex items-center justify-center gap-2">
+          <Button
+            size="icon"
             onClick={() => void undo()}
             disabled={done === 0}
-            className="py-2 disabled:opacity-40"
+            aria-label="Back — undo the last grade"
+            title="Undo the last grade"
           >
-            Undo
-          </button>
+            <ArrowLeftIcon />
+          </Button>
+          <Button tone="soft" onClick={() => setRevealed((r) => !r)} className="min-w-48">
+            <FlipIcon />
+            {revealed ? "Show the question" : "Flip the card"}
+          </Button>
+          <Button
+            size="icon"
+            onClick={skip}
+            disabled={queue.length < 2}
+            aria-label="Skip — move this card to the end without grading"
+            title="Skip without grading"
+          >
+            <ArrowRightIcon />
+          </Button>
+        </div>
+
+        <div className="flex justify-end text-sm text-faint">
           {/* Правка живёт в конструкторе колоды: другого редактора больше нет */}
           <Link
             href={current.card.topic_id ? `/decks/${current.card.topic_id}` : "/library"}

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { renderMarkdown } from "@/lib/markdown";
 import { CardRenderer, type CardImage, type CardLayout, type CardShape, type ImagePosition } from "@/components/card-renderer";
-import { CloseIcon, GridIcon } from "@/components/icons";
+import { ArrowLeftIcon, ArrowRightIcon, CloseIcon, GridIcon } from "@/components/icons";
 import { Button, LinkButton } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 
@@ -132,15 +132,10 @@ export function StudyDeck({
           <CloseIcon />
           <span className="truncate">{deckName}</span>
         </Link>
-        <div className="flex items-center gap-3">
-          <span className="text-sm tabular-nums text-muted">
-            {at + 1} / {total}
-          </span>
-          <Button size="sm" onClick={shuffle} aria-pressed={shuffled}>
-            <GridIcon className="size-3.5" />
-            Shuffle
-          </Button>
-        </div>
+        <Button size="sm" onClick={shuffle} aria-pressed={shuffled}>
+          <GridIcon className="size-3.5" />
+          Shuffle
+        </Button>
       </div>
 
       <Progress value={at + 1} max={total} label={`Card ${at + 1} of ${total}`} />
@@ -170,17 +165,23 @@ export function StudyDeck({
         </div>
       </div>
 
-      <div className="flex items-center justify-center gap-2">
-        <Button onClick={() => go(-1)} disabled={atFirst} className="flex-1 sm:min-w-32 sm:flex-none">
-          Previous
-        </Button>
+      <div className="flex items-center justify-center gap-3">
+        {/* Та же пара стрелок, что и в повторении: один элемент управления на
+            обоих экранах, где листают карточки. Счётчик стоит между ними —
+            рядом с тем, что его двигает. */}
         <Button
-          tone="primary"
-          onClick={() => go(1)}
-          disabled={atLast}
-          className="flex-1 sm:min-w-32 sm:flex-none"
+          size="icon"
+          onClick={() => go(-1)}
+          disabled={atFirst}
+          aria-label="Previous card"
         >
-          Next
+          <ArrowLeftIcon />
+        </Button>
+        <span className="label-micro min-w-20 text-center tabular-nums">
+          {at + 1} / {total}
+        </span>
+        <Button size="icon" onClick={() => go(1)} disabled={atLast} aria-label="Next card">
+          <ArrowRightIcon />
         </Button>
       </div>
 
