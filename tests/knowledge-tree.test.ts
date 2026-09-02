@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isStudySet,
   kindInEffect,
+  classify,
   branchOf,
   canDrop,
   depthOf,
@@ -221,5 +222,45 @@ describe("введено ли разделение на роды", () => {
 
   it("источники разделения не вводят: они были и до него", () => {
     expect(kindInEffect(["area", "source"])).toBe(false);
+  });
+});
+
+describe("классификация карточки", () => {
+  it("первый сегмент — категория, последний — тема", () => {
+    expect(classify("Medicine / Pharmacology")).toEqual({
+      category: "Medicine",
+      topic: "Pharmacology",
+    });
+  });
+
+  it("одиночный узел — категория без темы", () => {
+    expect(classify("Medicine")).toEqual({ category: "Medicine", topic: null });
+  });
+
+  it("глубже двух уровней тема берётся последняя, а не средняя", () => {
+    // показывать на карточке три подписи значило бы подменять
+    // классификацию адресом
+    expect(classify("Medicine / Pharmacology / Beta blockers")).toEqual({
+      category: "Medicine",
+      topic: "Beta blockers",
+    });
+  });
+
+  it("карточка вне категорий не получает подписей", () => {
+    expect(classify(null)).toEqual({ category: null, topic: null });
+    expect(classify("")).toEqual({ category: null, topic: null });
+    expect(classify("   ")).toEqual({ category: null, topic: null });
+  });
+
+  it("лишние разделители и пробелы не создают пустых подписей", () => {
+    expect(classify(" Medicine //  Pharmacology ")).toEqual({
+      category: "Medicine",
+      topic: "Pharmacology",
+    });
+  });
+
+  it("переименование категории меняет подпись само: она и есть путь", () => {
+    // именно поэтому имя не копируется в карточку
+    expect(classify("Biology / Pharmacology").category).toBe("Biology");
   });
 });

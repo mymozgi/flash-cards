@@ -11,6 +11,7 @@ import { ASPECT, ASPECT_RATIO, CardRenderer } from "@/components/card-renderer";
 import { Button, LinkButton } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { TagChip } from "@/components/ui/tag-chip";
+import { Classification } from "@/components/ui/classification";
 import { ArrowLeftIcon, ArrowRightIcon, FlipIcon } from "@/components/icons";
 import {
   nextSpan,
@@ -270,7 +271,9 @@ export function ReviewSession({
   return (
     <div className="flex min-h-[calc(100dvh-8rem)] flex-col">
       <div className="flex items-center justify-between gap-4 pb-2.5">
-        <span className="label-micro truncate">{current.topicPath ?? "No topic"}</span>
+        {/* Классификация вместо пути строкой: две подписи читаются быстрее,
+            чем «Medicine / Pharmacology» мелким моноширинным */}
+        <Classification path={current.topicPath} className="min-w-0" />
         <span className="label-micro tabular-nums">
           {done} / {span}
         </span>

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { usePrompt } from "@/components/ui/prompt";
 import { useCategoryPicker, type PickableCategory } from "@/components/ui/category-picker";
 import { TagChip } from "@/components/ui/tag-chip";
+import { Classification } from "@/components/ui/classification";
 import type { CardTag } from "@/lib/types";
 
 export type LibraryCard = {
@@ -184,12 +185,14 @@ export function CardList({
             >
               <p className="truncate text-sm font-medium">{card.front}</p>
               <p className="truncate text-sm text-muted">{card.back}</p>
-              <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 label-micro">
-                <span>{card.topicPath ?? "no deck — assign one to edit"}</span>
-                <span>·</span>
-                <span>{STATE_LABELS[card.state] ?? card.state}</span>
-                {card.suspended && <span className="text-rust">· suspended</span>}
-              </p>
+              <span className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <Classification path={card.topicPath} />
+                {!card.topicPath && (
+                  <span className="label-micro">not in any category</span>
+                )}
+                <span className="label-micro">{STATE_LABELS[card.state] ?? card.state}</span>
+                {card.suspended && <span className="label-micro text-rust">suspended</span>}
+              </span>
               {card.tags.length > 0 && (
                 <span className="mt-1.5 flex flex-wrap gap-1.5">
                   {card.tags.map((tag) => (

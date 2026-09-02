@@ -27,6 +27,18 @@ export default async function LibraryPage(props: {
     }
   }
 
+  /*
+    Разложение фильтра на два уровня. Активная категория — корень выбранной
+    ветки, а не сам выбранный узел: выбрав тему, человек остаётся внутри своей
+    категории, и та обязана остаться подсвеченной.
+  */
+  const roots = topics.filter((t) => t.parent_id === null);
+  const selectedNode = params.topic ? topics.find((t) => t.id === params.topic) : undefined;
+  const activeRoot = selectedNode
+    ? roots.find((r) => r.id === selectedNode.id || selectedNode.path.startsWith(`${r.path} / `))
+    : undefined;
+  const childTopics = activeRoot ? topics.filter((t) => t.parent_id === activeRoot.id) : [];
+
   let cardIds: string[] | null = null;
   if (params.tag) {
     const { data } = await supabase.from("card_tags").select("card_id").eq("tag_id", params.tag);
@@ -96,11 +108,42 @@ export default async function LibraryPage(props: {
         <Filter href="/library" active={!params.topic && !params.tag}>
           All
         </Filter>
-        {topics.map((topic) => (
-          <Filter key={topic.id} href={`/library?topic=${topic.id}`} active={params.topic === topic.id}>
-            {topic.path}
+        {/*
+          Фильтр в два ряда, а не одним списком путей. Прежде здесь вперемешку
+          лежали и категории, и темы, и различить их можно было только по
+          наличию « / » в подписи. Порядок теперь тот же, что в голове: сначала
+          область, потом раздел внутри неё.
+        */}
+        {roots.map((root) => (
+          <Filter
+            key={root.id}
+            href={`/library?topic=${root.id}`}
+            active={activeRoot?.id === root.id}
+          >
+            {root.icon && <span aria-hidden className="mr-1.5">{root.icon}</span>}
+            {root.name}
           </Filter>
         ))}
+      </div>
+
+      {activeRoot && childTopics.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5 border-t border-line pt-2 text-xs">
+          <Filter href={`/library?topic=${activeRoot.id}`} active={params.topic === activeRoot.id}>
+            All of {activeRoot.name}
+          </Filter>
+          {childTopics.map((topic) => (
+            <Filter
+              key={topic.id}
+              href={`/library?topic=${topic.id}`}
+              active={params.topic === topic.id}
+            >
+              {topic.name}
+            </Filter>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-2 flex flex-wrap gap-1.5 border-t border-line pt-2 text-xs">
         {tags.map((tag) => (
           <Filter key={tag.id} href={`/library?tag=${tag.id}`} active={params.tag === tag.id}>
             {hueClass(tag.slot) && (

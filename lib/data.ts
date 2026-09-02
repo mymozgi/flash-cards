@@ -53,7 +53,7 @@ export async function getTopicTree(): Promise<TopicNode[]> {
     // запрос обрушил бы всё дерево ради одного поля
     supabase
       .from("topics")
-      .select("id,parent_id,name,position,description,color,image_path,kind")
+      .select("id,parent_id,name,position,description,color,image_path,kind,icon")
       .order("position")
       .order("name")
       .then((res) =>

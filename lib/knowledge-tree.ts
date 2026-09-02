@@ -174,3 +174,30 @@ export function isStudySet(node: {
 export function kindInEffect(kinds: (string | null | undefined)[]): boolean {
   return kinds.some((kind) => kind === "deck");
 }
+
+/**
+ * Классификация карточки: область и тема.
+ *
+ * Выводится из пути узла, а НЕ хранится в карточке. Копия имени категории
+ * внутри карточки рассинхронизировалась бы при первом же переименовании, и
+ * пришлось бы обходить тысячи строк, чтобы её починить. Здесь же
+ * переименование категории мгновенно меняет подпись у всех её карточек,
+ * потому что менять нечего — подпись и есть путь.
+ *
+ * Путь приходит в виде «Medicine / Pharmacology». Первый сегмент — категория,
+ * последний — тема. Узлы глубже второго уровня схлопываются в тему: показывать
+ * на карточке три подписи значило бы подменять классификацию адресом.
+ */
+export type Classification = { category: string | null; topic: string | null };
+
+export function classify(path: string | null | undefined): Classification {
+  const parts = (path ?? "")
+    .split("/")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length === 0) return { category: null, topic: null };
+  // одиночный узел — это категория без темы: карточка лежит прямо в ней
+  if (parts.length === 1) return { category: parts[0], topic: null };
+  return { category: parts[0], topic: parts[parts.length - 1] };
+}
