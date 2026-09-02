@@ -1,10 +1,17 @@
 "use client";
 
 import { Button, LinkButton, buttonClass } from "@/components/ui/button";
-import { selectClass } from "@/components/ui/field";
+import { inputClass, selectClass } from "@/components/ui/field";
 import Papa from "papaparse";
 import { useMemo, useState } from "react";
 import { renderMarkdown } from "@/lib/markdown";
+import {
+  ImportFormatError,
+  parseJson,
+  preview as echo,
+  sniffFormat,
+  type Table,
+} from "@/lib/import-format";
 import {
   findDuplicates,
   finishImport,
@@ -19,6 +26,9 @@ const MAX_ROWS = 2000;
 const CHUNK = 100;
 const PREVIEW = 20;
 const TRUTHY = new Set(["1", "true", "yes", "y", "да"]);
+
+const PASTE_EXAMPLE = `front,back,topic,tags
+mitochondrion,powerhouse of the cell,Biology / Cells,biology organelles`;
 
 type Field =
   | "front"
@@ -57,10 +67,16 @@ const ALIASES: Record<Field, string[]> = {
 };
 
 type Step = "file" | "map" | "preview" | "running" | "done";
+/** Откуда взялись данные: файл с диска или вставленный текст. */
+type Source = "file" | "paste";
 type Row = Record<string, string>;
 
 export function ImportWizard() {
   const [step, setStep] = useState<Step>("file");
+  const [source, setSource] = useState<Source>("file");
+  /** Данные пришли из собственной выгрузки: колонки уже канонические. */
+  const [fromExport, setFromExport] = useState(false);
+  const [pasted, setPasted] = useState("");
   const [filename, setFilename] = useState("");
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<Row[]>([]);
@@ -76,36 +92,81 @@ export function ImportWizard() {
     errors: { line: number; reason: string }[];
   } | null>(null);
 
-  const pickFile = (file: File | undefined) => {
-    if (!file) return;
-    setError(null);
-    Papa.parse<Row>(file, {
+  /**
+   * Приёмка разобранной таблицы. Одна на все источники: и файл, и вставка, и
+   * CSV, и JSON приходят сюда, поэтому сопоставление колонок, поиск дублей и
+   * предпросмотр дальше работают одинаково и ничего о происхождении не знают.
+   */
+  const accept = (table: Table, label: string) => {
+    if (table.rows.length === 0) {
+      setError("No data rows found. Check that the first line contains column names.");
+      return;
+    }
+    const guess = {} as Record<Field, string>;
+    for (const { key } of FIELDS) {
+      const hit = table.headers.find((c) => ALIASES[key].includes(c.toLowerCase()));
+      if (hit) guess[key] = hit;
+    }
+    setFilename(label);
+    setFromExport(table.fromExport);
+    setHeaders(table.headers);
+    setRows(table.rows.slice(0, MAX_ROWS));
+    setMapping(guess);
+    setStep("map");
+    setError(
+      table.rows.length > MAX_ROWS
+        ? `There are ${table.rows.length} rows; only the first ${MAX_ROWS} will be imported.`
+        : null,
+    );
+  };
+
+  const parseCsv = (input: string | File, label: string) => {
+    // PapaParse одинаково принимает и строку, и файл, поэтому ветка здесь одна
+    Papa.parse<Row>(input as string, {
       header: true,
       skipEmptyLines: "greedy",
       transformHeader: (h) => h.replace(/^﻿/, "").trim(),
       complete: (result) => {
-        const parsed = result.data.filter((r) => Object.values(r).some((v) => v?.trim()));
-        if (parsed.length === 0) {
-          setError("No data rows found. Check that the first line contains column names.");
-          return;
-        }
-        const cols = (result.meta.fields ?? []).filter(Boolean);
-        const guess = {} as Record<Field, string>;
-        for (const { key } of FIELDS) {
-          const hit = cols.find((c) => ALIASES[key].includes(c.toLowerCase()));
-          if (hit) guess[key] = hit;
-        }
-        setFilename(file.name);
-        setHeaders(cols);
-        setRows(parsed.slice(0, MAX_ROWS));
-        setMapping(guess);
-        setStep("map");
-        if (parsed.length > MAX_ROWS) {
-          setError(`The file has ${parsed.length} rows; only the first ${MAX_ROWS} will be imported.`);
-        }
+        accept(
+          {
+            headers: (result.meta.fields ?? []).filter(Boolean),
+            rows: result.data.filter((r) => Object.values(r).some((v) => v?.trim())),
+            fromExport: false,
+          },
+          label,
+        );
       },
-      error: (e) => setError(`Could not read the file: ${e.message}`),
+      error: (e: Error) => setError(`Could not read the data: ${e.message}`),
     });
+  };
+
+  const readText = (text: string, label: string) => {
+    setError(null);
+    if (sniffFormat(text) === "csv") {
+      parseCsv(text, label);
+      return;
+    }
+    try {
+      accept(parseJson(text), label);
+    } catch (e) {
+      setError(
+        e instanceof ImportFormatError
+          ? `${e.message} What you pasted starts with: ${echo(text)}`
+          : "Could not read the pasted content.",
+      );
+    }
+  };
+
+  const pickFile = async (file: File | undefined) => {
+    if (!file) return;
+    setError(null);
+    // JSON читаем текстом: PapaParse разобрал бы его как одну колонку с
+    // фигурными скобками и молча создал бы мусор
+    if (file.name.toLowerCase().endsWith(".json")) {
+      readText(await file.text(), file.name);
+      return;
+    }
+    parseCsv(file, file.name);
   };
 
   const toRow = (raw: Row, index: number): ImportRow => ({
@@ -194,6 +255,7 @@ export function ImportWizard() {
     setReport(null);
     setStep("file");
     setRows([]);
+    setPasted("");
   };
 
   return (
@@ -207,20 +269,87 @@ export function ImportWizard() {
       )}
 
       {step === "file" && (
-        <div className="mt-5 rounded border border-dashed border-line p-6 text-center">
-          <input
-            id="csv"
-            type="file"
-            accept=".csv,.tsv,.txt,text/csv"
-            hidden
-            onChange={(e) => pickFile(e.target.files?.[0])}
-          />
-          <label htmlFor="csv" className={`${buttonClass("primary", "lg")} cursor-pointer`}>
-            Choose a CSV file
-          </label>
-          <p className="mt-3 text-sm text-muted">
-            Comma, semicolon or tab separated. UTF-8, with or without BOM. The first line must
-            contain column names.
+        <div className="mt-5">
+          <div className="flex gap-1 rounded-lg border-control border-field-line bg-surface-2 p-1">
+            {(
+              [
+                ["file", "Upload a file"],
+                ["paste", "Paste content"],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => {
+                  setSource(key);
+                  setError(null);
+                }}
+                aria-pressed={source === key}
+                className={`min-h-10 flex-1 rounded-md px-4 text-sm font-semibold ${
+                  source === key ? "bg-surface text-ink shadow-card" : "text-muted hover:text-ink"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {source === "file" ? (
+            <div className="mt-4 rounded-lg border-control border-dashed border-line-strong p-6 text-center">
+              <input
+                id="import-file"
+                type="file"
+                accept=".csv,.tsv,.txt,.json,text/csv,application/json"
+                hidden
+                onChange={(e) => void pickFile(e.target.files?.[0])}
+              />
+              <label
+                htmlFor="import-file"
+                className={`${buttonClass("primary", "lg")} cursor-pointer`}
+              >
+                Choose a file
+              </label>
+              <p className="mt-3 text-sm text-muted">
+                CSV separated by comma, semicolon or tab — or a JSON file exported from here.
+                UTF-8, with or without BOM.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-4 flex flex-col gap-3">
+              <textarea
+                value={pasted}
+                onChange={(e) => setPasted(e.target.value)}
+                rows={10}
+                spellCheck={false}
+                aria-label="Paste CSV or JSON"
+                placeholder={PASTE_EXAMPLE}
+                className={`${inputClass} resize-y font-mono text-sm`}
+              />
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  tone="primary"
+                  size="lg"
+                  disabled={pasted.trim() === ""}
+                  onClick={() => readText(pasted, "pasted content")}
+                >
+                  Read the content
+                </Button>
+                <p className="text-sm text-muted">
+                  CSV or JSON — the format is detected on its own.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/*
+            Граница названа на экране, а не спрятана в документации: импорт
+            JSON восстанавливает карточки, темы и теги, но НЕ расписание.
+            Иначе одно неосторожное восстановление обнулило бы месяцы работы
+            алгоритма над существующими карточками.
+          */}
+          <p className="mt-4 text-sm text-muted">
+            A JSON export brings back cards, decks and tags — but not the schedule or the review
+            history. Existing cards keep the progress they have earned.
           </p>
         </div>
       )}
@@ -230,6 +359,15 @@ export function ImportWizard() {
           <p className="text-sm text-muted">
             {rows.length} rows, {headers.length} columns. Known names are matched automatically.
           </p>
+          {fromExport && (
+            /* Шаг сопоставления не пропускаем даже здесь: мастер обещает, что
+               ничего не запишется, пока вы не увидите предпросмотр, и своя же
+               выгрузка — не повод обещание нарушить */
+            <p className="mt-2 rounded-lg bg-accent-soft px-3 py-2 text-sm text-accent">
+              This is an export from Memorizer — every column matched. Press Preview to check what
+              will be created.
+            </p>
+          )}
           <ul className="mt-4 flex flex-col gap-2">
             {FIELDS.map((field) => (
               <li key={field.key} className="grid items-center gap-2 sm:grid-cols-[170px_1fr]">
