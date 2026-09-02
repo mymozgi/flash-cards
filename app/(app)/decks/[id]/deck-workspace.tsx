@@ -549,8 +549,8 @@ function CoverField({
       />
       {url ? (
         <div className="flex flex-wrap items-center gap-3">
-          <span className="grid h-20 w-32 place-items-center overflow-hidden rounded-lg border border-line">
-            <img src={url} alt="" className="h-full w-auto max-w-none" />
+          <span className="relative block h-20 w-32 overflow-hidden rounded-lg border border-line">
+            <img src={url} alt="" className="absolute inset-0 m-auto h-full w-auto max-w-none" />
           </span>
           <Button size="sm" onClick={() => input.current?.click()} loading={busy}>
             Replace
@@ -662,12 +662,16 @@ function DeckHeader({
                а сверху она одинаково работает на любой ширине. Вписывается
                целиком, как и на плитке: у схемы срезанный край отнимает смысл. */
             <div
-              className="mb-4 grid h-32 place-items-center overflow-hidden rounded-lg sm:h-40"
+              className="relative mb-4 h-32 overflow-hidden rounded-lg sm:h-40"
               style={{
                 background: `color-mix(in srgb, ${deck.color || "var(--accent)"} 12%, var(--surface))`,
               }}
             >
-              <img src={deck.coverUrl} alt="" className="h-full w-auto max-w-none" />
+              <img
+                src={deck.coverUrl}
+                alt=""
+                className="absolute inset-0 m-auto h-full w-auto max-w-none"
+              />
             </div>
           )}
           <div className="flex items-start justify-between gap-3">

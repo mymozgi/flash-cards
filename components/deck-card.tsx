@@ -70,7 +70,7 @@ export function DeckCard({
         читается как подложка, а не как промах вёрстки.
       */}
       <div
-        className="-mx-5 -mt-5 mb-4 grid w-[calc(100%+2.5rem)] place-items-center overflow-hidden"
+        className="relative -mx-5 -mt-5 mb-4 w-[calc(100%+2.5rem)] overflow-hidden"
         style={{
           aspectRatio: COVER_ASPECT,
           background: `color-mix(in srgb, ${tint} 12%, var(--surface))`,
@@ -78,18 +78,21 @@ export function DeckCard({
       >
         {deck.cover ? (
           /*
-            Вписывание по высоте: картинка всегда занимает полосу целиком
-            сверху донизу, а по горизонтали либо не достаёт до краёв, либо
-            выходит за них и обрезается. Так у высокой иллюстрации ничего не
-            срезается по вертикали — а именно там у схем и обложек смысл, —
-            и при этом не остаётся горизонтальных полей, из-за которых полоса
-            выглядела полупустой.
+            Вписывание по высоте: картинка занимает полосу целиком сверху
+            донизу, а по горизонтали либо не достаёт до краёв, либо выходит за
+            них и обрезается по центру. Так у высокой иллюстрации ничего не
+            срезается по вертикали — а именно там у схем и обложек смысл.
+
+            Абсолютное положение, а не элемент сетки: у элемента сетки высота
+            в процентах не от чего считать, и картинка вставала в натуральную
+            величину — на плитке это выглядело как многократное увеличение.
+            `inset-0` даёт определённую высоту, `m-auto` центрует.
           */
           <img
             src={deck.cover}
             alt=""
             loading="lazy"
-            className="h-full w-auto max-w-none"
+            className="absolute inset-0 m-auto h-full w-auto max-w-none"
           />
         ) : (
           /*
@@ -99,7 +102,7 @@ export function DeckCard({
           */
           <span
             aria-hidden
-            className="font-display text-5xl font-semibold leading-none"
+            className="absolute inset-0 grid place-items-center font-display text-5xl font-semibold leading-none"
             style={{ color: `color-mix(in srgb, ${tint} 45%, var(--surface))` }}
           >
             {deck.name.trim().charAt(0).toUpperCase() || "?"}
