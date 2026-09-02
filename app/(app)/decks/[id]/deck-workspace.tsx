@@ -530,7 +530,7 @@ function CoverField({
       />
       {url ? (
         <div className="flex flex-wrap items-center gap-3">
-          <img src={url} alt="" className="h-20 w-32 rounded-lg object-cover" />
+          <img src={url} alt="" className="h-20 w-32 rounded-lg border border-line object-contain" />
           <Button size="sm" onClick={() => input.current?.click()} loading={busy}>
             Replace
           </Button>
@@ -626,12 +626,16 @@ function DeckHeader({
         <>
           {deck.coverUrl && (
             /* Обложка над названием, а не рядом: на 360 px рядом ей места нет,
-               а сверху она одинаково работает на любой ширине */
-            <img
-              src={deck.coverUrl}
-              alt=""
-              className="mb-4 h-32 w-full rounded-lg object-cover sm:h-40"
-            />
+               а сверху она одинаково работает на любой ширине. Вписывается
+               целиком, как и на плитке: у схемы срезанный край отнимает смысл. */
+            <div
+              className="mb-4 grid h-32 place-items-center overflow-hidden rounded-lg sm:h-40"
+              style={{
+                background: `color-mix(in srgb, ${deck.color || "var(--accent)"} 12%, var(--surface))`,
+              }}
+            >
+              <img src={deck.coverUrl} alt="" className="size-full object-contain" />
+            </div>
           )}
           <div className="flex items-start justify-between gap-3">
             <h1 className="text-3xl font-semibold tracking-tight">{deck.name}</h1>

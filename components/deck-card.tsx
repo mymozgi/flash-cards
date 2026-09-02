@@ -57,34 +57,43 @@ export function DeckCard({
         selected ? "border-accent" : "border-line"
       }`}
     >
-      {/* Полоса 16:9 есть всегда — на ней держится равная высота плиток. */}
-      {deck.cover ? (
-        <img
-          src={deck.cover}
-          alt=""
-          loading="lazy"
-          className="-mx-5 -mt-5 mb-4 aspect-video w-[calc(100%+2.5rem)] rounded-t-xl object-cover"
-        />
-      ) : (
-        /*
-          Заглушка тонирована цветом набора и несёт его первую букву. Ровный
-          серый прямоугольник занимал бы столько же места и не сообщал ничего;
-          здесь то же место работает опознавательным знаком, по которому набор
-          находят взглядом, пока обложки нет.
-        */
-        <div
-          aria-hidden
-          className="-mx-5 -mt-5 mb-4 grid aspect-video w-[calc(100%+2.5rem)] place-items-center rounded-t-xl"
-          style={{ background: `color-mix(in srgb, ${tint} 12%, var(--surface))` }}
-        >
+      {/*
+        Полоса есть всегда — на ней держится равная высота плиток.
+
+        Своего скругления у неё нет: карточка уже скруглена и обрезает
+        содержимое, а второй радиус поверх первого оставлял в углу зазубрину.
+
+        Обложка вписывается целиком, а не заполняет полосу. Обложки здесь —
+        схемы и иллюстрации, у них срезанный край отнимает смысл, а не поля.
+        Пустое место по бокам залито тем же тоном, что и заглушка, поэтому
+        читается как подложка, а не как промах вёрстки.
+      */}
+      <div
+        className="-mx-5 -mt-5 mb-4 grid aspect-[16/10] w-[calc(100%+2.5rem)] place-items-center overflow-hidden"
+        style={{ background: `color-mix(in srgb, ${tint} 12%, var(--surface))` }}
+      >
+        {deck.cover ? (
+          <img
+            src={deck.cover}
+            alt=""
+            loading="lazy"
+            className="size-full object-contain"
+          />
+        ) : (
+          /*
+            Заглушка несёт первую букву названия. Ровный серый прямоугольник
+            занимал бы столько же места и не сообщал ничего; здесь то же место
+            работает опознавательным знаком, пока обложки нет.
+          */
           <span
+            aria-hidden
             className="font-display text-5xl font-semibold leading-none"
             style={{ color: `color-mix(in srgb, ${tint} 45%, var(--surface))` }}
           >
             {deck.name.trim().charAt(0).toUpperCase() || "?"}
           </span>
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="flex items-start justify-between gap-2">
         <Badge
