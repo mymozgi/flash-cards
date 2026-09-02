@@ -4,6 +4,7 @@ import Link from "next/link";
 import { LinkButton } from "@/components/ui/button";
 import { Badge } from "@/components/ui/panel";
 import { TrashIcon } from "@/components/icons";
+import { Progress } from "@/components/ui/progress";
 import type { DeckSummary } from "@/lib/types";
 
 export type { DeckSummary };
@@ -33,7 +34,7 @@ export function DeckCard({
 
   return (
     <div
-      className={`flex h-full flex-col rounded-xl border bg-surface p-4 shadow-sm ${
+      className={`flex h-full flex-col rounded-xl border bg-surface p-5 shadow-card ${
         selected ? "border-accent" : "border-line"
       }`}
     >
@@ -71,19 +72,22 @@ export function DeckCard({
         </p>
       </Link>
 
-      <div className="mt-4">
-        <div className="flex items-baseline justify-between text-xs">
-          <span className="uppercase tracking-wide text-faint">Cards memorized</span>
-          <span className="tabular-nums text-muted">
+      <div className="mt-5">
+        <div className="flex items-baseline justify-between">
+          <span className="label-micro">Cards memorized</span>
+          <span className="text-xs font-semibold tabular-nums text-muted">
             {deck.memorized}/{deck.total}
           </span>
         </div>
-        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-2">
-          <div className="h-full rounded-full bg-accent" style={{ width: `${ratio}%` }} />
-        </div>
+        <Progress
+          value={deck.memorized}
+          max={deck.total}
+          label={`${ratio}% memorized in ${deck.name}`}
+          className="mt-1.5"
+        />
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-2 border-t border-line pt-3 text-xs text-muted">
+      <div className="mt-5 flex items-center justify-between gap-2 border-t border-line pt-4 text-xs text-muted">
         <span>
           {deck.total} {deck.total === 1 ? "card" : "cards"}
         </span>
@@ -94,7 +98,7 @@ export function DeckCard({
         </span>
       </div>
 
-      <div className="mt-3 flex gap-2">
+      <div className="mt-4 flex gap-2">
         {/* Practice — то, ради чего набор открывают. Он и должен выглядеть
             как главное действие, а правка и просмотр — как вспомогательные. */}
         {readOnly ? (

@@ -357,26 +357,20 @@ export function DeckWorkspace({
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="text-xl font-semibold tracking-tight">Flashcards</h2>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
+            <Button
+              size="sm"
               onClick={() =>
                 setCollapsed((prev) =>
                   prev.size === cards.length ? new Set() : new Set(cards.map((c) => c.id)),
                 )
               }
-              className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-ink"
             >
               {collapsed.size === cards.length && cards.length > 0 ? "Expand all" : "Collapse all"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowTags((v) => !v)}
-              aria-expanded={showTags}
-              className="flex items-center gap-2 rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-ink"
-            >
+            </Button>
+            <Button size="sm" onClick={() => setShowTags((v) => !v)} aria-expanded={showTags}>
               <TagIcon />
               Manage tags
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -503,16 +497,10 @@ function DeckHeader({
             />
           </label>
           <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={onSave}
-              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink"
-            >
+            <Button tone="primary" onClick={onSave}>
               Save details
-            </button>
-            <button type="button" onClick={onCancel} className="rounded-lg border border-line px-4 py-2 text-sm">
-              Cancel
-            </button>
+            </Button>
+            <Button onClick={onCancel}>Cancel</Button>
           </div>
         </div>
       ) : (
@@ -525,14 +513,10 @@ function DeckHeader({
                 className="size-2.5 rounded-full"
                 style={{ background: deck.color || "var(--accent)" }}
               />
-              <button
-                type="button"
-                onClick={onEdit}
-                className="flex items-center gap-2 rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-ink"
-              >
+              <Button size="sm" onClick={onEdit}>
                 <PencilIcon />
                 Edit details
-              </button>
+              </Button>
             </div>
           </div>
           <div className="mt-3 flex flex-wrap gap-2 text-xs">
@@ -1094,7 +1078,7 @@ function TagEditor({
               }
             }}
             placeholder="tag name"
-            className="w-28 rounded-full border border-line bg-surface px-2.5 py-1 text-xs"
+            className="w-32 rounded-full border-control border-field-line bg-surface px-3 py-1.5 text-xs"
           />
           <datalist id="deck-tag-suggestions">
             {suggestions.map((tag) => (

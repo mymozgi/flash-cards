@@ -64,7 +64,7 @@ export function ImageStrip({
                   value={image.caption}
                   onChange={(e) => onCaption(index, e.target.value)}
                   placeholder="Caption — optional"
-                  className="w-full rounded border border-line bg-surface px-2 py-1 text-xs"
+                  className="w-full rounded-md border-control border-field-line bg-surface px-2.5 py-1.5 text-xs"
                 />
                 <span className="font-mono text-2xs text-faint">
                   {image.width}×{image.height} · {formatBytes(image.bytes)}

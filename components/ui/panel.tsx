@@ -42,7 +42,7 @@ export function Badge({
   return (
     <span
       {...rest}
-      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-2xs font-medium ${BADGE_TONES[tone]} ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-2xs font-semibold ${BADGE_TONES[tone]} ${className}`}
     >
       {children}
     </span>

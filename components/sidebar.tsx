@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { ThemeToggle } from "./theme-toggle";
+import { LinkButton } from "@/components/ui/button";
 import {
   GridIcon,
   ListIcon,
@@ -135,22 +136,26 @@ export function Sidebar({
         </div>
 
         {isGuest ? (
-          <Link
+          <LinkButton
             href="/login"
+            tone="primary"
+            size={collapsed ? "icon" : "md"}
             onClick={() => setOpen(false)}
-            className="flex items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-medium text-accent-ink"
+            className={collapsed ? "mx-auto" : ""}
           >
             {collapsed ? "→" : "Sign in"}
-          </Link>
+          </LinkButton>
         ) : (
-          <Link
+          <LinkButton
             href="/decks?new=1"
+            tone="primary"
+            size={collapsed ? "icon" : "md"}
             onClick={() => setOpen(false)}
-            className="flex items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-medium text-accent-ink"
+            className={collapsed ? "mx-auto" : ""}
           >
             <PlusIcon />
             {!collapsed && "Create set"}
-          </Link>
+          </LinkButton>
         )}
 
         {(isGuest ? GUEST_GROUPS : GROUPS).map((group, i) => (

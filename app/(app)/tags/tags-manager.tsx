@@ -1,11 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { deleteTagEverywhere, renameTagEverywhere } from "@/app/(app)/decks/[id]/actions";
 import { SearchIcon, TrashIcon } from "@/components/icons";
 import { useConfirm } from "@/components/ui/confirm";
+import { Button } from "@/components/ui/button";
+import { inputClass } from "@/components/ui/field";
+import { TagChip } from "@/components/ui/tag-chip";
 
 export type TagRowView = { id: string; name: string; count: number };
 
@@ -55,7 +57,7 @@ export function TagsManager({ tags }: { tags: TagRowView[] }) {
     <div className="mt-5">
       {dialog}
       <div className="relative max-w-md">
-        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint">
+        <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-faint">
           <SearchIcon />
         </span>
         <input
@@ -63,7 +65,7 @@ export function TagsManager({ tags }: { tags: TagRowView[] }) {
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Filter tags…"
           aria-label="Filter tags"
-          className="w-full rounded-lg border border-line bg-surface py-2 pl-9 pr-3 text-sm"
+          className={`${inputClass} pl-11`}
         />
       </div>
 
@@ -81,30 +83,22 @@ export function TagsManager({ tags }: { tags: TagRowView[] }) {
         <ul className={`mt-4 divide-y divide-line rounded-xl border border-line bg-surface ${busy ? "opacity-60" : ""}`}>
           {visible.map((tag) => (
             <li key={tag.id} className="flex items-center gap-3 px-4 py-3 text-sm">
-              <Link
-                href={`/library?tag=${tag.id}`}
-                className="rounded-full bg-accent-soft px-3 py-1 text-xs text-accent"
-              >
-                {tag.name}
-              </Link>
+              <TagChip name={tag.name} href={`/library?tag=${tag.id}`} />
               <span className="tabular-nums text-xs text-faint">
                 {tag.count} {tag.count === 1 ? "card" : "cards"}
               </span>
-              <button
-                type="button"
-                onClick={() => rename(tag.name)}
-                className="ml-auto rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-ink"
-              >
+              <Button size="sm" onClick={() => rename(tag.name)} className="ml-auto">
                 Rename
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                tone="ghost"
+                size="icon"
                 onClick={() => drop(tag.name, tag.count)}
                 aria-label={`Delete tag ${tag.name}`}
-                className="p-1.5 text-faint hover:text-rust"
+                className="hover:text-rust"
               >
                 <TrashIcon />
-              </button>
+              </Button>
             </li>
           ))}
         </ul>

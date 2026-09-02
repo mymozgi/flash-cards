@@ -12,10 +12,10 @@ import Link from "next/link";
  * блокировка и загрузка.
  */
 export type ButtonTone = "primary" | "soft" | "secondary" | "ghost" | "danger";
-export type ButtonSize = "sm" | "md" | "lg";
+export type ButtonSize = "sm" | "md" | "lg" | "icon";
 
 const BASE =
-  "inline-flex items-center justify-center gap-2 rounded-lg font-medium " +
+  "inline-flex items-center justify-center gap-2.5 rounded-lg font-semibold " +
   "transition-colors select-none " +
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent " +
   "disabled:pointer-events-none disabled:opacity-55";
@@ -28,20 +28,31 @@ const TONES: Record<ButtonTone, string> = {
    * синий текст: 4,75 в светлой теме и 6,18 в тёмной.
    */
   soft: "bg-accent-soft text-accent hover:brightness-95 active:brightness-90",
-  secondary: "border border-line bg-surface text-ink hover:bg-surface-2 active:bg-surface-2",
+  /**
+   * Граница берётся та же, что у поля ввода, — и по той же причине. Заливка
+   * кнопки отличается от фона страницы на 1,06, то есть держит форму именно
+   * рамка, а рамке контрола положено 3:1. Прежний `--line` давал 1,24.
+   */
+  secondary:
+    "border-control border-field-line bg-surface text-ink hover:bg-surface-2 active:bg-surface-2",
   ghost: "text-muted hover:bg-surface-2 hover:text-ink",
-  danger: "border border-line bg-surface text-rust hover:bg-rust-soft",
+  danger: "border-control border-field-line bg-surface text-rust hover:bg-rust-soft",
 };
 
 /**
- * Высота не ниже 44 px у среднего и большого размера: это минимальная
- * цель нажатия на телефоне. Малый размер — только для плотных панелей,
- * где рядом нет соседей.
+ * Цель нажатия: 48 px у среднего размера и 56 px у большого — с запасом над
+ * минимальными 44 px, потому что запас и есть то, что отличает «попал» от
+ * «почти попал» на ходу. Малый размер 40 px — только для плотных панелей,
+ * где рядом нет соседних кнопок.
+ *
+ * `icon` — квадрат под одну иконку без подписи: стрелки листания, закрытие,
+ * действие в строке. Он не уже 44 px, иначе перестал бы быть целью.
  */
 const SIZES: Record<ButtonSize, string> = {
-  sm: "min-h-9 px-3 text-sm",
-  md: "min-h-11 px-4 text-sm",
-  lg: "min-h-12 px-5 text-base",
+  sm: "min-h-10 px-4 text-sm",
+  md: "min-h-12 px-5 text-sm",
+  lg: "min-h-14 px-7 text-base",
+  icon: "size-12 shrink-0 p-0",
 };
 
 export function buttonClass(

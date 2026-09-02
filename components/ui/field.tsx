@@ -10,9 +10,15 @@
  * 1,03 с фоном страницы и 1,11 с белой панелью — поле неотличимо от воздуха.
  * Подложка эту задачу не решает, решает именно граница.
  */
+/**
+ * Кегль 16 px, а не 14: Safari на iPhone приближает страницу при фокусе на
+ * поле мельче шестнадцати, и вернуть масштаб обратно пользователь уже не
+ * может. Высота 48 px совпадает с кнопкой среднего размера — стоящие рядом
+ * поле и кнопка выстраиваются по одной линии без подгонки на месте.
+ */
 export const inputClass =
-  "w-full rounded-lg border border-field-line bg-surface px-3 py-2 text-sm text-ink " +
-  "placeholder:text-faint transition-colors " +
+  "w-full min-h-12 rounded-lg border-control border-field-line bg-surface px-3.5 py-3 " +
+  "text-base text-ink placeholder:text-faint transition-colors " +
   "hover:border-ink focus:border-accent focus-visible:outline-2 focus-visible:outline-offset-1 " +
   "focus-visible:outline-accent disabled:opacity-55";
 
@@ -24,16 +30,20 @@ export const inputClass =
  */
 export const selectClass =
   inputClass +
-  " appearance-none bg-[length:12px] bg-[right_0.75rem_center] bg-no-repeat pr-9 " +
+  " appearance-none bg-[length:14px] bg-[right_1rem_center] bg-no-repeat pr-11 " +
   "bg-[image:var(--select-arrow)]";
 
-/** В ячейке таблицы границу даёт сама сетка, поэтому поле остаётся плоским. */
+/**
+ * В ячейке таблицы границу даёт сама сетка, поэтому поле остаётся плоским —
+ * и остаётся мелким: таблица существует ради плотности, и раздувать её строки
+ * до высоты обычного поля значит отменить причину, по которой она нужна.
+ */
 export const cellInputClass =
-  "w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-sm " +
+  "w-full rounded-md border border-transparent bg-transparent px-2.5 py-1.5 text-sm " +
   "hover:border-line focus:border-accent focus:bg-surface";
 
 export function Label({ children }: { children: React.ReactNode }) {
-  return <span className="block pb-1.5 text-sm font-medium text-muted">{children}</span>;
+  return <span className="block pb-2 text-sm font-semibold text-ink">{children}</span>;
 }
 
 /**
@@ -56,9 +66,9 @@ export function Field({
       <Label>{label}</Label>
       {children}
       {error ? (
-        <span className="mt-1 block text-2xs text-rust">{error}</span>
+        <span className="mt-1.5 block text-2xs font-medium text-rust">{error}</span>
       ) : hint ? (
-        <span className="mt-1 block text-2xs text-faint">{hint}</span>
+        <span className="mt-1.5 block text-2xs text-faint">{hint}</span>
       ) : null}
     </label>
   );

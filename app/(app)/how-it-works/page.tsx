@@ -63,7 +63,7 @@ export default function HowItWorksPage() {
   return (
     <>
       <header className="border-b border-line pb-5">
-        <p className="text-2xs uppercase tracking-wide text-faint">How it works</p>
+        <p className="label-micro">How it works</p>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
           Why this beats reading the same page again
         </h1>
@@ -149,7 +149,7 @@ export default function HowItWorksPage() {
             <li key={study.what}>
               <Panel className="p-4">
                 <h3 className="font-semibold">{study.what}</h3>
-                <p className="mt-0.5 text-2xs uppercase tracking-wide text-faint">{study.who}</p>
+                <p className="mt-0.5 label-micro">{study.who}</p>
                 <p className="mt-2 text-sm text-muted">{study.finding}</p>
               </Panel>
             </li>

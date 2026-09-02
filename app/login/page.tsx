@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { LinkButton } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 import { LoginForm } from "./login-form";
 
@@ -34,12 +34,9 @@ export default async function LoginPage(props: {
       {shared && (
         <div className="mt-8 border-t border-line pt-6 text-center">
           <p className="text-sm text-muted">No account needed to look around.</p>
-          <Link
-            href="/decks"
-            className="mt-2 inline-block rounded-lg border border-line px-5 py-2.5 text-sm font-medium hover:bg-surface-2"
-          >
+          <LinkButton href="/decks" className="mt-2">
             Browse the library as a guest
-          </Link>
+          </LinkButton>
           <p className="mt-2 text-2xs text-faint">
             Guests can read cards and sets. Nothing can be added, changed or deleted.
           </p>

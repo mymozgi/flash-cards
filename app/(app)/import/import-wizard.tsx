@@ -1,6 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import { Button, LinkButton, buttonClass } from "@/components/ui/button";
+import { selectClass } from "@/components/ui/field";
 import Papa from "papaparse";
 import { useMemo, useState } from "react";
 import { renderMarkdown } from "@/lib/markdown";
@@ -214,10 +215,7 @@ export function ImportWizard() {
             hidden
             onChange={(e) => pickFile(e.target.files?.[0])}
           />
-          <label
-            htmlFor="csv"
-            className="inline-block cursor-pointer rounded bg-accent px-5 py-3 text-sm font-medium text-accent-ink"
-          >
+          <label htmlFor="csv" className={`${buttonClass("primary", "lg")} cursor-pointer`}>
             Choose a CSV file
           </label>
           <p className="mt-3 text-sm text-muted">
@@ -244,7 +242,7 @@ export function ImportWizard() {
                   id={`map-${field.key}`}
                   value={mapping[field.key] ?? ""}
                   onChange={(e) => setMapping((m) => ({ ...m, [field.key]: e.target.value }))}
-                  className="rounded border border-line bg-surface px-3 py-2 text-sm"
+                  className={selectClass}
                 >
                   <option value="">— do not import —</option>
                   {headers.map((h) => (
@@ -257,17 +255,10 @@ export function ImportWizard() {
             ))}
           </ul>
           <div className="mt-5 flex gap-2">
-            <button
-              type="button"
-              onClick={goPreview}
-              disabled={!mapping.front || !mapping.back}
-              className="rounded bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink disabled:opacity-50"
-            >
+            <Button tone="primary" onClick={goPreview} disabled={!mapping.front || !mapping.back}>
               Preview
-            </button>
-            <button type="button" onClick={() => setStep("file")} className="rounded border border-line px-4 py-2.5 text-sm">
-              Back
-            </button>
+            </Button>
+            <Button onClick={() => setStep("file")}>Back</Button>
           </div>
         </div>
       )}
@@ -282,7 +273,7 @@ export function ImportWizard() {
               { label: "Topics used", value: newTopics.length },
             ].map((s) => (
               <div key={s.label} className="bg-surface px-4 py-3">
-                <dt className="font-mono text-2xs uppercase tracking-[0.13em] text-faint">{s.label}</dt>
+                <dt className="label-micro">{s.label}</dt>
                 <dd className="mt-1 text-xl font-medium tabular-nums">{s.value}</dd>
               </div>
             ))}
@@ -290,7 +281,7 @@ export function ImportWizard() {
 
           {dupCount > 0 && (
             <fieldset className="mt-4 rounded border border-line p-3">
-              <legend className="px-1 font-mono text-2xs uppercase tracking-[0.13em] text-faint">
+              <legend className="px-1 label-micro">
                 What to do with duplicates
               </legend>
               {(
@@ -314,7 +305,7 @@ export function ImportWizard() {
             </fieldset>
           )}
 
-          <h3 className="mt-6 font-mono text-2xs uppercase tracking-[0.14em] text-faint">
+          <h3 className="mt-6 label-micro">
             First {Math.min(PREVIEW, prepared.length)} cards
           </h3>
           <ul className="mt-2 divide-y divide-line rounded border border-line bg-surface">
@@ -325,7 +316,7 @@ export function ImportWizard() {
                   className="prose-card mt-1 text-muted"
                   dangerouslySetInnerHTML={{ __html: renderMarkdown(row.back) }}
                 />
-                <p className="mt-1 font-mono text-2xs uppercase tracking-[0.12em] text-faint">
+                <p className="mt-1 label-micro">
                   {row.topic || "no topic"}
                   {row.tags && ` · ${row.tags}`}
                   {row.reversed && " · reversed"}
@@ -340,16 +331,10 @@ export function ImportWizard() {
           </ul>
 
           <div className="mt-5 flex gap-2">
-            <button
-              type="button"
-              onClick={run}
-              className="rounded bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink"
-            >
+            <Button tone="primary" onClick={run}>
               Import {prepared.length - (strategy === "skip" ? dupCount : 0) - invalid} cards
-            </button>
-            <button type="button" onClick={() => setStep("map")} className="rounded border border-line px-4 py-2.5 text-sm">
-              Back
-            </button>
+            </Button>
+            <Button onClick={() => setStep("map")}>Back</Button>
           </div>
         </div>
       )}
@@ -381,24 +366,22 @@ export function ImportWizard() {
               { label: "Errors", value: report.errors.length },
             ].map((s) => (
               <div key={s.label} className="bg-surface px-4 py-3">
-                <dt className="font-mono text-2xs uppercase tracking-[0.13em] text-faint">{s.label}</dt>
+                <dt className="label-micro">{s.label}</dt>
                 <dd className="mt-1 text-xl font-medium tabular-nums">{s.value}</dd>
               </div>
             ))}
           </dl>
 
           <div className="mt-5 flex flex-wrap gap-2">
-            <Link href="/library" className="rounded bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink">
+            <LinkButton href="/library" tone="primary">
               Open library
-            </Link>
+            </LinkButton>
             {report.errors.length > 0 && (
-              <button type="button" onClick={downloadErrors} className="rounded border border-line px-4 py-2.5 text-sm">
-                Download error report
-              </button>
+              <Button onClick={downloadErrors}>Download error report</Button>
             )}
-            <button type="button" onClick={revert} className="rounded border border-line px-4 py-2.5 text-sm text-rust">
+            <Button tone="danger" onClick={revert}>
               Undo this import
-            </button>
+            </Button>
           </div>
           <p className="mt-3 text-xs text-faint">
             An import can be undone within 24 hours — the cards it created are removed for good.
@@ -421,7 +404,7 @@ function Steps({ current }: { current: Step }) {
   const activeIndex = order.indexOf(current === "running" ? "preview" : current);
 
   return (
-    <ol className="flex flex-wrap gap-2 font-mono text-2xs uppercase tracking-[0.13em]">
+    <ol className="flex flex-wrap gap-2 label-micro">
       {order.map((step, i) => (
         <li
           key={step}

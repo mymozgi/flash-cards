@@ -3,6 +3,8 @@ import { createClient, currentUser } from "@/lib/supabase/server";
 import { getTags, getTopicTree } from "@/lib/data";
 import { publicUrl } from "@/lib/storage";
 import { CardList, type LibraryCard } from "./card-list";
+import { Button } from "@/components/ui/button";
+import { inputClass } from "@/components/ui/field";
 
 const PAGE_SIZE = 100;
 
@@ -83,11 +85,9 @@ export default async function LibraryPage(props: {
             name="q"
             defaultValue={params.q ?? ""}
             placeholder="Search card text"
-            className="min-w-0 flex-1 rounded border border-line bg-surface px-3 py-2 text-sm"
+            className={`${inputClass} min-w-0 flex-1`}
           />
-          <button type="submit" className="rounded border border-line px-4 py-2 text-sm">
-            Search
-          </button>
+          <Button type="submit">Search</Button>
         </form>
       </header>
 

@@ -1,11 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { createTopic, deleteTopic } from "@/app/(app)/topics/actions";
 import { CheckIcon, PlusIcon, SearchIcon } from "@/components/icons";
-import { Button } from "@/components/ui/button";
+import { Button, LinkButton } from "@/components/ui/button";
 import { panelClass } from "@/components/ui/panel";
 import { DeckCard, type DeckSummary } from "@/components/deck-card";
 import { useConfirm } from "@/components/ui/confirm";
@@ -136,7 +135,7 @@ export function DecksIndex({
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-0 flex-1">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint">
+          <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-faint">
             <SearchIcon />
           </span>
           <input
@@ -144,7 +143,7 @@ export function DecksIndex({
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Type to search…"
             aria-label="Search sets"
-            className="w-full rounded-lg border border-line bg-surface py-2 pl-9 pr-3 text-sm"
+            className={`${inputClass} pl-11`}
           />
         </div>
         <label className="flex items-center gap-2 text-sm text-muted">
@@ -169,8 +168,10 @@ export function DecksIndex({
               setSelected(new Set());
             }}
             aria-pressed={selecting}
-            className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
-              selecting ? "border-accent bg-accent-soft text-accent" : "border-line text-muted"
+            className={`flex min-h-12 items-center gap-2 rounded-lg border-control px-4 text-sm font-semibold ${
+              selecting
+                ? "border-accent bg-accent-soft text-accent"
+                : "border-field-line text-muted"
             }`}
           >
             <CheckIcon className="size-3.5" />
@@ -229,18 +230,12 @@ export function DecksIndex({
       {!readOnly && (
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur lg:static lg:mt-4 lg:rounded-xl lg:border lg:px-4 lg:pb-3">
         <div className="mx-auto flex max-w-3xl items-center gap-2">
-          <Link
-            href="/review?free=1"
-            className="flex-1 rounded-lg border border-line px-4 py-2.5 text-center text-sm"
-          >
+          <LinkButton href="/review?free=1" className="flex-1">
             Study all <span className="tabular-nums text-faint">{totalCards}</span>
-          </Link>
-          <Link
-            href="/review"
-            className="flex-1 rounded-lg bg-accent px-4 py-2.5 text-center text-sm font-medium text-accent-ink"
-          >
+          </LinkButton>
+          <LinkButton href="/review" tone="primary" className="flex-1">
             Review due <span className="tabular-nums opacity-80">{dueCount}</span>
-          </Link>
+          </LinkButton>
           <span className="hidden text-sm text-faint sm:block">
             {unmemorized} not memorized yet
           </span>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LinkButton } from "@/components/ui/button";
 import { getDeckSummaries, getSettings, getTodayCounts } from "@/lib/data";
 import { DeckCard } from "@/components/deck-card";
 import { plural } from "@/lib/day";
@@ -11,7 +12,7 @@ export default async function TodayPage() {
   return (
     <>
       <header className="border-b border-line-strong pb-5">
-        <p className="font-mono text-2xs uppercase tracking-[0.16em] text-faint">Today</p>
+        <p className="label-micro">Today</p>
         <h1 className="mt-2 font-display text-5xl font-semibold tracking-tight tabular-nums">
           {counts.total}
         </h1>
@@ -24,19 +25,11 @@ export default async function TodayPage() {
 
       <div className="mt-6 flex flex-col gap-3">
         {counts.total > 0 && (
-          <Link
-            href="/review"
-            className="rounded bg-accent px-5 py-4 text-center text-base font-medium text-accent-ink"
-          >
+          <LinkButton href="/review" tone="primary" size="lg">
             Start
-          </Link>
+          </LinkButton>
         )}
-        <Link
-          href="/review?free=1"
-          className="rounded border border-line px-5 py-3 text-center text-sm text-muted hover:text-ink"
-        >
-          Free practice
-        </Link>
+        <LinkButton href="/review?free=1">Free practice</LinkButton>
       </div>
 
       <dl className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded border border-line bg-line sm:grid-cols-4">
@@ -47,7 +40,7 @@ export default async function TodayPage() {
           { label: "New limit", value: settings.daily_new_limit },
         ].map((stat) => (
           <div key={stat.label} className="bg-surface px-4 py-3">
-            <dt className="font-mono text-2xs uppercase tracking-[0.13em] text-faint">
+            <dt className="label-micro">
               {stat.label}
             </dt>
             <dd className="mt-1 text-xl font-medium tabular-nums">{stat.value}</dd>

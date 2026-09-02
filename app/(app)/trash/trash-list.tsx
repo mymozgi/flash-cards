@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { purgeCard, restoreCard } from "./actions";
 import { TrashIcon } from "@/components/icons";
 import { useConfirm } from "@/components/ui/confirm";
+import { Button } from "@/components/ui/button";
 
 export type TrashedCard = {
   id: string;
@@ -50,13 +51,9 @@ export function TrashList({ cards }: { cards: TrashedCard[] }) {
                 {new Date(card.purgeAt).toLocaleDateString()}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => run(() => restoreCard(card.id))}
-              className="rounded-lg border border-line px-3 py-1.5 text-sm"
-            >
+            <Button size="sm" onClick={() => run(() => restoreCard(card.id))}>
               Restore
-            </button>
+            </Button>
             <button
               type="button"
               onClick={async () => {

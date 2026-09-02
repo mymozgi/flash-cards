@@ -1,6 +1,7 @@
 "use client";
 
 import type { MediaItem } from "@/lib/types";
+import { Button } from "@/components/ui/button";
 
 /**
  * Изображения стороны карточки. Обычный <img>, а не next/image: файлы уже
@@ -62,13 +63,9 @@ export function Lightbox({ image, onClose }: { image: MediaItem; onClose: () => 
         style={{ touchAction: "pinch-zoom" }}
       />
       {image.caption && <p className="mt-3 text-center text-sm text-muted">{image.caption}</p>}
-      <button
-        type="button"
-        onClick={onClose}
-        className="mt-4 rounded border border-line px-4 py-2 text-sm text-muted"
-      >
+      <Button onClick={onClose} className="mt-4">
         Close
-      </button>
+      </Button>
     </div>
   );
 }

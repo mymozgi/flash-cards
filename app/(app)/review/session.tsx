@@ -8,6 +8,8 @@ import { renderMarkdown } from "@/lib/markdown";
 import type { MediaItem, QueueCard } from "@/lib/types";
 import { CardRenderer, ASPECT } from "@/components/card-renderer";
 import { Lightbox } from "@/components/card-media";
+import { Button, LinkButton } from "@/components/ui/button";
+import { TagChip } from "@/components/ui/tag-chip";
 import { gradeCard, undoReview, type GradeResult } from "./actions";
 
 /** Карточка, провалившаяся сейчас, возвращается в этой же сессии (§8.1). */
@@ -199,37 +201,20 @@ export function ReviewSession({
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
           {!free && (
-            <Link
-              href="/review?free=1"
-              className="rounded-lg bg-accent px-5 py-3 text-sm font-medium text-accent-ink"
-            >
+            <LinkButton href="/review?free=1" tone="primary" size="lg">
               Practice again
-            </Link>
+            </LinkButton>
           )}
-          <Link
-            href="/"
-            className={`rounded-lg px-5 py-3 text-sm ${
-              free
-                ? "bg-accent font-medium text-accent-ink"
-                : "border border-line text-muted hover:text-ink"
-            }`}
-          >
+          <LinkButton href="/" tone={free ? "primary" : "secondary"} size="lg">
             Back to Today
-          </Link>
-          <Link
-            href="/decks"
-            className="rounded-lg border border-line px-5 py-3 text-sm text-muted hover:text-ink"
-          >
+          </LinkButton>
+          <LinkButton href="/decks" size="lg">
             Browse decks
-          </Link>
+          </LinkButton>
           {done > 0 && (
-            <button
-              type="button"
-              onClick={() => void undo()}
-              className="rounded-lg border border-line px-5 py-3 text-sm text-muted hover:text-ink"
-            >
+            <Button size="lg" onClick={() => void undo()}>
               Undo last grade
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -239,9 +224,9 @@ export function ReviewSession({
   return (
     <div className="flex min-h-[calc(100dvh-8rem)] flex-col" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       {zoomed && <Lightbox image={zoomed} onClose={() => setZoomed(null)} />}
-      <div className="flex items-center justify-between gap-4 border-b border-line pb-3 font-mono text-2xs uppercase tracking-[0.13em] text-faint">
-        <span className="truncate">{current.topicPath ?? "No topic"}</span>
-        <span className="tabular-nums">
+      <div className="flex items-center justify-between gap-4 border-b border-line pb-3">
+        <span className="label-micro truncate">{current.topicPath ?? "No topic"}</span>
+        <span className="label-micro tabular-nums">
           {done} / {done + queue.length}
         </span>
       </div>
@@ -292,13 +277,10 @@ export function ReviewSession({
         </div>
 
         {current.tags.length > 0 && (
-          <ul className="mt-6 flex flex-wrap gap-1.5">
+          <ul className="mt-6 flex flex-wrap gap-2">
             {current.tags.map((tag) => (
-              <li
-                key={tag}
-                className="rounded bg-surface-2 px-2 py-0.5 font-mono text-2xs text-faint"
-              >
-                #{tag}
+              <li key={tag}>
+                <TagChip name={tag} />
               </li>
             ))}
           </ul>
@@ -307,13 +289,9 @@ export function ReviewSession({
 
       <div className="sticky bottom-4 flex flex-col gap-2 sm:bottom-6">
         {!revealed ? (
-          <button
-            type="button"
-            onClick={() => setRevealed(true)}
-            className="min-h-14 rounded bg-accent px-5 text-base font-medium text-accent-ink"
-          >
+          <Button tone="primary" size="lg" onClick={() => setRevealed(true)} className="w-full">
             Flip the card
-          </button>
+          </Button>
         ) : (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {RATINGS.map((rating) => (
@@ -321,7 +299,7 @@ export function ReviewSession({
                 key={rating.grade}
                 type="button"
                 onClick={() => grade(rating.grade)}
-                className="min-h-14 rounded border border-line-strong bg-surface px-2 py-2 text-sm font-medium hover:border-accent hover:text-accent"
+                className="min-h-14 rounded-lg border-control border-field-line bg-surface px-2 py-2 text-sm font-semibold hover:border-accent hover:text-accent"
               >
                 <span className="block">{rating.label}</span>
                 <span className="block font-mono text-2xs font-normal tabular-nums text-faint">

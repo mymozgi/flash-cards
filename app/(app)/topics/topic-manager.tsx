@@ -5,6 +5,8 @@ import { useActionState, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createTopic, deleteTopic, renameTopic, type TopicState } from "./actions";
 import type { TopicNode } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import { inputClass } from "@/components/ui/field";
 
 const initial: TopicState = { error: null };
 
@@ -44,15 +46,11 @@ Cancel — move cards and subtopics up to the parent.`,
         <input
           name="path"
           placeholder="Medicine / Anatomy / Upper limb"
-          className="min-w-0 flex-1 rounded border border-line bg-surface px-3 py-2 text-sm"
+          className={`${inputClass} min-w-0 flex-1`}
         />
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded bg-accent px-4 py-2 text-sm font-medium text-accent-ink disabled:opacity-60"
-        >
+        <Button type="submit" tone="primary" loading={pending}>
           Create
-        </button>
+        </Button>
       </form>
       <p className="mt-2 text-xs text-faint">
         Missing levels are created automatically. Depth is limited to three levels.

@@ -1,4 +1,5 @@
 import { ImportWizard } from "./import-wizard";
+import { buttonClass } from "@/components/ui/button";
 
 export default function ImportPage() {
   return (
@@ -13,16 +14,18 @@ export default function ImportPage() {
       <ImportWizard />
 
       <section className="mt-12 border-t border-line pt-6">
-        <h2 className="font-mono text-2xs uppercase tracking-[0.16em] text-faint">Export</h2>
+        <h2 className="label-micro">Export</h2>
         <p className="mt-2 max-w-prose text-sm text-muted">
           Your data should never be locked inside the app. CSV matches the import format above;
           JSON also carries the schedule and the full review history.
         </p>
-        <div className="mt-3 flex gap-2 text-sm">
-          <a href="/api/export?format=csv" className="rounded border border-line px-4 py-2">
+        <div className="mt-3 flex flex-wrap gap-2">
+          {/* Обычная ссылка, а не LinkButton: маршрут отдаёт файл, и next/link
+              перехватил бы навигацию вместо скачивания */}
+          <a href="/api/export?format=csv" className={buttonClass()}>
             Download CSV
           </a>
-          <a href="/api/export?format=json" className="rounded border border-line px-4 py-2">
+          <a href="/api/export?format=json" className={buttonClass()}>
             Download JSON
           </a>
         </div>

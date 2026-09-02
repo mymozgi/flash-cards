@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { bulkUpdate, type BulkOp } from "./actions";
 import { useConfirm } from "@/components/ui/confirm";
+import { Button } from "@/components/ui/button";
 
 export type LibraryCard = {
   id: string;
@@ -80,35 +81,33 @@ export function CardList({
           <span className="font-mono text-xs tabular-nums text-faint">
             {selected.size} selected
           </span>
-          <button type="button" onClick={() => run({ action: "suspend" })} className="rounded border border-line px-3 py-1.5">
+          <Button size="sm" onClick={() => run({ action: "suspend" })}>
             Suspend
-          </button>
-          <button type="button" onClick={() => run({ action: "unsuspend" })} className="rounded border border-line px-3 py-1.5">
+          </Button>
+          <Button size="sm" onClick={() => run({ action: "unsuspend" })}>
             Resume
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            size="sm"
             onClick={() => {
               const tags = prompt("Tags, comma separated");
               if (tags) run({ action: "add_tags", tags });
             }}
-            className="rounded border border-line px-3 py-1.5"
           >
             Add tags
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            size="sm"
             onClick={() => {
               const topicPath = prompt("New topic — path separated by /");
               if (topicPath !== null) run({ action: "move_topic", topicPath });
             }}
-            className="rounded border border-line px-3 py-1.5"
           >
             Move to topic
-          </button>
-          <button type="button" onClick={() => run({ action: "delete" })} className="rounded border border-line px-3 py-1.5 text-rust">
+          </Button>
+          <Button tone="danger" size="sm" onClick={() => run({ action: "delete" })}>
             Delete
-          </button>
+          </Button>
           <button type="button" onClick={() => setSelected(new Set())} className="ml-auto text-faint">
             Clear selection
           </button>
@@ -158,7 +157,7 @@ export function CardList({
             >
               <p className="truncate text-sm font-medium">{card.front}</p>
               <p className="truncate text-sm text-muted">{card.back}</p>
-              <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-2xs uppercase tracking-[0.12em] text-faint">
+              <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 label-micro">
                 <span>{card.topicPath ?? "no deck — assign one to edit"}</span>
                 <span>·</span>
                 <span>{STATE_LABELS[card.state] ?? card.state}</span>

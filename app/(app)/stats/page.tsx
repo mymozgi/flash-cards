@@ -24,7 +24,7 @@ export default async function StatsPage() {
           { label: "Tags in use", value: stats.tagCount },
         ].map((tile) => (
           <Panel key={tile.label} className="px-4 py-3">
-            <dt className="text-2xs uppercase tracking-wide text-faint">{tile.label}</dt>
+            <dt className="label-micro">{tile.label}</dt>
             <dd className="mt-1 text-2xl font-semibold tabular-nums">{tile.value}</dd>
           </Panel>
         ))}
@@ -46,7 +46,7 @@ export default async function StatsPage() {
               Every tag
             </caption>
             <thead>
-              <tr className="text-left text-2xs uppercase tracking-wide text-faint">
+              <tr className="text-left label-micro">
                 <th className="px-4 py-2.5 font-medium">Tag</th>
                 <th className="px-4 py-2.5 font-medium">Cards</th>
                 <th className="px-4 py-2.5 font-medium">Memorized</th>

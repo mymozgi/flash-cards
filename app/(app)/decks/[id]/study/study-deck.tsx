@@ -5,6 +5,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { renderMarkdown } from "@/lib/markdown";
 import { CardRenderer, type CardImage, type CardLayout, type CardShape, type ImagePosition } from "@/components/card-renderer";
 import { CloseIcon, GridIcon } from "@/components/icons";
+import { Button, LinkButton } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 
 export type StudyCard = {
   id: string;
@@ -104,12 +106,9 @@ export function StudyDeck({
     return (
       <div className="rounded-xl border border-line bg-surface p-10 text-center">
         <p className="text-sm text-muted">This deck has no cards yet.</p>
-        <Link
-          href={`/decks/${deckId}`}
-          className="mt-4 inline-block rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink"
-        >
+        <LinkButton href={`/decks/${deckId}`} tone="primary" className="mt-4">
           Open the constructor
-        </Link>
+        </LinkButton>
       </div>
     );
   }
@@ -137,24 +136,14 @@ export function StudyDeck({
           <span className="text-sm tabular-nums text-muted">
             {at + 1} / {total}
           </span>
-          <button
-            type="button"
-            onClick={shuffle}
-            aria-pressed={shuffled}
-            className="flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-ink"
-          >
+          <Button size="sm" onClick={shuffle} aria-pressed={shuffled}>
             <GridIcon className="size-3.5" />
             Shuffle
-          </button>
+          </Button>
         </div>
       </div>
 
-      <div className="h-1 overflow-hidden rounded-full bg-surface-2">
-        <div
-          className="h-full bg-accent transition-[width]"
-          style={{ width: `${((at + 1) / total) * 100}%` }}
-        />
-      </div>
+      <Progress value={at + 1} max={total} label={`Card ${at + 1} of ${total}`} />
 
       <div
         className="deck-scene relative mx-auto w-full max-w-2xl"
@@ -182,22 +171,17 @@ export function StudyDeck({
       </div>
 
       <div className="flex items-center justify-center gap-2">
-        <button
-          type="button"
-          onClick={() => go(-1)}
-          disabled={atFirst}
-          className="min-h-12 flex-1 rounded-lg border border-line px-5 text-sm disabled:opacity-40 sm:flex-none sm:min-w-32"
-        >
+        <Button onClick={() => go(-1)} disabled={atFirst} className="flex-1 sm:min-w-32 sm:flex-none">
           Previous
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          tone="primary"
           onClick={() => go(1)}
           disabled={atLast}
-          className="min-h-12 flex-1 rounded-lg bg-accent px-5 text-sm font-medium text-accent-ink disabled:opacity-40 sm:flex-none sm:min-w-32"
+          className="flex-1 sm:min-w-32 sm:flex-none"
         >
           Next
-        </button>
+        </Button>
       </div>
 
       {/* Ответ виден сразу: переворота в этом режиме нет */}
