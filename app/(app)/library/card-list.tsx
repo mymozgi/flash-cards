@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { bulkUpdate, type BulkOp } from "./actions";
+import { bulkUpdate, createCategoryFromPath, type BulkOp } from "./actions";
 import { useConfirm } from "@/components/ui/confirm";
 import { Button } from "@/components/ui/button";
 import { usePrompt } from "@/components/ui/prompt";
+import { useCategoryPicker, type PickableCategory } from "@/components/ui/category-picker";
 import { TagChip } from "@/components/ui/tag-chip";
 import type { CardTag } from "@/lib/types";
 
@@ -31,9 +32,12 @@ const STATE_LABELS: Record<string, string> = {
 
 export function CardList({
   cards,
+  categories,
   readOnly = false,
 }: {
   cards: LibraryCard[];
+  /** Дерево категорий для выбора. Приходит с сервера — второй запрос ни к чему. */
+  categories: PickableCategory[];
   /** Гостевой режим: выбор и массовые операции скрыты, строка ведёт в просмотр. */
   readOnly?: boolean;
 }) {
@@ -42,6 +46,10 @@ export function CardList({
   const [pending, startTransition] = useTransition();
   const { ask, dialog } = useConfirm();
   const { ask: askText, dialog: promptDialog } = usePrompt();
+  const { ask: pickCategory, dialog: pickerDialog } = useCategoryPicker(
+    categories,
+    createCategoryFromPath,
+  );
   const router = useRouter();
 
   const toggle = (id: string) =>
@@ -81,6 +89,7 @@ export function CardList({
     <>
       {dialog}
       {promptDialog}
+      {pickerDialog}
       {!readOnly && selected.size > 0 && (
         <div className="sticky top-0 z-10 -mx-5 mb-3 flex flex-wrap items-center gap-2 border-b border-line bg-surface px-5 py-3 text-sm sm:mx-0 sm:rounded sm:border">
           <span className="font-mono text-xs tabular-nums text-faint">
@@ -110,16 +119,15 @@ export function CardList({
           <Button
             size="sm"
             onClick={async () => {
-              const topicPath = await askText({
+              const topicId = await pickCategory({
                 title: `Move ${selected.size} ${selected.size === 1 ? "card" : "cards"}`,
-                label: "Category",
-                placeholder: "Psychology / Cognitive Biases",
                 description:
-                  "Path separated by /. Missing levels are created. Leave empty to take the cards out of every category.",
-                allowEmpty: true,
-                confirmLabel: "Move",
+                  "Pick where these cards belong. Their tags and review history are untouched.",
+                allowNone: true,
+                noneLabel: "Take them out of every category",
               });
-              if (topicPath !== null) run({ action: "move_topic", topicPath });
+              // undefined — передумали; null — осознанный выбор «вне категорий»
+              if (topicId !== undefined) run({ action: "move_topic", topicId });
             }}
           >
             Move to category

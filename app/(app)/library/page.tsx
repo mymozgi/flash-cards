@@ -124,7 +124,15 @@ export default async function LibraryPage(props: {
             </Link>
           </p>
         ) : (
-          <CardList cards={cards} readOnly={!user} />
+          <CardList
+          cards={cards}
+          categories={topics.map((topic) => ({
+            id: topic.id,
+            path: topic.path,
+            color: topic.color ?? undefined,
+          }))}
+          readOnly={!user}
+        />
         )}
       </div>
     </>

@@ -8,7 +8,14 @@ export type BulkOp = {
   cardIds: string[];
   action: "suspend" | "unsuspend" | "delete" | "add_tags" | "move_topic";
   tags?: string;
-  topicPath?: string;
+  /**
+   * Куда переносим. `null` — вынуть из всех категорий.
+   *
+   * Идентификатор, а не путь: путь адресовал категорию текстом, и опечатка
+   * молча заводила двойника вместо того, чтобы вернуть ошибку. Разбор пути
+   * остался там, где текст неизбежен, — в импорте CSV.
+   */
+  topicId?: string | null;
 };
 
 /** Массовые операции над выборкой (FR-28). */
@@ -51,7 +58,17 @@ export async function bulkUpdate(op: BulkOp): Promise<{ ok: boolean; error?: str
         break;
       }
       case "move_topic": {
-        const topicId = await resolveTopicPath(supabase, user.id, op.topicPath ?? "");
+        const topicId = op.topicId ?? null;
+        // Чужую категорию подсунуть нельзя: проверяем принадлежность до записи
+        if (topicId) {
+          const { data: owned } = await supabase
+            .from("topics")
+            .select("id")
+            .eq("id", topicId)
+            .eq("user_id", user.id)
+            .maybeSingle();
+          if (!owned) throw new Error("That category does not exist");
+        }
         const { error } = await supabase
           .from("cards")
           .update({ topic_id: topicId })
@@ -67,4 +84,26 @@ export async function bulkUpdate(op: BulkOp): Promise<{ ok: boolean; error?: str
 
   revalidatePath("/", "layout");
   return { ok: true };
+}
+
+/**
+ * Создание категории прямо из выбора.
+ *
+ * Путь здесь уместен: человек набирает новое имя и может сразу вложить его
+ * через «/». Разница с прежним поведением в том, что это названное действие
+ * с кнопкой «Create», а не молчаливый побочный эффект опечатки в поле выбора.
+ */
+export async function createCategoryFromPath(
+  path: string,
+): Promise<{ id?: string; error?: string }> {
+  const user = await requireUser();
+  const supabase = await createClient();
+  try {
+    const id = await resolveTopicPath(supabase, user.id, path);
+    if (!id) return { error: "Enter a name for the category" };
+    revalidatePath("/", "layout");
+    return { id };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Could not create the category" };
+  }
 }
