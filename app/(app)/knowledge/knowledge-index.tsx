@@ -126,14 +126,26 @@ export function KnowledgeIndex({
   };
 
   const drop = async (node: KnowledgeNode) => {
+    // Пустая категория не порождает вопроса «куда деть содержимое»: содержимого
+    // нет, и выбор из двух одинаковых исходов — это работа, навязанная зря
+    const empty = countsReady && node.cards === 0 && node.descendants === 0;
+    const where = node.parentId ? "up to the parent category" : "out of every category";
+
     const choice = await askChoice({
       title: `Delete “${node.name}”?`,
-      description:
-        "Its cards and subcategories have to go somewhere. Move them up to the parent, or delete the whole branch. Cards themselves are never deleted here.",
-      actions: [
-        { value: "reparent", label: "Move contents up", tone: "secondary" },
-        { value: "cascade", label: "Delete the branch", tone: "danger" },
-      ],
+      description: empty
+        ? "It is empty — nothing else goes with it."
+        : `It holds ${node.cards} ${node.cards === 1 ? "card" : "cards"}` +
+          (node.descendants > 0
+            ? ` and ${node.descendants} ${node.descendants === 1 ? "subcategory" : "subcategories"}`
+            : "") +
+          `. Move them ${where}, or delete the branch. Cards are never deleted here — deleting a branch only takes them out of it.`,
+      actions: empty
+        ? [{ value: "cascade", label: "Delete", tone: "danger" }]
+        : [
+            { value: "reparent", label: "Move contents out", tone: "secondary" },
+            { value: "cascade", label: "Delete the branch", tone: "danger" },
+          ],
     });
     if (choice !== "cascade" && choice !== "reparent") return;
     startTransition(async () => void settle(await removeCategory(node.id, choice)));
@@ -350,11 +362,7 @@ export function KnowledgeIndex({
               <CategoryCard
                 node={node}
                 counts={countsReady}
-                canArchive={!legacy}
-                onRename={() => void rename(node)}
-                onArchive={() =>
-                  startTransition(async () => void settle(await updateCategory(node.id, { archived: true })))
-                }
+                onOpenMenu={(at) => setMenu({ node, at })}
               />
             </li>
           ))}

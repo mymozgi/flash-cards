@@ -162,6 +162,13 @@ export const FlipIcon = (p: IconProps) => (
   </Svg>
 );
 
+/** Три точки: «здесь есть ещё действия». Общепринятый знак меню элемента. */
+export const MoreIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M3.6 8h.01M8 8h.01M12.4 8h.01" strokeWidth="2.4" />
+  </Svg>
+);
+
 export const CloseIcon = (p: IconProps) => (
   <Svg {...p}>
     <path d="M4 4l8 8M12 4l-8 8" />

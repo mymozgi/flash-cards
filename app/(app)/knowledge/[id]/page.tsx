@@ -69,15 +69,10 @@ export default async function CategoryPage(props: { params: Promise<{ id: string
           <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {node.children.map((child) => (
               <li key={child.id}>
-                {/* Правка приходит на следующей вехе вместе с деревом:
-                    показывать кнопки, которые ничего не делают, хуже,
-                    чем не показывать их */}
-                <CategoryCard
-                  node={child}
-                  canArchive={false}
-                  onRename={() => {}}
-                  onArchive={() => {}}
-                />
+                {/* Без меню: правка живёт на экране категорий, где рядом
+                    дерево и подтверждения. Кнопка-заглушка была бы хуже
+                    её отсутствия. */}
+                <CategoryCard node={child} />
               </li>
             ))}
           </ul>
