@@ -48,9 +48,18 @@ export function CategoryCard({
               {node.archived && <span className="ml-2 text-2xs text-faint">archived</span>}
             </h3>
           </Link>
-          <p className="mt-1 line-clamp-2 text-sm text-muted">
-            {node.description || "No description"}
-          </p>
+          {/* Тема в корне — законное переходное состояние: набор сделали
+              раньше, чем занялись раскладкой. Назвать его прямо честнее, чем
+              выдавать за категорию. */}
+          {node.kind === "deck" ? (
+            <p className="mt-1 text-sm text-muted">
+              A topic, not filed into a category yet
+            </p>
+          ) : (
+            <p className="mt-1 line-clamp-2 text-sm text-muted">
+              {node.description || "No description"}
+            </p>
+          )}
         </div>
       </div>
 

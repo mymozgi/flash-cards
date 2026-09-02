@@ -25,6 +25,12 @@ function explain(error: { code?: string; message: string }): string {
   if (error.code === "23505") return "A category with this name already exists here";
   if (/inside itself/i.test(error.message)) return "A category cannot be placed inside itself";
   if (/six levels/i.test(error.message)) return "The tree is limited to six levels";
+  if (/category lives at the top level/i.test(error.message)) {
+    return "A category lives at the top level. To nest it, make it a topic instead.";
+  }
+  if (/topic cannot live inside another topic/i.test(error.message)) {
+    return "A topic holds cards, not other topics. Drop it on a category instead.";
+  }
   if (/flashcard group, not in a category/i.test(error.message)) {
     return "Cards live in a flashcard group. Create one inside this category first.";
   }
