@@ -3,7 +3,7 @@ import { getKnowledgeGraph } from "@/lib/knowledge-graph";
 import { KnowledgeMap } from "./knowledge-map";
 
 export const metadata = {
-  title: "Knowledge map — Memorizer",
+  title: "Category map — Memorizer",
   description: "Your categories, their nesting and the cards attached to them.",
 };
 
@@ -14,7 +14,7 @@ export default async function MapPage() {
     <>
       <header className="flex flex-wrap items-end justify-between gap-3 border-b border-line pb-4">
         <div>
-          <p className="label-micro">Knowledge</p>
+          <p className="label-micro">Categories</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Map</h1>
         </div>
         <Link href="/knowledge" className="text-sm text-accent underline underline-offset-4">

@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { KnowledgeNode } from "@/lib/knowledge";
 import { ChevronIcon, GripIcon } from "@/components/icons";
+import { canDrop, type DropZone as Zone } from "@/lib/knowledge-tree";
 
 /**
  * Дерево знаний с переносом узлов.
@@ -19,7 +20,7 @@ import { ChevronIcon, GripIcon } from "@/components/icons";
  * себя и собственных потомков, иначе интерфейс предлагал бы действие, которое
  * заведомо будет отклонено.
  */
-export type DropZone = "before" | "after" | "inside";
+export type DropZone = Zone;
 
 export type TreeMove = {
   dragId: string;
@@ -52,22 +53,23 @@ export function TreeView({
   const press = useRef<{ timer: number; x: number; y: number } | null>(null);
   const rows = useRef(new Map<string, HTMLElement>());
 
-  /** Потомки узла, которые не могут быть целью для него самого. */
-  const forbidden = useCallback(
-    (id: string): Set<string> => {
-      const out = new Set<string>([id]);
-      const walk = (list: KnowledgeNode[], inside: boolean) => {
-        for (const node of list) {
-          const under = inside || node.id === id;
-          if (under) out.add(node.id);
-          walk(node.children, under);
-        }
-      };
-      walk(roots, false);
-      return out;
-    },
-    [roots],
-  );
+  /*
+    Плоский список для проверок. Правила «куда можно уронить» живут в
+    lib/knowledge-tree и покрыты тестами: своя копия здесь уже успела
+    разойтись с базой — она разрешала поставить родителя рядом с его же
+    потомком, то есть создать петлю, которую триггер потом отклонял.
+  */
+  const flat = useMemo(() => {
+    const out: { id: string; parentId: string | null }[] = [];
+    const walk = (list: KnowledgeNode[]) => {
+      for (const node of list) {
+        out.push({ id: node.id, parentId: node.parentId });
+        walk(node.children);
+      }
+    };
+    walk(roots);
+    return out;
+  }, [roots]);
 
   const cancelPress = () => {
     if (press.current) {
@@ -133,11 +135,8 @@ export function TreeView({
         setOver(null);
         return;
       }
-      const blocked = forbidden(drag.id);
       const zone = zoneAt(hit.element, event.clientY);
-      // вложить в самого себя или в своего потомка нельзя ни при какой зоне,
-      // а встать рядом с потомком — можно: это выносит узел из ветки
-      if (blocked.has(hit.id) && (zone === "inside" || hit.id === drag.id)) {
+      if (!canDrop(flat, drag.id, hit.id, zone)) {
         setOver(null);
         return;
       }

@@ -17,6 +17,7 @@ import {
   removeCategory,
   updateCategory,
 } from "./actions";
+import { placeAfterDrop } from "@/lib/knowledge-tree";
 import { STARTERS } from "./starters";
 import { CategoryCard } from "./category-card";
 import { TreeView, type TreeMove } from "./tree-view";
@@ -96,26 +97,20 @@ export function KnowledgeIndex({
       return next;
     });
 
-  /** Перенос: превращаем «куда уронили» в родителя и порядок братьев. */
+  /**
+   * Перенос: «куда уронили» превращается в родителя и порядок братьев.
+   * Расчёт — в lib/knowledge-tree, под тестами: здесь он был копией, которая
+   * не сортировала братьев по position и потому могла переставить их местами
+   * при первом же переносе.
+   */
   const applyMove = ({ dragId, targetId, zone }: TreeMove) => {
-    const target = flat.find((n) => n.id === targetId);
-    const dragged = flat.find((n) => n.id === dragId);
-    if (!target || !dragged) return;
-
-    const parentId = zone === "inside" ? target.id : target.parentId;
-    const siblings = flat
-      .filter((n) => n.parentId === parentId && n.id !== dragId)
-      .map((n) => n.id);
-
-    if (zone === "inside") {
-      siblings.push(dragId);
-    } else {
-      const at = siblings.indexOf(targetId);
-      siblings.splice(zone === "before" ? at : at + 1, 0, dragId);
+    const place = placeAfterDrop(flat, dragId, targetId, zone);
+    if (!place) {
+      setError("A category cannot be placed inside itself");
+      return;
     }
-
     startTransition(async () => {
-      settle(await moveCategory(dragId, parentId, siblings));
+      void settle(await moveCategory(dragId, place.parentId, place.siblings));
     });
   };
 

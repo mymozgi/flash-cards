@@ -22,11 +22,8 @@ import {
   Две группы, и граница между ними смысловая: сверху — «учиться», снизу —
   «раскладывать по местам».
 
-  Дубли разведены. «Manage categories» отсюда убран: он показывал то же дерево
-  topics, что и Knowledge, только списком — две страницы над одной таблицей.
-  Старый адрес /topics теперь переадресует. «Knowledge areas» переименован в
-  «Tag statistics» и переехал вниз: он всегда был про теги, а с появлением
-  раздела Knowledge его название стало прямо вводить в заблуждение.
+  Пункты меню сведены к одному на сущность. Прежние /topics и /stats
+  переадресуют на своих преемников, поэтому старые ссылки и закладки живы.
 */
 const GROUPS: { items: { href: string; label: string; Icon: typeof GridIcon }[] }[] = [
   {
@@ -41,13 +38,18 @@ const GROUPS: { items: { href: string; label: string; Icon: typeof GridIcon }[] 
   },
   {
     items: [
-      // «All cards» отдельным пунктом больше нет: плоский список карточек стал
-      // видом List внутри Knowledge, а держать в меню два входа в одни и те же
-      // данные — это и есть тот дубль, ради которого раздел затевался.
-      // Поиск по библиотеке остаётся по адресу /library и доступен из Knowledge.
-      { href: "/knowledge", label: "Knowledge", Icon: ListIcon },
-      { href: "/tags", label: "Manage tags", Icon: TagIcon },
-      { href: "/stats", label: "Tag statistics", Icon: TableIcon },
+      /*
+        Два способа разложить одни и те же карточки, и оба названы своим
+        словом. Категория — место карточки, одно на карточку. Тег — признак,
+        их сколько угодно и они режут дерево поперёк.
+
+        Слито то, что было раздвоено: «Tag statistics» уехала на экран тегов
+        (смотреть долю в одном месте, а переименовывать в другом — беготня),
+        «All cards» стал видом List внутри категорий, а «Manage categories»
+        исчез вместе с дублем дерева.
+      */
+      { href: "/knowledge", label: "Categories", Icon: ListIcon },
+      { href: "/tags", label: "Tags", Icon: TagIcon },
       { href: "/import", label: "Import", Icon: TableIcon },
       { href: "/trash", label: "Deleted cards", Icon: TrashIcon },
       { href: "/how-it-works", label: "How it works", Icon: TagIcon },
