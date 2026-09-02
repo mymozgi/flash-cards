@@ -11,6 +11,13 @@ export const THUMB_LONG_SIDE = 320;
  * 320 px разницы с 1600 не видно, а гигабайт хранилища общий на всё.
  */
 export const COVER_LONG_SIDE = 800;
+
+/**
+ * Пропорция полосы обложки. Живёт здесь, а не в классе Tailwind у плитки:
+ * это же число называют пользователю в подсказке загрузки, и разойтись им
+ * нельзя — иначе подсказка начнёт врать.
+ */
+export const COVER_ASPECT = "16 / 10";
 export const WEBP_QUALITY = 0.82;
 export const MAX_IMAGES_PER_SIDE = 4;
 

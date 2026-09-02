@@ -5,6 +5,7 @@ import { LinkButton } from "@/components/ui/button";
 import { Badge } from "@/components/ui/panel";
 import { PencilIcon, TrashIcon } from "@/components/icons";
 import { Progress } from "@/components/ui/progress";
+import { COVER_ASPECT } from "@/lib/image";
 import type { DeckSummary } from "@/lib/types";
 
 export type { DeckSummary };
@@ -69,8 +70,11 @@ export function DeckCard({
         читается как подложка, а не как промах вёрстки.
       */}
       <div
-        className="-mx-5 -mt-5 mb-4 grid aspect-[16/10] w-[calc(100%+2.5rem)] place-items-center overflow-hidden"
-        style={{ background: `color-mix(in srgb, ${tint} 12%, var(--surface))` }}
+        className="-mx-5 -mt-5 mb-4 grid w-[calc(100%+2.5rem)] place-items-center overflow-hidden"
+        style={{
+          aspectRatio: COVER_ASPECT,
+          background: `color-mix(in srgb, ${tint} 12%, var(--surface))`,
+        }}
       >
         {deck.cover ? (
           <img

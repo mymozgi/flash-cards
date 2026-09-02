@@ -20,7 +20,7 @@ import {
 } from "@/components/card-renderer";
 import { ImageStrip } from "@/components/image-strip";
 import type { EditorImage } from "@/lib/types";
-import { ImageError, MAX_IMAGES_PER_SIDE } from "@/lib/image";
+import { COVER_ASPECT, COVER_LONG_SIDE, ImageError, MAX_IMAGES_PER_SIDE } from "@/lib/image";
 import { discardUpload, uploadCover, uploadImage } from "@/lib/upload";
 import { Button, LinkButton } from "@/components/ui/button";
 import { cellInputClass, inputClass } from "@/components/ui/field";
@@ -489,6 +489,11 @@ export function DeckWorkspace({
   );
 }
 
+/** Короткая сторона при рекомендованной пропорции — считаем, а не пишем руками. */
+const COVER_HINT_SHORT = Math.round(
+  COVER_LONG_SIDE / (Number(COVER_ASPECT.split("/")[0]) / Number(COVER_ASPECT.split("/")[1])),
+);
+
 function CoverField({
   url,
   userId,
@@ -551,7 +556,17 @@ function CoverField({
           <span className="text-sm font-semibold text-accent">
             {busy ? "Uploading…" : "Add a cover"}
           </span>
-          <span className="text-2xs text-faint">Shown on the deck tile and above the title</span>
+          {/* Требования названы числами, а не «желательно покрупнее»: угадывать
+              размер под чужую вёрстку — не работа пользователя. Сами числа
+              берутся из констант конвейера, поэтому подсказка не разойдётся
+              с тем, что код действительно делает. */}
+          <span className="text-2xs text-faint">
+            Best at {COVER_ASPECT.replace(" / ", ":")} — {COVER_LONG_SIDE} × {COVER_HINT_SHORT} px
+          </span>
+          <span className="text-2xs text-faint">
+            Any shape works: covers are fitted whole, never cropped. Larger files are scaled down
+            to {COVER_LONG_SIDE} px on the long side.
+          </span>
         </button>
       )}
       {error && (
