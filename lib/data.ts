@@ -3,6 +3,7 @@ import { createClient, requireUser } from "./supabase/server";
 import { startOfDay } from "./day";
 import { publicUrl } from "./storage";
 import { isMissingColumn, rememberSourceColumn, withSource } from "./schema";
+import { isStudySet } from "./knowledge-tree";
 import { toSlot } from "./tag-color";
 import type {
   CardRow,
@@ -101,6 +102,7 @@ export async function getDeckSummaries(): Promise<DeckSummary[]> {
       .map((row) => [row.topic_id as string, row]),
   );
   const byId = new Map(topics.map((t) => [t.id, t]));
+  const hasChildren = new Set(topics.map((t) => t.parent_id).filter(Boolean) as string[]);
 
   /** Цепочка предков снизу вверх, с защитой от испорченного петлёй дерева. */
   const ancestorsOf = (id: string): string[] => {
@@ -115,7 +117,23 @@ export async function getDeckSummaries(): Promise<DeckSummary[]> {
     return chain;
   };
 
-  return topics.map((topic) => {
+  /*
+    Контейнеры сюда не попадают. Узел с подкатегориями и без собственных
+    карточек — не набор: учить в нём нечего, а кнопка Practice обещала бы
+    сессию, которой не будет. Такой узел живёт в разделе Categories, где он
+    и есть родительская категория, а не колода.
+
+    Отбор стоит здесь, а не в двух экранах: «Сегодня» и «My flashcards»
+    задают базе один и тот же вопрос, и разойтись в ответе они не должны.
+  */
+  return topics
+    .filter((topic) =>
+      isStudySet({
+        ownCards: stats.get(topic.id)?.total ?? 0,
+        hasChildren: hasChildren.has(topic.id),
+      }),
+    )
+    .map((topic) => {
     const row = stats.get(topic.id);
     const parent = topic.parent_id ? byId.get(topic.parent_id) : undefined;
     const ancestors = ancestorsOf(topic.id);

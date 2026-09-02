@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  isStudySet,
   branchOf,
   canDrop,
   depthOf,
@@ -153,5 +154,25 @@ describe("глубина", () => {
       { id: "b", parentId: "a" },
     ];
     expect(depthOf(broken, "a")).toBe(Infinity);
+  });
+});
+
+describe("набор или контейнер", () => {
+  it("узел с собственными карточками — набор", () => {
+    expect(isStudySet({ ownCards: 4, hasChildren: false })).toBe(true);
+  });
+
+  it("пустой лист — тоже набор: его только что создали", () => {
+    expect(isStudySet({ ownCards: 0, hasChildren: false })).toBe(true);
+  });
+
+  it("узел с детьми и без своих карточек — контейнер", () => {
+    // «Books» держит четыре карточки в подкатегории, а своих не имеет:
+    // учить в нём нечего, и Practice обещал бы то, чего нет
+    expect(isStudySet({ ownCards: 0, hasChildren: true })).toBe(false);
+  });
+
+  it("узел с детьми и своими карточками — всё-таки набор", () => {
+    expect(isStudySet({ ownCards: 3, hasChildren: true })).toBe(true);
   });
 });

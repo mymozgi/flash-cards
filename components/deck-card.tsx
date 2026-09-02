@@ -111,13 +111,21 @@ export function DeckCard({
       </div>
 
       <div className="flex items-start justify-between gap-2">
-        <Badge
-          style={
-            deck.color ? { background: `${deck.color}22`, color: deck.color } : undefined
-          }
-        >
-          {deck.category ?? "No category"}
-        </Badge>
+        {/*
+          Пилюля называет РОДИТЕЛЬСКУЮ категорию, поэтому у набора без родителя
+          её нет вовсе. Прежнее «No category» читалось как незаполненное
+          свойство, которое надо бы заполнить, — а заполнять там нечего: набор
+          лежит в корне, и это законное место, а не пробел.
+        */}
+        {deck.category ? (
+          <Badge
+            style={deck.color ? { background: `${deck.color}22`, color: deck.color } : undefined}
+          >
+            {deck.category}
+          </Badge>
+        ) : (
+          <span />
+        )}
         {selecting && !readOnly ? (
           <input
             type="checkbox"
