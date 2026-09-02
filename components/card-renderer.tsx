@@ -19,6 +19,19 @@ export const ASPECT: Record<CardShape, string> = {
   portrait: "2 / 3",
 };
 
+/**
+ * То же отношение числом — для мест, где рамку карточки считают в CSS.
+ * `aspect-ratio` вместе с `max-height` пропорцию не сохраняет: при заданной
+ * ширине потолок высоты её просто обрезает, и карточка 2:3 выходит пейзажем.
+ * Поэтому ширину приходится вычислять из допустимой высоты, а для этого нужно
+ * число, а не строка «2 / 3».
+ */
+export const ASPECT_RATIO: Record<CardShape, number> = {
+  square: 1,
+  landscape: 3 / 2,
+  portrait: 2 / 3,
+};
+
 export const SHAPE_OPTIONS: { key: CardShape; label: string; ratio: string; box: string }[] = [
   { key: "square", label: "Square", ratio: "1:1", box: "h-6 w-6" },
   { key: "landscape", label: "Landscape", ratio: "3:2", box: "h-5 w-7" },

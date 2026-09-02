@@ -6,6 +6,7 @@ import { renderMarkdown } from "@/lib/markdown";
 import { CardRenderer, type CardImage, type CardLayout, type CardShape, type ImagePosition } from "@/components/card-renderer";
 import { ArrowLeftIcon, ArrowRightIcon, CloseIcon, GridIcon } from "@/components/icons";
 import { AXIS_SLOP, followX, swipeVerdict } from "@/lib/swipe";
+import { Lightbox } from "@/components/lightbox";
 import { Button, LinkButton } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 
@@ -155,17 +156,7 @@ export function StudyDeck({
 
   return (
     <div className="flex flex-col gap-4">
-      {zoomed && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Image"
-          onClick={() => setZoomed(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-paper/95 p-4"
-        >
-          <img src={zoomed} alt="" className="max-h-[85dvh] max-w-full object-contain" />
-        </div>
-      )}
+      {zoomed && <Lightbox image={{ url: zoomed }} onClose={() => setZoomed(null)} />}
 
       <div className="flex items-center justify-between gap-3">
         <Link href={`/decks/${deckId}`} className="flex items-center gap-2 text-sm text-muted hover:text-ink">

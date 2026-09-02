@@ -5,9 +5,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Grade } from "ts-fsrs";
 import { fromFsrsCard, previewIntervals, RATINGS, scheduler, toFsrsCard } from "@/lib/fsrs";
 import { renderMarkdown } from "@/lib/markdown";
-import type { MediaItem, QueueCard } from "@/lib/types";
-import { CardRenderer, ASPECT } from "@/components/card-renderer";
-import { Lightbox } from "@/components/card-media";
+import type { QueueCard } from "@/lib/types";
+import { ASPECT, ASPECT_RATIO, CardRenderer } from "@/components/card-renderer";
 import { Button, LinkButton } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { TagChip } from "@/components/ui/tag-chip";
@@ -20,6 +19,12 @@ import {
   SKIP_LIMIT,
 } from "@/lib/session";
 import { gradeCard, undoReview, type GradeResult } from "./actions";
+
+/**
+ * Потолок высоты полотна. Ширина считается из него, а не наоборот: пропорция
+ * карточки должна выжить и на узком телефоне, и на широком мониторе.
+ */
+const CARD_MAX_HEIGHT = "58dvh";
 
 type HistoryEntry = { card: QueueCard; pending: Promise<GradeResult>; relearn: boolean };
 
@@ -45,7 +50,6 @@ export function ReviewSession({
   /** Часть уже сделанного, что пришлось переучивать. Рисуется янтарным. */
   const [lapses, setLapses] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [zoomed, setZoomed] = useState<MediaItem | null>(null);
   const history = useRef<HistoryEntry[]>([]);
   // заполняется эффектом при показе карточки: Date.now() в теле рендера — нечистый вызов
   const shownAt = useRef(0);
@@ -173,11 +177,6 @@ export function ReviewSession({
     const onKey = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLElement && ["INPUT", "TEXTAREA"].includes(event.target.tagName))
         return;
-      if (zoomed) {
-        // во весь экран оценки не ставим — иначе слепое нажатие пробела
-        if (event.key === "Escape") setZoomed(null);
-        return;
-      }
       if (event.key === " " || event.key === "Enter") {
         event.preventDefault();
         if (!revealed) setRevealed(true);
@@ -207,7 +206,7 @@ export function ReviewSession({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [grade, revealed, skip, undo, zoomed]);
+  }, [grade, revealed, skip, undo]);
 
   /*
     Свайпа здесь больше нет, и это осознанный отказ от §11 спеки.
@@ -266,7 +265,6 @@ export function ReviewSession({
 
   return (
     <div className="flex min-h-[calc(100dvh-8rem)] flex-col">
-      {zoomed && <Lightbox image={zoomed} onClose={() => setZoomed(null)} />}
       <div className="flex items-center justify-between gap-4 pb-2.5">
         <span className="label-micro truncate">{current.topicPath ?? "No topic"}</span>
         <span className="label-micro tabular-nums">
@@ -289,19 +287,40 @@ export function ReviewSession({
       <div className="flip-scene flex flex-1 flex-col items-center justify-center gap-4 py-5">
         {/* Клик по полотну переворачивает карточку. Это div, а не button:
             внутри лежат кнопки изображений, а кнопку в кнопку вкладывать нельзя. */}
+        {/*
+          Ширина считается из допустимой высоты, а не наоборот. Прежде здесь
+          стояли `w-full` и `maxHeight`, и пропорция ломалась: `aspect-ratio`
+          при заданной ширине не уменьшает её из-за потолка высоты — он просто
+          обрезает высоту, и карточка 2:3 выходила пейзажем.
+
+          `shrink-0` нужен по той же причине с другой стороны: рамка лежит в
+          колоночном флексе и по умолчанию сжималась, когда снизу разворачивался
+          ряд оценок, — отсюда и скачок высоты при перевороте.
+        */}
         <div
           role="button"
           tabIndex={0}
           aria-label={revealed ? "Show the question" : "Show the answer"}
           onClick={() => setRevealed((r) => !r)}
           onKeyDown={(e) => {
-            if (e.key === "Enter") setRevealed((r) => !r);
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setRevealed((r) => !r);
+            }
           }}
-          className="mx-auto w-full max-w-2xl cursor-pointer"
-          style={{ aspectRatio: ASPECT[current.card.shape], maxHeight: "60dvh" }}
+          className="mx-auto max-w-2xl shrink-0 cursor-pointer"
+          style={{
+            aspectRatio: ASPECT[current.card.shape],
+            width: `min(100%, calc(${CARD_MAX_HEIGHT} * ${ASPECT_RATIO[current.card.shape]}))`,
+          }}
         >
           <div className="flip-inner" data-flipped={revealed}>
             {/* обе грани рисует тот же компонент, что и предпросмотр в редакторе */}
+            {/* onImageClick не передаётся намеренно: в повторении нажатие по
+                любой части полотна переворачивает карточку. Лупа перехватывала
+                этот клик на изображении — то есть на всей карточке, если
+                раскладка «во всё полотно». Рассматривать картинку можно в
+                просмотре набора, где переворота нет и клик свободен. */}
             <CardRenderer
               fill
               className="flip-face flip-face--front"
@@ -310,7 +329,6 @@ export function ReviewSession({
               imagePosition={current.card.image_position}
               html={frontHtml}
               images={frontMedia}
-              onImageClick={() => setZoomed(frontMedia[0] ?? null)}
             />
             <CardRenderer
               fill
@@ -320,7 +338,6 @@ export function ReviewSession({
               imagePosition={current.card.image_position}
               html={backHtml + noteHtml}
               images={backMedia}
-              onImageClick={() => setZoomed(backMedia[0] ?? null)}
             />
           </div>
         </div>
@@ -337,8 +354,17 @@ export function ReviewSession({
       </div>
 
       <div className="sticky bottom-4 flex flex-col gap-2 sm:bottom-6">
-        {revealed && (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {/*
+          Ряд оценок присутствует всегда, до переворота он лишь невидим.
+          Причина не в красоте: появляясь, он отбирал высоту у полотна, и
+          карточка прыгала прямо в момент переворота. `visibility: hidden`
+          заодно убирает кнопки из обхода по Tab, так что скрытое остаётся
+          недостижимым и для клавиатуры.
+        */}
+        <div
+          aria-hidden={!revealed}
+          className={`grid grid-cols-2 gap-2 sm:grid-cols-4 ${revealed ? "" : "invisible"}`}
+        >
             {RATINGS.map((rating) => (
               <button
                 key={rating.grade}
@@ -352,8 +378,7 @@ export function ReviewSession({
                 </span>
               </button>
             ))}
-          </div>
-        )}
+        </div>
 
         {/*
           Переворот перестал быть плитой во всю ширину: он занимает столько,
