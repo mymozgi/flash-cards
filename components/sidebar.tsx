@@ -28,12 +28,15 @@ import {
 const GROUPS: { items: { href: string; label: string; Icon: typeof GridIcon }[] }[] = [
   {
     items: [
+      /*
+        «Review due» и «Practice» из меню убраны. Оба вели на /review, то есть
+        три пункта верхней группы отправляли в два места. Вход в повторение
+        остался там, где он и должен быть, — на «Today»: там видно, сколько
+        карточек ждёт, и кнопка стоит рядом с этим числом. Пункт меню такого
+        контекста не даёт и предлагает начать сессию вслепую.
+      */
       { href: "/", label: "Today", Icon: ListIcon },
-      { href: "/review", label: "Review due", Icon: SearchIcon },
-      // Свободная тренировка доступна всегда: расписание может быть пустым,
-      // а желание повторить — нет
-      { href: "/review?free=1", label: "Practice", Icon: PlusIcon },
-      { href: "/decks", label: "Study sets", Icon: GridIcon },
+      { href: "/decks", label: "My flashcards", Icon: GridIcon },
     ],
   },
   {
@@ -63,7 +66,7 @@ const GROUPS: { items: { href: string; label: string; Icon: typeof GridIcon }[] 
 const GUEST_GROUPS: typeof GROUPS = [
   {
     items: [
-      { href: "/decks", label: "Study sets", Icon: GridIcon },
+      { href: "/decks", label: "My flashcards", Icon: GridIcon },
       { href: "/library", label: "All cards", Icon: SearchIcon },
       { href: "/how-it-works", label: "How it works", Icon: TagIcon },
     ],
@@ -72,8 +75,7 @@ const GUEST_GROUPS: typeof GROUPS = [
 
 function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
-  // у Review и Practice один путь, поэтому по нему подсвечиваем только Review
-  return pathname.startsWith(href.split("?")[0]) && !href.includes("?");
+  return pathname.startsWith(href);
 }
 
 /**
