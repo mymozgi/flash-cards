@@ -12,7 +12,7 @@
 -- придётся повторить или оставить его нейтральным.
 --
 -- Файл самодостаточен: определение вьюхи tag_stats приведено целиком, поэтому
--- его можно применить и без 0011 — она будет создана здесь же.
+-- применять 0011 отдельно не нужно — вьюха создаётся здесь в любом случае.
 
 alter table tags add column if not exists color smallint
   check (color is null or (color >= 0 and color <= 5));
@@ -23,7 +23,15 @@ comment on column tags.color is
 -- Сводка по тегам теперь несёт и цвет: без него экран статистики красил бы
 -- теги по месту в рейтинге, и один и тот же тег был бы разного цвета на
 -- карточке и в статистике.
-create or replace view tag_stats with (security_invoker = on) as
+--
+-- Сначала drop, и это не перестраховка. `create or replace view` умеет менять
+-- только тела колонок, но не их состав: новая `color` встаёт третьей, и
+-- Postgres отвечает «cannot change name of view column "total" to "color"».
+-- Вьюха не хранит данных — пересоздать её ничего не стоит, и от того,
+-- применялась 0011 раньше или нет, результат теперь не зависит.
+drop view if exists tag_stats;
+
+create view tag_stats with (security_invoker = on) as
   select
     t.id                                            as tag_id,
     t.name                                          as name,
