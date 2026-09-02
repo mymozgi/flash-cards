@@ -294,9 +294,21 @@ export function DeckWorkspace({
   }, [cards]);
 
   return (
-    <div className="flex flex-col gap-4">
+    /*
+      Две колонки на большом экране: слева работа с карточками, справа —
+      сведения о наборе. Панель сведений залипает, потому что список карточек
+      длинный, а имя набора и обложка нужны глазу всё время, пока по нему идёт
+      правка.
+
+      Порядок в разметке не переставлен: сведения идут первыми и на телефоне
+      остаются сверху — это заголовок раздела, с него начинают и читатель, и
+      скринридер. На широком экране сетка переносит их во вторую колонку,
+      оставляя первую строку общей.
+    */
+    <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_23rem]">
       {dialog}
       <DeckHeader
+        className="lg:sticky lg:top-4 lg:col-start-2 lg:row-start-1"
         deck={deck}
         userId={userId}
         count={cards.length}
@@ -321,6 +333,7 @@ export function DeckWorkspace({
         }}
       />
 
+      <div className="flex min-w-0 flex-col gap-4 lg:col-start-1 lg:row-start-1">
       <div className={`${PANEL} flex flex-wrap items-center gap-2 p-2`}>
         <div className="relative w-full min-w-0 sm:flex-1">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint">
@@ -485,6 +498,7 @@ export function DeckWorkspace({
           </Button>
         </div>
       </section>
+      </div>
     </div>
   );
 }
@@ -535,7 +549,9 @@ function CoverField({
       />
       {url ? (
         <div className="flex flex-wrap items-center gap-3">
-          <img src={url} alt="" className="h-20 w-32 rounded-lg border border-line object-contain" />
+          <span className="grid h-20 w-32 place-items-center overflow-hidden rounded-lg border border-line">
+            <img src={url} alt="" className="h-full w-auto max-w-none" />
+          </span>
           <Button size="sm" onClick={() => input.current?.click()} loading={busy}>
             Replace
           </Button>
@@ -582,6 +598,7 @@ function DeckHeader({
   deck,
   count,
   userId,
+  className = "",
   editing,
   onEdit,
   onCancel,
@@ -591,6 +608,7 @@ function DeckHeader({
   deck: Deck;
   count: number;
   userId: string;
+  className?: string;
   editing: Deck | null;
   onEdit: () => void;
   onCancel: () => void;
@@ -598,7 +616,7 @@ function DeckHeader({
   onSave: () => void;
 }) {
   return (
-    <header className={`${PANEL} p-4 sm:p-5`}>
+    <header className={`${PANEL} p-4 sm:p-5 ${className}`}>
       {editing ? (
         <div className="flex flex-col gap-3">
           <input
@@ -649,11 +667,11 @@ function DeckHeader({
                 background: `color-mix(in srgb, ${deck.color || "var(--accent)"} 12%, var(--surface))`,
               }}
             >
-              <img src={deck.coverUrl} alt="" className="size-full object-contain" />
+              <img src={deck.coverUrl} alt="" className="h-full w-auto max-w-none" />
             </div>
           )}
           <div className="flex items-start justify-between gap-3">
-            <h1 className="text-3xl font-semibold tracking-tight">{deck.name}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">{deck.name}</h1>
             <div className="flex shrink-0 items-center gap-3">
               <span
                 aria-hidden

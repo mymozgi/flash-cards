@@ -34,9 +34,9 @@ const TONES: Record<ButtonTone, string> = {
    * рамка, а рамке контрола положено 3:1. Прежний `--line` давал 1,24.
    */
   secondary:
-    "border-control border-field-line bg-surface text-ink hover:bg-surface-2 active:bg-surface-2",
+    "border-button border-field-line bg-surface text-ink hover:bg-surface-2 active:bg-surface-2",
   ghost: "text-muted hover:bg-surface-2 hover:text-ink",
-  danger: "border-control border-field-line bg-surface text-rust hover:bg-rust-soft",
+  danger: "border-button border-field-line bg-surface text-rust hover:bg-rust-soft",
 };
 
 /**
