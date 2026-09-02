@@ -10,6 +10,8 @@ export type TopicRow = {
   description: string | null;
   color: string | null;
   image_path: string | null;
+  /** Род узла. Отсутствует до миграции 0020 — тогда он выводится из данных. */
+  kind?: "area" | "deck" | "source" | null;
 };
 
 /** Тема вместе с полным путём — читаемый адрес узла (§6.1). */

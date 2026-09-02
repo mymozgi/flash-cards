@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient, requireUser } from "@/lib/supabase/server";
+import { isMissingColumn } from "@/lib/schema";
 
 export type NodeResult = { ok: boolean; error?: string };
 
@@ -24,38 +25,62 @@ function explain(error: { code?: string; message: string }): string {
   if (error.code === "23505") return "A category with this name already exists here";
   if (/inside itself/i.test(error.message)) return "A category cannot be placed inside itself";
   if (/six levels/i.test(error.message)) return "The tree is limited to six levels";
+  if (/flashcard group, not in a category/i.test(error.message)) {
+    return "Cards live in a flashcard group. Create one inside this category first.";
+  }
+  if (/Move the cards out/i.test(error.message)) {
+    return "This group still holds cards — move them out before turning it into a category";
+  }
   if (error.code === "42703" || error.message.includes("schema cache")) {
     return "Knowledge needs supabase/migrations/0015_knowledge_nodes.sql";
   }
   return error.message;
 }
 
+/**
+ * Создание узла.
+ *
+ * Род задаётся намерением, а не угадывается потом по данным. Категория держит
+ * структуру и своих карточек не имеет; группа держит карточки и живёт внутри
+ * категории. Раньше это было одно действие на два смысла — отсюда и брались
+ * «категории» в списке наборов с кнопкой Practice, которой нечего запускать.
+ *
+ * Если колонки рода ещё нет (миграция 0020 не применена), узел создаётся
+ * по-старому: приложение работает, просто различие пока держится на данных.
+ */
 export async function createCategory(input: {
   name: string;
   parentId?: string | null;
   icon?: string;
   color?: string;
+  kind?: "area" | "deck";
 }): Promise<NodeResult & { id?: string }> {
   const user = await requireUser();
   const name = input.name.trim();
-  if (!name) return { ok: false, error: "The category needs a name" };
+  if (!name) return { ok: false, error: "It needs a name" };
 
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const base = {
+    user_id: user.id,
+    parent_id: input.parentId ?? null,
+    name,
+    icon: input.icon || null,
+    color: input.color || null,
+  };
+
+  let attempt = await supabase
     .from("topics")
-    .insert({
-      user_id: user.id,
-      parent_id: input.parentId ?? null,
-      name,
-      icon: input.icon || null,
-      color: input.color || null,
-    })
+    .insert({ ...base, kind: input.kind ?? "area" })
     .select("id")
     .single();
 
-  if (error) return { ok: false, error: explain(error) };
+  if (attempt.error && isMissingColumn(attempt.error)) {
+    attempt = await supabase.from("topics").insert(base).select("id").single();
+  }
+
+  if (attempt.error) return { ok: false, error: explain(attempt.error) };
   revalidatePath("/", "layout");
-  return { ok: true, id: data.id as string };
+  return { ok: true, id: attempt.data.id as string };
 }
 
 /**

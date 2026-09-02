@@ -1,4 +1,5 @@
 import "server-only";
+import { isMissingColumn } from "./schema";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /** Теги нормализуются при вводе, иначе «На Собеседование» и «на-собеседование» разъезжаются. */
@@ -50,7 +51,7 @@ export async function resolveTopicPath(
   }
 
   let parentId: string | null = null;
-  for (const name of parts) {
+  for (const [index, name] of parts.entries()) {
     const query = supabase.from("topics").select("id").eq("user_id", userId).eq("name", name);
     const { data: found } = await (
       parentId === null ? query.is("parent_id", null) : query.eq("parent_id", parentId)
@@ -61,13 +62,29 @@ export async function resolveTopicPath(
       continue;
     }
 
-    const { data: created, error } = await supabase
+    /*
+      Род создаваемого узла следует из его места в пути: последний сегмент —
+      группа карточек, всё, что выше, — категории. Иначе импорт «Psychology /
+      Cognitive bias» завёл бы две категории, а карточку положить было бы
+      некуда: карточка живёт в группе, и это проверяет триггер в базе.
+
+      Колонки рода может ещё не быть — тогда узел создаётся по-старому.
+    */
+    const kind = index === parts.length - 1 ? "deck" : "area";
+    const base = { user_id: userId, parent_id: parentId, name };
+
+    let attempt = await supabase
       .from("topics")
-      .insert({ user_id: userId, parent_id: parentId, name })
+      .insert({ ...base, kind })
       .select("id")
       .single();
-    if (error) throw new Error(`Could not create topic “${name}”: ${error.message}`);
-    parentId = created.id as string;
+    if (attempt.error && isMissingColumn(attempt.error)) {
+      attempt = await supabase.from("topics").insert(base).select("id").single();
+    }
+    if (attempt.error) {
+      throw new Error(`Could not create topic “${name}”: ${attempt.error.message}`);
+    }
+    parentId = attempt.data.id as string;
   }
 
   cache?.set(key, parentId);

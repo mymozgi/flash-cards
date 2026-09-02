@@ -145,6 +145,15 @@ export function depthOf<T extends TreeNode>(nodes: T[], id: string): number {
  * наполнят, и прятать её из списка значило бы терять то, что человек сам
  * секунду назад сделал.
  */
-export function isStudySet(node: { ownCards: number; hasChildren: boolean }): boolean {
+export function isStudySet(node: {
+  ownCards: number;
+  hasChildren: boolean;
+  /** Явный род, если база о нём уже знает. */
+  kind?: string | null;
+}): boolean {
+  // Явное намерение сильнее догадки по данным: пустая группа остаётся группой,
+  // а категория не становится колодой оттого, что кто-то положил в неё карточку
+  if (node.kind === "deck") return true;
+  if (node.kind === "area" || node.kind === "source") return false;
   return node.ownCards > 0 || !node.hasChildren;
 }

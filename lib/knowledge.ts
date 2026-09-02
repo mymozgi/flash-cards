@@ -9,7 +9,11 @@ import { createClient } from "./supabase/server";
  * колоде эта карточка», а «как устроены мои знания».
  */
 
-export type NodeKind = "area" | "source";
+/**
+ * Род узла. Категория держит структуру, группа держит карточки.
+ * До миграции 0020 колонки нет — тогда род выводится из данных, как и раньше.
+ */
+export type NodeKind = "area" | "deck" | "source";
 
 export type KnowledgeNode = {
   id: string;

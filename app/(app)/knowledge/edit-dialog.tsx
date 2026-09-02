@@ -31,6 +31,7 @@ const DEFAULT: CategoryDraft = {
 export function EditDialog({
   open,
   node,
+  kind = "area",
   parentId = null,
   options,
   busy,
@@ -40,6 +41,8 @@ export function EditDialog({
   open: boolean;
   /** Правим существующую или создаём новую. */
   node: KnowledgeNode | null;
+  /** Что создаём: категорию или группу карточек. У правки не используется. */
+  kind?: "area" | "deck";
   /** Родитель для новой категории. */
   parentId?: string | null;
   /** Куда можно положить: без самого узла и его потомков. */
@@ -94,8 +97,21 @@ export function EditDialog({
         className="flex flex-col gap-4 p-5"
       >
         <h2 className="text-lg font-semibold tracking-tight">
-          {node ? `Edit “${node.name}”` : "Create category"}
+          {node
+            ? `Edit “${node.name}”`
+            : kind === "deck"
+              ? "Create flashcard group"
+              : "Create category"}
         </h2>
+        {!node && (
+          /* Разница названа словами, а не подразумевается: два действия
+             выглядят одинаково, и без подписи их путают */
+          <p className="text-sm text-muted">
+            {kind === "deck"
+              ? "A group holds the cards you actually study."
+              : "A category holds groups and other categories, not cards."}
+          </p>
+        )}
 
         <div className="flex flex-wrap items-end gap-3">
           <label className="w-20">

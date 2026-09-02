@@ -49,11 +49,22 @@ export async function getTopicTree(): Promise<TopicNode[]> {
   const supabase = await createClient();
 
   const [{ data: topics }, { data: counts }] = await Promise.all([
+    // Род узла — необязательная колонка: до миграции 0020 её нет, и жёсткий
+    // запрос обрушил бы всё дерево ради одного поля
     supabase
       .from("topics")
-      .select("id,parent_id,name,position,description,color,image_path")
+      .select("id,parent_id,name,position,description,color,image_path,kind")
       .order("position")
-      .order("name"),
+      .order("name")
+      .then((res) =>
+        res.error
+          ? supabase
+              .from("topics")
+              .select("id,parent_id,name,position,description,color,image_path")
+              .order("position")
+              .order("name")
+          : res,
+      ),
     supabase.from("topic_card_counts").select("topic_id,card_count"),
   ]);
 
@@ -131,6 +142,7 @@ export async function getDeckSummaries(): Promise<DeckSummary[]> {
       isStudySet({
         ownCards: stats.get(topic.id)?.total ?? 0,
         hasChildren: hasChildren.has(topic.id),
+        kind: topic.kind,
       }),
     )
     .map((topic) => {

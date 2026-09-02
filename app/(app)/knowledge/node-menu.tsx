@@ -18,6 +18,7 @@ export type MenuAction =
   | "rename"
   | "edit"
   | "subcategory"
+  | "group"
   | "study"
   | "cards"
   | "archive"
@@ -37,6 +38,7 @@ const GROUPS: { items: { action: MenuAction; label: string; danger?: boolean }[]
       { action: "rename", label: "Rename" },
       { action: "edit", label: "Edit details…" },
       { action: "subcategory", label: "Create subcategory" },
+      { action: "group", label: "Create flashcard group" },
     ],
   },
   {

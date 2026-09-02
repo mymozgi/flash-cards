@@ -176,3 +176,27 @@ describe("набор или контейнер", () => {
     expect(isStudySet({ ownCards: 3, hasChildren: true })).toBe(true);
   });
 });
+
+describe("род узла сильнее догадки по данным", () => {
+  it("пустая группа остаётся группой", () => {
+    // её только что создали внутри категории и ещё не наполнили
+    expect(isStudySet({ ownCards: 0, hasChildren: false, kind: "deck" })).toBe(true);
+  });
+
+  it("группа с подгруппами остаётся группой", () => {
+    expect(isStudySet({ ownCards: 0, hasChildren: true, kind: "deck" })).toBe(true);
+  });
+
+  it("категория не становится колодой из-за случайно попавшей карточки", () => {
+    expect(isStudySet({ ownCards: 5, hasChildren: false, kind: "area" })).toBe(false);
+  });
+
+  it("источник — не колода", () => {
+    expect(isStudySet({ ownCards: 12, hasChildren: false, kind: "source" })).toBe(false);
+  });
+
+  it("без рода работает прежняя догадка: миграция могла быть не применена", () => {
+    expect(isStudySet({ ownCards: 0, hasChildren: true })).toBe(false);
+    expect(isStudySet({ ownCards: 3, hasChildren: true, kind: null })).toBe(true);
+  });
+});

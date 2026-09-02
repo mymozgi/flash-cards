@@ -53,9 +53,12 @@ export function KnowledgeIndex({
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [picks, setPicks] = useState<Set<string>>(new Set());
   const [menu, setMenu] = useState<{ node: KnowledgeNode; at: { x: number; y: number } } | null>(null);
-  const [editing, setEditing] = useState<{ node: KnowledgeNode | null; parentId: string | null } | null>(
-    null,
-  );
+  const [editing, setEditing] = useState<{
+    node: KnowledgeNode | null;
+    parentId: string | null;
+    /** Что именно создаём. У правки берётся из самого узла. */
+    kind?: "area" | "deck";
+  } | null>(null);
   const { ask: askText, dialog: promptDialog } = usePrompt();
   const { ask: askChoice, dialog: confirmDialog } = useConfirm<"cascade" | "reparent">();
 
@@ -158,7 +161,8 @@ export function KnowledgeIndex({
     if (action === "study") router.push(`/review?free=1&topic=${node.id}`);
     if (action === "rename") void rename(node);
     if (action === "edit") setEditing({ node, parentId: node.parentId });
-    if (action === "subcategory") setEditing({ node: null, parentId: node.id });
+    if (action === "subcategory") setEditing({ node: null, parentId: node.id, kind: "area" });
+    if (action === "group") setEditing({ node: null, parentId: node.id, kind: "deck" });
     if (action === "delete") void drop(node);
     if (action === "archive") {
       startTransition(async () => void settle(await updateCategory(node.id, { archived: true })));
@@ -184,6 +188,7 @@ export function KnowledgeIndex({
             icon: draft.icon,
             color: draft.color,
             parentId: draft.parentId,
+            kind: editing?.kind ?? "area",
           });
       if (settle(res)) setEditing(null);
     });
@@ -206,6 +211,7 @@ export function KnowledgeIndex({
       <EditDialog
         open={editing !== null}
         node={editing?.node ?? null}
+        kind={editing?.kind ?? "area"}
         parentId={editing?.parentId ?? null}
         options={parentOptions}
         busy={busy}
@@ -281,9 +287,12 @@ export function KnowledgeIndex({
           <Link href="/knowledge/map" className={`${buttonClass("secondary", "md")} min-h-10`}>
             Map
           </Link>
-          <Button tone="primary" onClick={() => setEditing({ node: null, parentId: null })}>
+          <Button
+            tone="primary"
+            onClick={() => setEditing({ node: null, parentId: null, kind: "area" })}
+          >
             <PlusIcon />
-            Add
+            Add category
           </Button>
         </div>
       )}
@@ -335,7 +344,7 @@ export function KnowledgeIndex({
               Create {picks.size > 0 ? picks.size : ""}{" "}
               {picks.size === 1 ? "category" : "categories"}
             </Button>
-            <Button onClick={() => setEditing({ node: null, parentId: null })}>
+            <Button onClick={() => setEditing({ node: null, parentId: null, kind: "area" })}>
               Name my own instead
             </Button>
           </div>
