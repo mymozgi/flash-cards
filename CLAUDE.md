@@ -1,170 +1,218 @@
-# Memorizer — приложение интервального повторения
+# Memorizer — a spaced repetition app
 
-Автор продукта: Oleg Tsykhonia. Название в интерфейсе — **Memorizer**, припиской *by Oleg Tsykhonia*.
+Product owner: Oleg Tsykhonia. The name in the interface is **Memorizer**, with
+*by Oleg Tsykhonia* as a byline.
 
-Личный тренажёр flashcards с изображениями на карточках. Один пользователь.
-Полная спецификация: https://claude.ai/code/artifact/84853df6-1a8b-4f60-9652-0fe0eb510c6c
+A personal flashcard trainer with images on the cards. One user.
+Full specification: https://claude.ai/code/artifact/84853df6-1a8b-4f60-9652-0fe0eb510c6c
 
-## Зафиксированные решения
+## Settled decisions
 
-| Что | Решение |
+| What | Decision |
 |---|---|
-| Пользователи | Один аккаунт, регистрация закрыта после создания первого пользователя |
-| Фреймворк | Next.js (App Router) + TypeScript, server actions вместо отдельного API |
-| Стили | Tailwind CSS, тёмная тема по системной настройке + ручной переключатель |
-| База | Supabase Postgres, RLS на всех таблицах, `user_id` везде |
-| Файлы | Supabase Storage, бакет `cards`, ключ `{user_id}/{card_id}/{uuid}.webp`, обложки `{user_id}/topics/{topic_id}/{uuid}.webp` |
-| Авторизация | Supabase Auth, email + пароль |
-| Алгоритм повторений | FSRS через `ts-fsrs`, цель удержания 0.90, расчёт только на сервере |
-| CSV | PapaParse, автоопределение разделителя, срез BOM |
-| Импорт | Файл или вставка из буфера; CSV и JSON, формат определяется сам. JSON возвращает карточки, темы и теги — расписание и историю не трогает |
-| Хостинг | Vercel Hobby (некоммерческое использование, 1 cron в сутки) |
-| Бюджет | $0 — функция, требующая платного тарифа, в MVP не входит |
+| Users | One account; registration closes once the first user exists |
+| Framework | Next.js (App Router) + TypeScript, server actions instead of a separate API |
+| Styling | Tailwind CSS, dark theme from the system setting plus a manual toggle |
+| Database | Supabase Postgres, RLS on every table, `user_id` everywhere |
+| Files | Supabase Storage, bucket `cards`, key `{user_id}/{card_id}/{uuid}.webp`, covers `{user_id}/topics/{topic_id}/{uuid}.webp` |
+| Auth | Supabase Auth, email and password |
+| Scheduling | FSRS via `ts-fsrs`, retention target 0.90, computed on the server only |
+| CSV | PapaParse, delimiter auto-detection, BOM stripped |
+| Import | A file or a paste from the clipboard; CSV and JSON, format detected on its own. JSON restores cards and categories — it never touches the schedule or the history |
+| Hosting | Vercel Hobby (non-commercial, one cron per day) |
+| Budget | $0 — a feature that needs a paid tier is not part of the MVP |
 
-Порядок этапов не переставлять: **ядро → медиа → импорт CSV → огранка** (§14 спеки).
+Do not reorder the stages: **core → media → CSV import → polish** (§14 of the spec).
 
-Прод: Vercel, деплой из ветки `master`. Переменные окружения задаются в
-Settings → Environment Variables, а не в репозитории.
+Production: Vercel, deployed from `master`. Environment variables live in
+Settings → Environment Variables, never in the repository.
 
-## Состояние: этапы 1–2 закрыты, PWA есть
+## State: stages 1–2 closed, PWA in place
 
-Каркас развёрнут и собирается (`npx tsc --noEmit`, `npx eslint .`, `npx next build` — чисто).
-Не проверено вживую с реальной базой: нужен проект Supabase и прогон
-`supabase/migrations/0001_init.sql`. Шаги — в [README.md](README.md).
+The skeleton is deployed and builds clean (`npx tsc --noEmit`, `npx eslint .`,
+`npx next build`). Not yet exercised against a real database end to end: that
+needs a Supabase project and a run of `supabase/migrations/0001_init.sql`.
+Steps are in [README.md](README.md).
 
-Карта кода:
+Code map:
 
-| Где | Что |
+| Where | What |
 |---|---|
-| `supabase/migrations/0001_init.sql` | Схема, индексы, триггеры, RLS, вьюха счётчиков |
-| `proxy.ts` | Обновление сессии и редирект гостя (в Next 16 это бывший middleware) |
-| `lib/supabase/` | Клиенты для сервера и браузера, `requireUser()` |
-| `lib/data.ts` | Все серверные выборки: настройки, дерево тем, счётчики дня, очередь |
-| `lib/fsrs.ts` | Обёртка над ts-fsrs: маппинг строки БД ↔ карточки FSRS, превью интервалов |
-| `lib/session.ts` | Правила очереди повторения: возврат провалённой, пропуск, знаменатель прогресса |
-| `lib/swipe.ts` | Разбор горизонтального жеста: порог по доле ширины и по скорости |
-| `lib/import-format.ts` | Определение CSV/JSON и приведение JSON к таблице мастера |
-| `lib/knowledge.ts` | Дерево знаний: выборка `topics` с иконкой, архивом и объёмом ветки |
-| `lib/url.ts` | Разбор пользовательских ссылок: только http(s), иначе `null` |
-| `lib/schema.ts` | Колонки, которых может не быть: запрос с повтором без них |
-| `lib/knowledge-graph.ts` | Данные карты: узлы, рёбра, счётчик прикреплённых карточек |
-| `lib/knowledge-tree.ts` | Правила связей: ветка узла, допустимость сброса, порядок братьев |
-| `app/(app)/knowledge/map/` | Карта на React Flow: свои ноды, раскладка dagre, панель узла |
-| `app/(app)/knowledge/` | Раздел Knowledge: список категорий, экран категории, заготовки |
-| `components/use-reorder.ts` | Перенос карточек указателем и клавиатурой |
-| `lib/markdown.ts` | Мини-рендерер Markdown, экранирует HTML до разбора |
-| `app/(app)/review/` | Экран сессии и действия оценки/отмены |
-| `app/(app)/decks/[id]/` | Единственный редактор карточки: конструктор колоды |
-| `app/(app)/library/` | Поиск по всем карточкам и массовые операции |
-| `components/card-renderer.tsx` | Единственное место, где рисуется полотно карточки |
-| `tests/` | Vitest: чистая логика — FSRS, Markdown, нормализация, сутки |
-| `lib/image.ts` | Сжатие на клиенте: 1600 px, WebP q=0.82, превью 320 px |
-| `lib/upload.ts` | Заливка в Storage напрямую из браузера + пометка сироты |
-| `app/api/cron/sweep/` | Ежедневная уборка файлов и пробуждение базы |
-| `scripts/make-icons.mjs` | Иконки PWA рисуются кодом через zlib, без зависимостей |
+| `supabase/migrations/0001_init.sql` | Schema, indexes, triggers, RLS, the counts view |
+| `proxy.ts` | Session refresh and guest redirect (the former middleware in Next 16) |
+| `lib/supabase/` | Server and browser clients, `requireUser()` |
+| `lib/data.ts` | Every server-side read: settings, the category tree, day counts, the queue |
+| `lib/fsrs.ts` | Wrapper over ts-fsrs: DB row ↔ FSRS card mapping, interval previews |
+| `lib/session.ts` | Review queue rules: returning a failed card, skipping, the progress denominator |
+| `lib/swipe.ts` | Horizontal gesture parsing: threshold by width fraction and by velocity |
+| `lib/import-format.ts` | CSV/JSON detection and folding JSON into the wizard's table |
+| `lib/knowledge.ts` | The knowledge tree: reading `topics` with icon, archive and branch size |
+| `lib/url.ts` | User link parsing: http(s) only, otherwise `null` |
+| `lib/schema.ts` | Columns that may not exist: a query retried without them |
+| `lib/knowledge-graph.ts` | Map data: nodes, edges, the count of attached cards |
+| `lib/knowledge-tree.ts` | Relationship rules: a node's branch, drop validity, sibling order |
+| `app/(app)/knowledge/map/` | The React Flow map: custom nodes, dagre layout, the node panel |
+| `app/(app)/knowledge/` | The Knowledge section: category list, category screen, starters |
+| `components/use-reorder.ts` | Moving cards by pointer and by keyboard |
+| `lib/markdown.ts` | A tiny Markdown renderer that escapes HTML before parsing |
+| `app/(app)/review/` | The session screen and the grade/undo actions |
+| `app/(app)/decks/[id]/` | The only card editor: the deck workspace |
+| `app/(app)/library/` | Search across all cards and bulk operations |
+| `components/card-renderer.tsx` | The one place the card canvas is drawn |
+| `tests/` | Vitest: pure logic — FSRS, Markdown, normalisation, day boundaries |
+| `lib/image.ts` | Client-side compression: 1600 px, WebP q=0.82, 320 px thumbnail |
+| `lib/upload.ts` | Uploading to Storage straight from the browser, marking orphans |
+| `app/api/cron/sweep/` | Daily file cleanup and keeping the database awake |
+| `scripts/make-icons.mjs` | PWA icons drawn in code via zlib, with no dependencies |
 
-### Осознанные отступления от спеки
+### Deliberate departures from the spec
 
-- **TanStack Query не подключён.** Очередь загружается один раз серверным
-  компонентом и живёт в состоянии клиента; оценки уходят оптимистично. Библиотека
-  на одном экране не окупается — вернуться к вопросу на этапе 4, если появится
-  фоновая синхронизация.
-- **Изображения на этапе 2 отдавать через обычный `<img>`, не `next/image`.**
-  Файлы уже сжаты на клиенте, а оптимизация картинок на Vercel Hobby лимитирована.
+- **TanStack Query is not wired in.** The queue is loaded once by a server
+  component and lives in client state; grades go out optimistically. The library
+  does not pay for itself on a single screen — revisit at stage 4 if background
+  sync appears.
+- **Images at stage 2 are served through a plain `<img>`, not `next/image`.**
+  The files are already compressed on the client, and image optimisation on
+  Vercel Hobby is capped.
 
-## Дизайн-система
+## Design system
 
-Токены живут в `app/globals.css`, примитивы — в `components/ui/`. Новую строку
-классов для кнопки или поля писать не нужно: если не хватает варианта, добавить
-его в примитив, а не рядом с ним.
+Tokens live in `app/globals.css`, primitives in `components/ui/`. Do not write
+a new class string for a button or a field: if a variant is missing, add it to
+the primitive rather than beside it.
 
-| Роль | Чем пользоваться |
+| Role | What to use |
 |---|---|
-| Кнопка | `Button` / `LinkButton`: тон `primary · soft · secondary · ghost · danger`, размер `sm · md · lg · icon` |
-| Поле ввода | `inputClass`, список `selectClass`, в таблице `cellInputClass` |
-| Подпись и пояснение | `Field`, `Label` |
-| Поверхность | `Panel`, `panelClass`, `raisedClass`, `insetClass` |
-| Пилюля состояния | `Badge`: `neutral · accent · warn · danger` |
-| Выбор категории | `useCategoryPicker` — выбор по id, не набор пути |
-| Полоса прогресса | `Progress`: `value`, `max`, янтарный сегмент `warn` |
-| Служебная подпись | `label-micro` — не собирать вручную из `font-mono text-2xs uppercase tracking-[…]` |
-| Рамка поля | `border-control` (токен `--stroke`, 1,5 px) плюс `border-field-line` |
-| Рамка кнопки | `border-button` (токен `--stroke-button`, 2 px) плюс `border-field-line` |
-| Тень | `shadow-card` лежит на фоне, `shadow-raised` приподнято, `shadow-overlay` поверх всего |
-| Скругление | контролы `rounded-lg`, панели `rounded-xl`, пилюли `rounded-full` |
+| Button | `Button` / `LinkButton`: tone `primary · soft · secondary · ghost · danger`, size `sm · md · lg · icon` |
+| Input | `inputClass`, dropdown `selectClass`, in a table `cellInputClass` |
+| Label and hint | `Field`, `Label` |
+| Surface | `Panel`, `panelClass`, `raisedClass`, `insetClass` |
+| Status pill | `Badge`: `neutral · accent · warn · danger` |
+| Category picker | `useCategoryPicker` — pick by id, never type a path |
+| Progress bar | `Progress`: `value`, `max`, amber segment `warn` |
+| Micro label | `label-micro` — never assemble it from `font-mono text-2xs uppercase tracking-[…]` |
+| Field border | `border-control` (token `--stroke`, 1.5 px) plus `border-field-line` |
+| Button border | `border-button` (token `--stroke-button`, 2 px) plus `border-field-line` |
+| Shadow | `shadow-card` rests on the background, `shadow-raised` lifts, `shadow-overlay` floats above everything |
+| Radius | controls `rounded-lg`, panels `rounded-xl`, pills `rounded-full` |
 
-Размеры кнопок: `sm` 40 px, `md` 48 px, `lg` 56 px, `icon` — квадрат 48 px под
-одну иконку без подписи. Минимум цели нажатия на телефоне — 44 px, и `md`
-берётся с запасом над ним. Размер `sm` только там, где рядом нет соседних кнопок.
+Button sizes: `sm` 40 px, `md` 48 px, `lg` 56 px, `icon` — a 48 px square for a
+single icon with no label. The minimum touch target on a phone is 44 px, and
+`md` clears it with room to spare. Use `sm` only where no other button sits
+next to it.
 
-Цвет рамки у поля и у кнопки с обводкой один и тот же, `--field-line`, и по
-одной причине: WCAG 1.4.11 требует от границы элемента управления контраста
-3:1, а `--line` даёт 1,24.
+The border colour of a field and of an outlined button is the same,
+`--field-line`, for the same reason: WCAG 1.4.11 requires 3:1 from the border
+of a control, and `--line` gives 1.24.
 
-Толщина у них разная и намеренно: поле — 1,5 px, кнопка — 2 px. Рамка поля
-очерчивает, куда писать, это граница области. Рамка кнопки образует саму
-кнопку: это её форма, а не отметка края, и по ней целятся пальцем. Обе живут
-токенами `--stroke` и `--stroke-button` — менять их нужно там, а не в классах
-по коду.
+Their thickness differs, deliberately: field 1.5 px, button 2 px. A field's
+border outlines where to write — it marks the edge of an area. A button's
+border forms the button itself: it is its shape, and it is what the finger aims
+at. Both live in the `--stroke` and `--stroke-button` tokens — change them
+there, not in class strings scattered through the code.
 
-Кегль поля ввода — 16 px. Не ради вида: Safari на iPhone приближает страницу
-при фокусе на поле мельче шестнадцати, и вернуть масштаб пользователь не может.
+Input font size is 16 px. Not for looks: Safari on iPhone zooms the page when
+focusing a field smaller than sixteen, and the user cannot zoom back out.
 
-Янтарный (`amber`) означает «не ошибка, но и не норма» — например приостановленную
-карточку. Красный (`rust`) оставлен за настоящими отказами.
+Amber means "not an error, but not normal either" — a suspended card, for
+instance. Red (`rust`) is reserved for genuine failures.
 
-## Правила, специфичные для этого проекта
+## Rules specific to this project
 
-- Изображения сжимаются **на клиенте до загрузки**: вписать в 1600 px, WebP q=0.82, плюс превью 320 px. Обложка набора — 800 px без превью. Лимит хранилища 1 ГБ — постфактум чистить поздно.
-- Цвет тега — **номер ячейки палитры (0–5), а не HEX**. Шесть оттенков в `globals.css` проверены на различимость при дальтонизме; свободный выбор отменяет эту проверку. Цвет показывается точкой рядом с именем, а не заливкой под текстом.
-- Удаление карточки не удаляет файлы синхронно — путь пишется в `media_orphans`, чистит ежедневный cron.
-- Имя узла темы уникально только среди братьев (`unique(user_id, parent_id, name)`) — одинаковые подтемы в разных ветках это норма, а не баг.
-- Оценка повторения применяется оптимистично на клиенте (< 100 мс), расписание пересчитывает сервер по отметке времени клиента.
-- Мобильная вёрстка первична: проектировать от 360 px, кнопки оценки ≥ 56 px, учитывать `safe-area-inset`.
-- Экспорт в CSV/JSON — обязательная функция, а не «потом»: данные не должны запираться в приложении.
-- **Карта знаний — React Flow (`@xyflow/react`) плюс `@dagrejs/dagre`.** Библиотека выбрана из-за одного свойства: узел там обычный React-компонент, поэтому карта рисуется теми же токенами, что и остальное приложение. Канвовые движки (Cytoscape, vis-network) этого не дают.
-- **Карточка может лежать в нескольких категориях.** Главное место — `cards.topic_id`, дополнительные — `card_topics`. Копий не создавать никогда: две копии дают две истории повторений одного знания.
-- **Категория — это `topics`, и других таблиц под неё нет.** «Categories», «Study sets» и повторение смотрят на одно дерево с разных сторон. Новую сущность под «категорию», «колоду» или «тему» не заводить.
-- **Форма дерева закреплена триггером: Category → Topic → Flashcards.** Категория не может лежать внутри категории, тема — внутри темы, карточка живёт только в теме. Тема БЕЗ категории при этом законна: набор часто делают раньше, чем занимаются раскладкой, и требовать категорию заранее значило бы заставлять придумывать её на пустом месте.
-- **Классификация карточки `[Category] [Topic]` выводится из пути, а не хранится в карточке.** Копия имени категории внутри карточки разошлась бы с деревом при первом переименовании. Компонент — `Classification`, правило — `classify()` в `lib/knowledge-tree.ts`. Править её из карточки нельзя: меняют не подпись, а место.
-- **У узла есть род, и он задаётся намерением, а не выводится из данных.** `topics.kind`: `area` — категория, держит структуру и своих карточек не имеет; `deck` — группа карточек, её учат; `source` — источник. Категория и группа создаются РАЗНЫМИ действиями. Карточка может лежать только в группе — это проверяет триггер в базе, а не только интерфейс.
-- **Род учитывается, только когда разделение введено** — то есть когда в базе есть хотя бы одна группа (`kindInEffect()`). Миграция 0015 ставит `area` ВСЕМ узлам по умолчанию, а перевод в `deck` делает 0021: между ними база утверждает, что колод нет ни одной. Код, читавший род буквально, в этот промежуток спрятал весь список наборов. Пока разделения нет, работает прежняя догадка по данным.
-- **Тегов в приложении нет.** Они не влияли на обучение — ни расписание, ни очередь их не читали, — а стоили экрана, палитры, колонки в импорте и экспорте и двух таблиц. Ось «сколько угодно меток на карточку» осталась невостребованной, и её убрали вместе с данными (миграция 0023). Структура одна: Category → Topic → Flashcards.
-- **Один пункт меню на сущность.** Категория — место карточки, одно на карточку; тег — признак, их сколько угодно. Экраны, отвечающие на соседние вопросы об одном и том же, объединяются, а старый адрес переадресует: `/topics` → `/knowledge`, `/stats` → `/tags`.
-- **Правила связей в дереве живут в `lib/knowledge-tree.ts` и покрыты тестами.** Копия этих правил внутри компонента уже успела разойтись с базой — разрешала поставить родителя рядом с его же потомком.
-- **Необязательные данные не должны быть обязательными для запроса.** Новая колонка в `SELECT` — условие работы всего запроса: пока миграция не применена, PostgREST отклоняет его целиком. Оплачено поломкой очереди повторения из-за строчки со ссылкой. Помощники — `lib/schema.ts`.
-- **Source карточки — это колонка `cards.link_url`.** Она пережила отмену свойства Link (миграция 0009 отменена) и вернулась со смыслом «откуда знание». Ссылка идёт в `href`, поэтому схема проверяется и в базе, и в `safeUrl()` — только http(s).
-- Системных `prompt()`, `confirm()` и `alert()` в коде нет: браузер вправе их не показать, и во встроенном просмотрщике вызов молча возвращает `null`. Диалоги — `useConfirm` и `usePrompt`.
+- Images are compressed **on the client before upload**: fit within 1600 px, WebP q=0.82, plus a 320 px thumbnail. A category cover is 800 px with no thumbnail. Storage is capped at 1 GB — cleaning up afterwards is too late.
+- Deleting a card does not delete its files synchronously — the path goes into `media_orphans` and the daily cron sweeps it.
+- A node's name is unique only among its siblings (`unique(user_id, parent_id, name)`) — identical subtopics in different branches are normal, not a bug.
+- A review grade is applied optimistically on the client (< 100 ms); the server recomputes the schedule from the client's timestamp.
+- Mobile layout comes first: design from 360 px, grade buttons ≥ 56 px, respect `safe-area-inset`.
+- CSV/JSON export is a required feature, not a "later": data must never be locked inside the app.
+- **The knowledge map is React Flow (`@xyflow/react`) plus `@dagrejs/dagre`.** The library was chosen for one property: its node is an ordinary React component, so the map is drawn with the same tokens as the rest of the app. Canvas engines (Cytoscape, vis-network) cannot do that.
+- **A card can live in several categories.** Its main home is `cards.topic_id`; the extra ones are `card_topics`. Never create copies: two copies mean two review histories for one piece of knowledge.
+- **A category is `topics`, and there is no other table for it.** "Categories", "My flashcards" and review all look at one tree from different sides. Do not create a new entity for "category", "deck" or "topic".
+- **The shape of the tree is enforced by a trigger: Category → Topic → Flashcards.** A category cannot sit inside a category, a topic cannot sit inside a topic, and a card lives only in a topic. A topic WITHOUT a category is still legal: a set is often made before anyone gets round to filing it, and demanding a category up front would force one to be invented out of nothing.
+- **A card's `[Category] [Topic]` classification is derived from the path, not stored on the card.** A copy of the category name inside the card would diverge from the tree at the first rename. The component is `Classification`, the rule is `classify()` in `lib/knowledge-tree.ts`. It cannot be edited from the card: you change the place, not the label.
+- **A node has a kind, and the kind is stated by intent, not inferred from data.** `topics.kind`: `area` — a category, holds structure and no cards of its own; `deck` — a group of cards, the thing you study; `source` — a source. A category and a group are created by DIFFERENT actions. A card can only live in a group, and a database trigger enforces that, not just the interface.
+- **Kind counts only once the split is in effect** — that is, once at least one group exists (`kindInEffect()`). Migration 0015 sets `area` on EVERY node by default, and 0021 does the conversion to `deck`: in between, the database insists there are no decks at all. Code that read the kind literally hid the entire set list during that window. Until the split is in effect, the old inference from data applies.
+- **There are no tags in the app.** They had no effect on learning — neither the schedule nor the queue ever read them — and they cost a screen, a palette, a column in import and export, and two tables. The "any number of labels per card" axis went unused and was removed along with the data (migration 0023). There is one structure: Category → Topic → Flashcards.
+- **One menu entry per entity.** Screens that answer neighbouring questions about the same thing get merged, and the old address redirects: `/topics` → `/knowledge`, `/stats` → `/tags`.
+- **Tree relationship rules live in `lib/knowledge-tree.ts` and are covered by tests.** A copy of those rules inside a component had already diverged from the database — it allowed a parent to be placed next to its own descendant.
+- **Optional data must not be mandatory for a query.** A new column in a `SELECT` is a condition for the whole query: until the migration is applied, PostgREST rejects it entirely. Paid for by taking down the review queue over one line showing a source link. Helpers are in `lib/schema.ts`.
+- **A card's Source is the `cards.link_url` column.** It survived the removal of the Link property (migration 0009 was cancelled) and came back meaning "where this knowledge came from". The link goes into an `href`, so the scheme is checked both in the database and in `safeUrl()` — http(s) only.
+- There are no native `prompt()`, `confirm()` or `alert()` calls in the code: the browser is entitled not to show them, and inside an embedded viewer the call silently returns `null`. Dialogs are `useConfirm` and `usePrompt`.
 
-## Скилы: что под какую задачу
+## Review agents
 
-Вызывать через `Skill`, без ведущего слэша.
+Definitions live in `.claude/agents/`. Call them by name through `Agent`. Each
+one reads this file as the source of truth and adds only its own checklist —
+their content must not be copied back here, that is the same disease as two
+implementations of one function.
 
-**Проектирование и спека**
-- `product-skills:product-manager-toolkit` — правки PRD, приоритизация, критерии приёмки
-- `engineering-advanced-skills:spec-driven-workflow` — вести разработку от спеки к задачам
-- `product-skills:spec-to-repo` — развернуть спеку в структуру репозитория
+| Agent | When to call it | The breakage it stands against |
+|---|---|---|
+| `architect` | A new entity, column, or a second way to do the same thing | Path parsing existed twice and diverged; one node was called topic, deck, set and category |
+| `migration` | Every migration and every query against a new column | `link_url` took down the queue; the default `area` kind hid every set; 0022 failed on a guard from 0021 |
+| `design-system` | Any visual change | Twelve button padding variants; a control border at 1.24 contrast against a 3:1 requirement |
+| `qa` | After any change to pure logic and before closing a milestone | Logic inside components was checked by nothing but hand testing |
+| `ux` | A new screen, action or failure message | An empty queue looked like "everything is learned"; deleting was reachable only by right-click |
+| `researcher` | Picking a library, asserting anything about someone else's API, any "as far as I remember" | A column was declared to exist from memory rather than from the database, and the queue fell over; Next 16 diverges from training data |
+| `scientist` | The scheduler's numbers and any sentence about learning in the interface | The product's core is a memory algorithm, and "How it works" cites research publicly |
 
-**Разработка**
-- `engineering-skills:senior-fullstack` — скаффолдинг Next.js, выбор структуры проекта
-- `engineering-skills:senior-frontend` — React/Next/Tailwind, адаптив, доступность, размер бандла
-- `engineering-skills:senior-backend` — server actions, авторизация, загрузка файлов
-- `engineering-advanced-skills:database-schema-designer` — схема, индексы, миграции Supabase
-- `product-skills:ui-design-system` — токены, компоненты, единый визуальный язык
+Reviewing agents do not edit — the main session edits, so the diff stays
+visible. Only `qa` writes, and only tests.
 
-**Качество и выпуск**
-- `engineering-skills:senior-qa` — Jest + RTL, Playwright для сценария повторения
-- `engineering-advanced-skills:ci-cd-pipeline-builder` — пайплайн и деплой на Vercel
-- `engineering-advanced-skills:env-secrets-manager` — ключи Supabase, разделение окружений
-- `engineering-advanced-skills:performance-profiler` — если старт сессии выходит за 2,5 с
-- `engineering-skills:senior-security` — аудит RLS и политик доступа перед первым деплоем
+`researcher` and `scientist` share a method but not an area: the first answers
+"how is this actually built on the outside", the second only "is this claim
+about memory justified". Their tasks never overlap: a graph layout choice never
+goes to `scientist`, and the 0.90 retention target never goes to `researcher`.
+Of the seven, `scientist` has the narrowest use — call it rarely, but do not
+change the scheduler's numbers without it.
 
-**Встроенные команды**
-- `/code-review` — ревью диффа перед мержем
-- `/run` — запустить приложение и проверить изменение вживую
-- `/simplify` — чистка после этапа
+There are deliberately no separate `ui`, `frontend`, `backend`, `devops` or
+`security` agents. UI and the visual half of UX inspect the same files; split
+across two agents they would diverge in their advice. The infrastructure here
+is Vercel and Supabase with no custom configuration, and RLS is reviewed by
+`migration` together with the schema.
 
-## Чего в проекте нет и не планируется
+To rebuild the set once the project changes: `docs/prompts/setup-agents.md`.
 
-Аудио/видео на карточках, совместные колоды, генерация карточек через LLM, нативные
-приложения, импорт `.apkg`, push-уведомления, геймификация (стрики, очки).
+## Verification before committing
+
+    npx tsc --noEmit
+    npx eslint .
+    npx vitest run
+    npx next build
+
+All four clean, or the work is not finished. Plus a live check of the affected
+routes on `npx next dev`.
+
+## Skills: what fits which task
+
+Invoke through `Skill`, with no leading slash.
+
+**Design and specification**
+- `product-skills:product-manager-toolkit` — PRD edits, prioritisation, acceptance criteria
+- `engineering-advanced-skills:spec-driven-workflow` — driving development from spec to tasks
+- `product-skills:spec-to-repo` — expanding a spec into a repository structure
+
+**Development**
+- `engineering-skills:senior-fullstack` — Next.js scaffolding, project structure
+- `engineering-skills:senior-frontend` — React/Next/Tailwind, responsiveness, accessibility, bundle size
+- `engineering-skills:senior-backend` — server actions, authorisation, file uploads
+- `engineering-advanced-skills:database-schema-designer` — schema, indexes, Supabase migrations
+- `product-skills:ui-design-system` — tokens, components, one visual language
+
+**Quality and release**
+- `engineering-skills:senior-qa` — Jest + RTL, Playwright for the review scenario
+- `engineering-advanced-skills:ci-cd-pipeline-builder` — pipeline and Vercel deployment
+- `engineering-advanced-skills:env-secrets-manager` — Supabase keys, environment separation
+- `engineering-advanced-skills:performance-profiler` — if session start exceeds 2.5 s
+- `engineering-skills:senior-security` — auditing RLS and access policies before the first deploy
+
+**Built-in commands**
+- `/code-review` — review the diff before merging
+- `/run` — start the app and check a change live
+- `/simplify` — clean-up after a stage
+
+## What the project does not have and will not
+
+Audio or video on cards, shared decks, LLM card generation, native apps,
+`.apkg` import, push notifications, gamification (streaks, points).

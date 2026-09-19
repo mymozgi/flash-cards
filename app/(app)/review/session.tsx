@@ -11,7 +11,7 @@ import { ASPECT, ASPECT_RATIO, CardRenderer } from "@/components/card-renderer";
 import { Button, LinkButton } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Classification } from "@/components/ui/classification";
-import { ArrowLeftIcon, ArrowRightIcon, FlipIcon } from "@/components/icons";
+import { ArrowLeftIcon, ArrowRightIcon, CloseIcon, FlipIcon } from "@/components/icons";
 import {
   nextSpan,
   queueAfterGrade,
@@ -269,11 +269,31 @@ export function ReviewSession({
 
   return (
     <div className="flex min-h-[calc(100dvh-8rem)] flex-col">
-      <div className="flex items-center justify-between gap-4 pb-2.5">
-        {/* Классификация вместо пути строкой: две подписи читаются быстрее,
-            чем «Medicine / Pharmacology» мелким моноширинным */}
-        <Classification path={current.topicPath} className="min-w-0" />
-        <span className="label-micro tabular-nums">
+      <div className="flex items-center justify-between gap-3 pb-2.5">
+        <div className="flex min-w-0 items-center gap-2">
+          {/*
+            Выход из сессии. Без него экран повторения был тупиком: боковое
+            меню на телефоне скрыто за гамбургером, а на широком экране взгляд
+            держится на карточке, и «как отсюда уйти» становится вопросом.
+
+            Подтверждения нет намеренно: оценки записываются сразу, и уйти
+            на середине ничего не теряет. Спрашивать «точно уйти?» там, где
+            терять нечего, — это обучать не читать подтверждения.
+          */}
+          <LinkButton
+            href="/"
+            tone="ghost"
+            size="icon"
+            aria-label="Leave the session"
+            title="Leave — everything you graded is already saved"
+          >
+            <CloseIcon />
+          </LinkButton>
+          {/* Классификация вместо пути строкой: две подписи читаются быстрее,
+              чем «Medicine / Pharmacology» мелким моноширинным */}
+          <Classification path={current.topicPath} className="min-w-0" />
+        </div>
+        <span className="label-micro shrink-0 tabular-nums">
           {done} / {span}
         </span>
       </div>
