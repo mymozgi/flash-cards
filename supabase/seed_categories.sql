@@ -12,6 +12,10 @@
 -- эти шесть оттенков различимы при дальтонизме, произвольный HEX такой
 -- проверки не проходил.
 --
+-- В имени категории НЕ должно быть символа «/»: импорт разбирает тему как
+-- путь «Категория / Тема», и слэш внутри имени разорвал бы его на части.
+-- Поэтому категория называется «XR, VR & AR», а не «XR / VR / AR».
+--
 -- Повторный запуск безопасен: имя узла уникально среди братьев, и совпадение
 -- просто пропускается.
 
@@ -33,7 +37,7 @@ from (values
    'Current, voltage, resistance, circuits — the basics you keep forgetting.'),
   (2, 'Security',    '🔐', '#2a78d6',
    'APIs, OAuth, tokens, threat models — what a security engineer is expected to know.'),
-  (3, 'XR / VR / AR', '🥽', '#e87ba4',
+  (3, 'XR, VR & AR', '🥽', '#e87ba4',
    'Spatial concepts, interaction rules and building software for headsets.'),
   (4, 'Robotics',    '🤖', '#1baf7a',
    'Kinematics, sensors, control loops and the software that drives them.')
