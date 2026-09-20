@@ -22,7 +22,7 @@ import { COVER_ASPECT, COVER_LONG_SIDE, ImageError, MAX_IMAGES_PER_SIDE } from "
 import { safeUrl } from "@/lib/url";
 import { discardUpload, uploadCover, uploadImage } from "@/lib/upload";
 import { Button, LinkButton } from "@/components/ui/button";
-import { cellInputClass, inputClass } from "@/components/ui/field";
+import { cellInputClass, inputClass, Label as FieldLabel } from "@/components/ui/field";
 import { panelClass } from "@/components/ui/panel";
 import { useConfirm } from "@/components/ui/confirm";
 /*
@@ -811,8 +811,23 @@ function DeckHeader({
   );
 }
 
+/**
+ * Подпись раздела внутри карточки.
+ *
+ * Сама подпись — примитив дизайн-системы; здесь к ней добавлен только ритм
+ * между разделами. Прежде тут жила своя строка классов с приглушённым цветом,
+ * и подпись раздела выглядела слабее, чем подпись поля в других местах.
+ *
+ * Отступ сверху и есть то, что разделяет разделы: границами это делать не
+ * нужно, их в карточке и так достаточно. Первой подписи отступ не достаётся —
+ * над ней уже поле контейнера.
+ */
 function Label({ children }: { children: React.ReactNode }) {
-  return <span className="mt-4 block pb-1.5 text-sm font-medium text-muted">{children}</span>;
+  return (
+    <div className="mt-6 first:mt-0">
+      <FieldLabel>{children}</FieldLabel>
+    </div>
+  );
 }
 
 function CardBlock({
@@ -852,16 +867,29 @@ function CardBlock({
   onPatchImages: (card: DeckCard, side: "front" | "back", next: EditorImage[]) => void;
 }) {
   return (
+    /*
+      Карточка — свёртываемый модуль: шапка с органами управления и тело с
+      полями. Отступ снят с контейнера и роздан шапке и телу по отдельности,
+      иначе заливка шапки не дотянулась бы до краёв и читалась бы вставкой
+      внутрь, а не собственной областью.
+    */
     <article
-      className={`rounded-xl border p-4 transition-shadow ${
+      className={`overflow-hidden rounded-xl border transition-shadow ${
         lifted
           ? "border-accent bg-surface shadow-raised"
           : picked
-            ? "border-accent bg-accent-soft"
+            ? "border-accent"
             : "border-line"
       }`}
     >
-      <div className="flex items-center justify-between gap-3">
+      {/* Шапка отличается тоном, а не рамкой: сообщить «это область
+          управления» тонального сдвига достаточно, а лишняя рамка спорила бы
+          с рамкой самой карточки. */}
+      <div
+        className={`flex items-center justify-between gap-3 px-4 py-3 ${
+          picked ? "bg-accent-soft" : "bg-surface-2"
+        } ${collapsed ? "" : "border-b border-line"}`}
+      >
         <div className="flex min-w-0 items-center gap-2">
           {/* Флажок перед ручкой переноса: сначала «какие», потом «куда».
               Новую карточку отмечать нечем — на сервере её ещё нет. */}
@@ -888,8 +916,8 @@ function CardBlock({
             onClick={onToggleCollapse}
             aria-expanded={!collapsed}
             aria-label={collapsed ? "Expand card" : "Collapse card"}
-            className="flex items-center text-faint transition-transform duration-200 hover:text-ink"
-            style={{ transform: collapsed ? "rotate(-90deg)" : undefined }}
+            className="flex items-center text-faint transition-transform duration-200 hover:text-ink motion-reduce:transition-none"
+            style={{ transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)" }}
           >
             <ChevronIcon />
           </button>
@@ -945,7 +973,11 @@ function CardBlock({
       {/* Слева органы управления, справа живой предпросмотр — тот же компонент,
           которым карточка рисуется в учебных режимах, поэтому расхождений нет. */}
       {!collapsed && (
-      <div className="mt-1 grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+      /*
+        Колонки разведены широким зазором: предпросмотр — отдельная вещь, а
+        не продолжение полей. Прижатый к ним, он читался как ещё одно поле.
+      */
+      <div className="grid gap-6 p-4 sm:p-5 xl:grid-cols-[minmax(0,1fr)_320px] xl:gap-10">
         <div className="min-w-0">
       <Label>Aspect ratio</Label>
       <div className="flex flex-wrap gap-2">
@@ -1022,7 +1054,7 @@ function CardBlock({
         className={`${FIELD} resize-y`}
       />
 
-      <div className="mt-2">
+      <div className="mt-4">
         <ImageStrip
           images={card.frontImages}
           busy={uploading}
@@ -1089,7 +1121,7 @@ function CardBlock({
         </>
       )}
 
-      <div className="mt-2">
+      <div className="mt-4">
         <ImageStrip
           images={card.backImages}
           busy={uploading}
