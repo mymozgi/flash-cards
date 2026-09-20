@@ -7,7 +7,7 @@ import { fromFsrsCard, previewIntervals, RATINGS, scheduler, toFsrsCard } from "
 import { renderMarkdown } from "@/lib/markdown";
 import { hostLabel, safeUrl } from "@/lib/url";
 import type { QueueCard } from "@/lib/types";
-import { CardRenderer, cardFrameStyle } from "@/components/card-renderer";
+import { CARD_MAX_HEIGHT, CardRenderer, cardFrameStyle } from "@/components/card-renderer";
 import { Button, LinkButton } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Classification } from "@/components/ui/classification";
@@ -20,12 +20,6 @@ import {
   SKIP_LIMIT,
 } from "@/lib/session";
 import { gradeCard, undoReview, type GradeResult } from "./actions";
-
-/**
- * Потолок высоты полотна. Ширина считается из него, а не наоборот: пропорция
- * карточки должна выжить и на узком телефоне, и на широком мониторе.
- */
-const CARD_MAX_HEIGHT = "58dvh";
 
 type HistoryEntry = { card: QueueCard; pending: Promise<GradeResult>; relearn: boolean };
 

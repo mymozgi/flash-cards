@@ -3,7 +3,15 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { renderMarkdown } from "@/lib/markdown";
-import { CardRenderer, type CardImage, type CardLayout, type CardShape, type ImagePosition } from "@/components/card-renderer";
+import {
+  CARD_MAX_HEIGHT,
+  CardRenderer,
+  cardFrameStyle,
+  type CardImage,
+  type CardLayout,
+  type CardShape,
+  type ImagePosition,
+} from "@/components/card-renderer";
 import { ArrowLeftIcon, ArrowRightIcon, CloseIcon, GridIcon } from "@/components/icons";
 import { AXIS_SLOP, followX, swipeVerdict } from "@/lib/swipe";
 import { hostLabel, safeUrl } from "@/lib/url";
@@ -174,9 +182,17 @@ export function StudyDeck({
 
       <Progress value={at + 1} max={total} label={`Card ${at + 1} of ${total}`} />
 
+      {/*
+        Рамку задаёт сцена, а не полотно внутри неё. Слои стопки — это
+        `position:absolute; inset:0`, то есть они всегда повторяют РАЗМЕР СЦЕНЫ.
+        Пока сцена была во всю ширину колонки, а карточка считала свою ширину
+        из высоты, слои торчали из-под неё вбок пустым прямоугольником.
+        Одна рамка на сцену и стопку — и совпадение перестаёт быть случайным.
+      */}
       <div
         ref={scene}
         className="deck-scene relative mx-auto w-full max-w-2xl touch-pan-y"
+        style={cardFrameStyle(card.shape, CARD_MAX_HEIGHT)}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endGesture}
@@ -194,7 +210,7 @@ export function StudyDeck({
             Отпустили — пружина назад за 200 мс. */}
         <div
           key={step}
-          className={`deck-card relative ${dragging ? "" : "transition-transform duration-200 motion-reduce:transition-none"}`}
+          className={`deck-card relative size-full ${dragging ? "" : "transition-transform duration-200 motion-reduce:transition-none"}`}
           data-dir={dragging ? undefined : dir}
           style={
             dx === 0
@@ -206,12 +222,13 @@ export function StudyDeck({
           }
         >
           <CardRenderer
+            fill
+            className="size-full"
             shape={card.shape}
             layout={card.layout}
             imagePosition={card.imagePosition}
             html={frontHtml}
             images={card.frontImages}
-            maxHeight="58dvh"
             onImageClick={() => setZoomed(card.frontImages[0]?.url ?? null)}
           />
         </div>
