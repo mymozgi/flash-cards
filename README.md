@@ -57,6 +57,24 @@
 $env:KARTOTEKA_EMAIL='you@example.com'; $env:KARTOTEKA_PASSWORD='...'; npm run check:db
 ```
 
+## Ветки: локально сначала, на прод осознанно
+
+Push в ветку прода = боевой деплой. Чтобы это были разные действия:
+
+Vercel → Settings → Git → **Production Branch** поменять на `production`.
+После этого:
+
+    git push origin master          # Preview: свой адрес, прод не трогает
+    git push origin master:production   # прод, когда проверено
+
+Preview-адрес открывается с телефона и работает как настоящий — на нём и
+стоит проверять перед прод-выкатом.
+
+**База при этом одна.** Preview, прод и локальная разработка ходят в один
+проект Supabase, поэтому «протестировать» на превью — это всё ещё работа с
+боевыми данными. Отдельная база под разработку стоит $0 (на free-тарифе
+Supabase даётся два проекта), но требует второго набора ключей в Vercel.
+
 ## Деплой на Vercel
 
 1. New Project → Import Git Repository → этот репозиторий. Framework Next.js
