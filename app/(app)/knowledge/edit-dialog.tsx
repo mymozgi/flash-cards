@@ -104,7 +104,7 @@ export function EditDialog({
           {node
             ? `Edit “${node.name}”`
             : kind === "deck"
-              ? "Create flashcard group"
+              ? "Create flashcard set"
               : "Create category"}
         </h2>
         {!node && (
@@ -112,8 +112,9 @@ export function EditDialog({
              выглядят одинаково, и без подписи их путают */
           <p className="text-sm text-muted">
             {kind === "deck"
-              ? "A group holds the cards you actually study."
-              : "A category holds groups and other categories, not cards."}
+              ? "A set holds the cards you actually study."
+              // Категория карточек не держит: их место — набор внутри неё
+              : "A category holds sets of cards, never cards themselves."}
           </p>
         )}
 
@@ -173,7 +174,13 @@ export function EditDialog({
           человека на другой экран за категорией, чтобы вернуться и создать
           тему, — это два действия там, где достаточно одного.
         */}
-        {kind === "deck" && !node && (
+        {/*
+          Категория спрашивается, только если она неизвестна. Набор создают,
+          стоя внутри категории, и вопрос «куда» там имеет ровно один ответ —
+          заданный самим местом, откуда нажали. Спрашивать значило бы
+          предлагать передумать о том, о чём человек не раздумывал.
+        */}
+        {kind === "deck" && !node && parentId === null && (
           <label className="block">
             <Label>Category</Label>
             {options.length > 0 ? (

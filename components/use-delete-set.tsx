@@ -24,22 +24,22 @@ export function useDeleteSet() {
 
   const remove = async (deck: Pick<DeckSummary, "id" | "name" | "total">) => {
     /*
-      Подтверждение называет объём. Набор уносит с собой карточки с
-      накопленной историей повторений, и «Delete?» без числа скрывает от
-      человека ровно то, о чём его спрашивают.
+      Подтверждение называет объём и цену. Удаление здесь необратимо: в
+      отличие от корзины, куда попадает карточка, удалённая поодиночке, тут
+      уходит и сама карточка, и её история повторений.
 
-      Про корзину сказано здесь же, и сказано честно. Обещать
-      необратимость, когда карточки возвращаются тридцать дней, значит
-      пугать зря; промолчать — отнять знание, что ошибку можно исправить.
+      Поэтому в тексте есть и число, и слово «permanently», и отдельная
+      строка про невозвратность. «Delete?» без них скрывает ровно то, о чём
+      спрашивает, а цена тут выше обычной.
     */
     const confirmed = await ask({
       title: "Delete set?",
       description:
         deck.total === 0
           ? `“${deck.name}” contains no flashcards. The set is removed for good.`
-          : `“${deck.name}” and its ${deck.total} ${
+          : `“${deck.name}” contains ${deck.total} ${
               deck.total === 1 ? "flashcard" : "flashcards"
-            } leave this category. The set is gone for good; the cards go to the trash and can be restored within 30 days.`,
+            }. Deleting the set permanently deletes every card inside it, along with their review history. This cannot be undone.`,
       confirmLabel: "Delete set",
       tone: "danger",
     });

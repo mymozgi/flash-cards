@@ -61,17 +61,25 @@ export default async function CategoryPage(props: { params: Promise<{ id: string
         </p>
 
         <div className="mt-5 flex flex-wrap gap-2">
-          {/* Учебные экраны остаются прежними: Knowledge — слой над ними,
-              а не замена. Отсюда можно уйти учиться, ничего не переучивая. */}
+          {/*
+            Действия категории — над категорией. «Edit cards» вело в
+            конструктор набора с идентификатором КАТЕГОРИИ и тем самым
+            обещало, что у категории есть свои карточки. Их у неё нет и быть
+            не может: карточка живёт в наборе, это проверяет триггер в базе.
+
+            Практиковать при этом можно всю ветку целиком — очередь собирает
+            карточки всех наборов внутри, и это единственное учебное
+            действие, которое у категории осмысленно.
+          */}
           <LinkButton href={`/review?free=1&topic=${node.id}`} tone="soft">
-            Practice this branch
+            Practice this category
           </LinkButton>
-          <LinkButton href={`/decks/${node.id}`}>Edit cards</LinkButton>
+          <LinkButton href="#sets">Manage sets</LinkButton>
           <LinkButton href={`/library?topic=${node.id}`}>Browse in library</LinkButton>
         </div>
       </header>
 
-      <section className="mt-6">
+      <section id="sets" className="mt-6 scroll-mt-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold tracking-tight">
             {sets.length > 0 ? `Sets · ${sets.length}` : "No sets yet"}

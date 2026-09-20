@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Button, LinkButton } from "@/components/ui/button";
 import { Badge } from "@/components/ui/panel";
-import { PencilIcon, PlusIcon, TrashIcon } from "@/components/icons";
+import { MoreIcon, PencilIcon, PlusIcon, TrashIcon } from "@/components/icons";
 import { Progress } from "@/components/ui/progress";
 import { COVER_ASPECT } from "@/lib/image";
 import type { DeckSummary } from "@/lib/types";
@@ -38,7 +38,7 @@ export function DeckCard({
   selecting = false,
   selected = false,
   onToggle,
-  onDelete,
+  onOpenMenu,
 }: {
   deck: DeckSummary;
   /** Гостевой режим: тренировка пишет оценки, правка меняет данные — обе скрыты. */
@@ -48,9 +48,9 @@ export function DeckCard({
      передать нельзя, туда уезжают только серверные действия. */
   selecting?: boolean;
   selected?: boolean;
-  /* Без обработчика кнопки удаления нет. Кнопка, которая ничего не делает,
-     хуже её отсутствия — а удалять набор осмысленно не на каждом экране. */
-  onDelete?: () => void;
+  /* Без обработчика кнопки меню нет: кнопка, которая ничего не делает, хуже
+     её отсутствия, а действия над набором осмысленны не на каждом экране. */
+  onOpenMenu?: (anchor: { x: number; y: number }) => void;
   onToggle?: () => void;
 }) {
   const ratio = deck.total === 0 ? 0 : Math.round((deck.memorized / deck.total) * 100);
@@ -231,19 +231,20 @@ export function DeckCard({
             </LinkButton>
           </>
         )}
-        {/* Удаление стоит последним и отделено от остальных: рядом с ними
-            промах пальцем стоил бы набора. Тон danger — тот же, что у
-            всякого разрушительного действия в приложении. */}
-        {!readOnly && onDelete && (
+        {/* Остальные действия — в меню. Разрушающее среди них, а не кнопкой
+            в ряду: рядом с Practice промах пальцем стоил бы набора. */}
+        {!readOnly && onOpenMenu && (
           <Button
             size="icon"
-            tone="danger"
-            onClick={onDelete}
-            aria-label={`Delete ${deck.name}`}
-            title="Delete set"
-            className="ml-1"
+            onClick={(event) => {
+              const box = event.currentTarget.getBoundingClientRect();
+              onOpenMenu({ x: box.right - 224, y: box.bottom });
+            }}
+            aria-haspopup="menu"
+            aria-label={`Actions for ${deck.name}`}
+            title="Edit, move cards, archive, delete…"
           >
-            <TrashIcon />
+            <MoreIcon />
           </Button>
         )}
       </div>

@@ -8,7 +8,7 @@ import { Button, LinkButton } from "@/components/ui/button";
 import { panelClass } from "@/components/ui/panel";
 import { DeckCard, type DeckSummary } from "@/components/deck-card";
 import { useConfirm } from "@/components/ui/confirm";
-import { useDeleteSet } from "@/components/use-delete-set";
+import { useSetMenu } from "@/components/use-set-menu";
 import { inputClass, selectClass } from "@/components/ui/field";
 
 const SORTS = [
@@ -44,10 +44,10 @@ export function DecksIndex({
   const [error, setError] = useState<string | null>(null);
   const [busy, startTransition] = useTransition();
   const { ask, dialog } = useConfirm();
-  /* Тот же хук, что и на экране категории: удаление, доступное только с
-     одного экрана, на телефоне равно отсутствующему — эту беду в проекте
-     уже проходили с удалением категории. */
-  const deleteSet = useDeleteSet();
+  /* Тот же хук, что и на экране категории: действия над набором, доступные
+     лишь с одного экрана, на телефоне равны отсутствующим — эту беду в
+     проекте уже проходили с удалением категории. */
+  const setMenu = useSetMenu();
 
   /**
    * Категории для фильтра — корни, у которых действительно что-то есть.
@@ -144,9 +144,8 @@ export function DecksIndex({
   return (
     <div className="flex flex-col gap-4">
       {dialog}
-      {deleteSet.dialog}
-      {deleteSet.toast}
-      {deleteSet.notice}
+      {setMenu.menu}
+      {setMenu.notice}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">My flashcard sets</h1>
         {!readOnly && (
@@ -302,7 +301,7 @@ export function DecksIndex({
               <DeckCard
                 deck={deck}
                 readOnly={readOnly}
-                onDelete={selecting ? undefined : () => deleteSet.remove(deck)}
+                onOpenMenu={selecting ? undefined : (at) => setMenu.open(deck, at)}
                 selecting={selecting}
                 selected={selected.has(deck.id)}
                 onToggle={() =>
