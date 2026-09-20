@@ -6,6 +6,7 @@ import {
   normalizeFront,
   resolveTopicPath,
 } from "@/lib/cards";
+import { isMissingColumn, rememberColumn, tryColumn } from "@/lib/schema";
 import { createCategory } from "../knowledge/actions";
 import { safeUrl } from "@/lib/url";
 
@@ -141,35 +142,44 @@ export async function importRows(
       */
       const url = safeUrl(row.sourceUrl) ?? null;
 
-      const payload = {
+      const base = {
         topic_id: topicId,
         front_md: front,
         back_md: back,
         note_md: row.note.trim() || null,
         example_md: row.example.trim() || null,
         link_url: url,
-        source_label: row.source.trim() || null,
       };
 
-      if (duplicateId && strategy === "update") {
-        const { error } = await supabase
-          .from("cards")
-          .update(payload)
-          .eq("id", duplicateId)
-          .eq("user_id", user.id);
-        if (error) throw new Error(error.message);
-        result.created += 1;
-        continue;
+      /*
+        Читаемое имя источника — колонка из миграции 0024, которой в базе
+        может ещё не быть. Правило «необязательные данные не должны быть
+        обязательными для запроса» написано в проекте про SELECT, но у
+        INSERT отказ тот же и цена выше: не украшение пропадёт, а не
+        запишется ни одна карточка.
+
+        Отсутствие колонки распознаётся по коду ошибки и запоминается на
+        процесс, поэтому повтор бывает один раз, а не на каждой строке.
+      */
+      const label = row.source.trim() || null;
+      const write = async (withLabel: boolean) => {
+        const payload = withLabel ? { ...base, source_label: label } : base;
+        return duplicateId && strategy === "update"
+          ? supabase.from("cards").update(payload).eq("id", duplicateId).eq("user_id", user.id)
+          : supabase
+              .from("cards")
+              .insert({ ...payload, user_id: user.id, import_batch_id: batchId });
+      };
+
+      let attempt = await write(tryColumn("source_label"));
+      if (attempt.error && isMissingColumn(attempt.error)) {
+        rememberColumn("source_label", false);
+        attempt = await write(false);
+      } else if (!attempt.error) {
+        rememberColumn("source_label", true);
       }
+      if (attempt.error) throw new Error(attempt.error.message);
 
-      const { data: created, error } = await supabase
-        .from("cards")
-        .insert({ ...payload, user_id: user.id, import_batch_id: batchId })
-        .select("id")
-        .single();
-      if (error) throw new Error(error.message);
-
-      void created;
       result.created += 1;
     } catch (e) {
       result.errors.push({
