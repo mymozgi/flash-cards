@@ -649,20 +649,21 @@ function DeckHeader({
               />
             </div>
           )}
-          <div className="flex items-start justify-between gap-3">
-            <h1 className="text-2xl font-semibold tracking-tight">{deck.name}</h1>
-            <div className="flex shrink-0 items-center gap-3">
-              <span
-                aria-hidden
-                className="size-2.5 rounded-full"
-                style={{ background: deck.color || "var(--accent)" }}
-              />
-              <Button size="sm" onClick={onEdit}>
-                <PencilIcon />
-                Edit details
-              </Button>
-            </div>
-          </div>
+          {/*
+            Панель идёт сверху вниз, а не в два столбца. Она живёт в колонке
+            23rem, и кнопка рядом с заголовком отбирала у него половину: имя
+            «xr ar vr spatial flashcards» ломалось на три строки, теряя вид
+            заголовка. Сверху вниз имя получает всю ширину на любом экране.
+          */}
+          <h1 className="flex items-start gap-2.5 text-2xl font-semibold tracking-tight">
+            {/* точка цвета набора: держится имени, а не кнопки */}
+            <span
+              aria-hidden
+              className="mt-2 size-2.5 shrink-0 rounded-full"
+              style={{ background: deck.color || "var(--accent)" }}
+            />
+            <span className="min-w-0 break-words">{deck.name}</span>
+          </h1>
           <div className="mt-3 flex flex-wrap gap-2 text-xs">
             <span className="rounded-full border border-line px-3 py-1 text-muted">
               {count} {count === 1 ? "card" : "cards"}
@@ -674,6 +675,12 @@ function DeckHeader({
             )}
           </div>
           {deck.description && <p className="mt-3 text-sm text-muted">{deck.description}</p>}
+          {/* Соседей у кнопки нет, поэтому она берёт полную ширину и обычный
+              размер: правка деталей — единственное действие этой панели. */}
+          <Button onClick={onEdit} className="mt-4 w-full">
+            <PencilIcon />
+            Edit details
+          </Button>
         </>
       )}
     </header>
