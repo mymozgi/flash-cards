@@ -238,3 +238,8 @@ Invoke through `Skill`, with no leading slash.
 
 Audio or video on cards, shared decks, LLM card generation, native apps,
 `.apkg` import, push notifications, gamification (streaks, points).
+
+Duplicating a category, too. It resolves to one of two things and neither is
+wanted: copies of the cards inside it, which the no-copies rule forbids
+because two copies mean two review histories for one piece of knowledge; or an
+empty shell, which is faster to create by hand than to explain.
