@@ -369,21 +369,19 @@ export function DeckWorkspace({
 
   return (
     /*
-      Две колонки на большом экране: слева работа с карточками, справа —
-      сведения о наборе. Панель сведений залипает, потому что список карточек
-      длинный, а имя набора и обложка нужны глазу всё время, пока по нему идёт
-      правка.
+      Одна колонка: шапка сверху, карточки под ней, страница прокручивается
+      целиком как документ.
 
-      Порядок в разметке не переставлен: сведения идут первыми и на телефоне
-      остаются сверху — это заголовок раздела, с него начинают и читатель, и
-      скринридер. На широком экране сетка переносит их во вторую колонку,
-      оставляя первую строку общей.
+      Раньше здесь была сетка со второй колонкой в 23rem, и та колонка
+      залипала. Залипающая панель сведений отбирала пятую часть ширины у
+      единственной работы этого экрана — правки карточек, — и делала это
+      постоянно, ради имени и обложки, которые нужны один раз при входе.
+      Шапка принадлежит странице, а не окну просмотра, и уезжает вместе с ней.
     */
-    <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_23rem]">
+    <div className="flex flex-col gap-4">
       {dialog}
       {destinationDialog}
       <DeckHeader
-        className="lg:sticky lg:top-4 lg:col-start-2 lg:row-start-1"
         deck={deck}
         userId={userId}
         count={cards.length}
@@ -406,10 +404,12 @@ export function DeckWorkspace({
           setDetails(null);
           router.refresh();
         }}
-      />
+      >
 
-      <div className="flex min-w-0 flex-col gap-4 lg:col-start-1 lg:row-start-1">
-      <div className={`${PANEL} flex flex-wrap items-center gap-2 p-2`}>
+        {/* Ряд управления живёт в той же шапке: поиск, вид, учебные экраны и
+            сохранение — это действия НАД этим набором, и отрывать их от его
+            имени незачем. */}
+        <div className="flex flex-wrap items-center gap-2 border-t border-line pt-4">
         <div className="relative w-full min-w-0 sm:flex-1">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint">
             <SearchIcon />
@@ -449,8 +449,10 @@ export function DeckWorkspace({
           {!saving && <CheckIcon />}
           {saving ? "Saving…" : dirty.size > 0 ? `Save ${dirty.size}` : orderDirty ? "Save order" : "Save cards"}
         </Button>
-      </div>
+        </div>
+      </DeckHeader>
 
+      <div className="flex min-w-0 flex-col gap-4">
       {status && (
         <p
           role={status.kind === "error" ? "alert" : "status"}
@@ -483,12 +485,16 @@ export function DeckWorkspace({
 
 
         {/*
-          Панель появляется только когда что-то отмечено, и липнет к верху:
-          в колоде на семьдесят карточек отметить нижние и потерять кнопку
-          переноса за экраном — то же, что не иметь её вовсе.
+          Панель появляется только когда что-то отмечено, и стоит над списком
+          обычным блоком. Залипания у неё нет намеренно: страница
+          прокручивается целиком как документ, плавающих тулбаров на ней нет.
+
+          Цена известна: отметив карточку в самом низу длинной колоды, за
+          кнопкой переноса придётся подняться наверх. Выбор при этом не
+          теряется — он переживает и прокрутку, и поиск.
         */}
         {picked.size > 0 && (
-          <div className={`${PANEL} sticky top-4 z-10 flex flex-wrap items-center gap-2 p-2`}>
+          <div className={`${PANEL} flex flex-wrap items-center gap-2 p-2`}>
             <span className="px-2 text-sm font-semibold tabular-nums">
               {picked.size} selected
             </span>
@@ -686,11 +692,14 @@ function DeckHeader({
   onCancel,
   onChange,
   onSave,
+  children,
 }: {
   deck: Deck;
   count: number;
   userId: string;
   className?: string;
+  /** Ряд управления. Живёт в шапке, потому что относится к этому же набору. */
+  children?: React.ReactNode;
   editing: Deck | null;
   onEdit: () => void;
   onCancel: () => void;
@@ -698,7 +707,15 @@ function DeckHeader({
   onSave: () => void;
 }) {
   return (
-    <header className={`${PANEL} p-4 sm:p-5 ${className}`}>
+    /*
+      Полоса акцента слева опознаёт набор цветом, не тратя на это ни строки
+      текста. Она сделана рамкой, а не отдельным элементом: так она лежит
+      внутри скругления контейнера и не спорит с ним углом.
+    */
+    <header
+      className={`${PANEL} border-l-4 p-4 sm:p-5 ${className}`}
+      style={{ borderLeftColor: deck.color || "var(--accent)" }}
+    >
       {editing ? (
         <div className="flex flex-col gap-3">
           <input
@@ -739,57 +756,57 @@ function DeckHeader({
         </div>
       ) : (
         <>
-          {deck.coverUrl && (
-            /* Обложка над названием, а не рядом: на 360 px рядом ей места нет,
-               а сверху она одинаково работает на любой ширине. Вписывается
-               целиком, как и на плитке: у схемы срезанный край отнимает смысл. */
-            <div
-              className="relative mb-4 h-32 overflow-hidden rounded-lg sm:h-40"
-              style={{
-                background: `color-mix(in srgb, ${deck.color || "var(--accent)"} 12%, var(--surface))`,
-              }}
-            >
-              <img
-                src={deck.coverUrl}
-                alt=""
-                className="absolute inset-0 m-auto h-full w-auto max-w-none"
-              />
-            </div>
-          )}
           {/*
-            Панель идёт сверху вниз, а не в два столбца. Она живёт в колонке
-            23rem, и кнопка рядом с заголовком отбирала у него половину: имя
-            «xr ar vr spatial flashcards» ломалось на три строки, теряя вид
-            заголовка. Сверху вниз имя получает всю ширину на любом экране.
+            Шапка страницы: обложка слева, сведения справа. В узкой колонке
+            обложка стояла над именем, потому что рядом ей места не было;
+            теперь шапка во всю ширину, и горизонтальный ряд читается как
+            заголовок раздела.
           */}
-          <h1 className="flex items-start gap-2.5 text-2xl font-semibold tracking-tight">
-            {/* точка цвета набора: держится имени, а не кнопки */}
-            <span
-              aria-hidden
-              className="mt-2 size-2.5 shrink-0 rounded-full"
-              style={{ background: deck.color || "var(--accent)" }}
-            />
-            <span className="min-w-0 break-words">{deck.name}</span>
-          </h1>
-          <div className="mt-3 flex flex-wrap gap-2 text-xs">
-            <span className="rounded-full border border-line px-3 py-1 text-muted">
-              {count} {count === 1 ? "card" : "cards"}
-            </span>
-            {deck.parentName && (
-              <span className="rounded-full border border-line px-3 py-1 text-muted">
-                {deck.parentName}
-              </span>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+            {deck.coverUrl && (
+              /* Вписывается целиком, а не кадрируется: у схемы или обложки
+                 срезанный край отнимает смысл. */
+              <div
+                className="relative h-28 w-full shrink-0 overflow-hidden rounded-lg sm:h-24 sm:w-40"
+                style={{
+                  background: `color-mix(in srgb, ${deck.color || "var(--accent)"} 12%, var(--surface))`,
+                }}
+              >
+                <img
+                  src={deck.coverUrl}
+                  alt=""
+                  className="absolute inset-0 m-auto h-full w-auto max-w-none"
+                />
+              </div>
             )}
+
+            <div className="min-w-0 flex-1">
+              <h1 className="break-words text-2xl font-semibold tracking-tight">{deck.name}</h1>
+              {/* Счётчик и категория одной строкой через точку: это подпись
+                  под именем, а не набор самостоятельных меток. */}
+              <p className="mt-1.5 text-sm text-muted">
+                <span className="tabular-nums">{count}</span>{" "}
+                {count === 1 ? "card" : "cards"}
+                {deck.parentName && (
+                  <>
+                    {" · "}
+                    <span className="text-ink">{deck.parentName}</span>
+                  </>
+                )}
+              </p>
+              {deck.description && (
+                <p className="mt-2 max-w-prose text-sm text-muted">{deck.description}</p>
+              )}
+            </div>
+
+            <Button onClick={onEdit} className="shrink-0 self-start">
+              <PencilIcon />
+              Edit details
+            </Button>
           </div>
-          {deck.description && <p className="mt-3 text-sm text-muted">{deck.description}</p>}
-          {/* Соседей у кнопки нет, поэтому она берёт полную ширину и обычный
-              размер: правка деталей — единственное действие этой панели. */}
-          <Button onClick={onEdit} className="mt-4 w-full">
-            <PencilIcon />
-            Edit details
-          </Button>
         </>
       )}
+      {children}
     </header>
   );
 }
