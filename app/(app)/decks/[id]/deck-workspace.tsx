@@ -27,7 +27,7 @@ import {
 } from "@/lib/image";
 import { safeUrl } from "@/lib/url";
 import { discardUpload, uploadCover, uploadImage } from "@/lib/upload";
-import { Button, LinkButton } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { cellInputClass, inputClass, Label as FieldLabel } from "@/components/ui/field";
 import { panelClass } from "@/components/ui/panel";
 import { useConfirm } from "@/components/ui/confirm";
@@ -471,12 +471,16 @@ export function DeckWorkspace({
           setDetails(null);
           router.refresh();
         }}
-      >
+      />
 
-        {/* Ряд управления живёт в той же шапке: поиск, вид, учебные экраны и
-            сохранение — это действия НАД этим набором, и отрывать их от его
-            имени незачем. */}
-        <div className="flex flex-wrap items-center gap-2 border-t border-line pt-4">
+      {/*
+        Панель редактора — отдельная поверхность, а не строка внутри формы
+        набора. Это разные уровни: выше отвечают на «что это за набор», здесь
+        на «как я смотрю и сохраняю карточки». Слитые в один контейнер, они
+        делали «Save details» и «Save cards» соседями по ряду, хотя сохраняют
+        они разное.
+      */}
+      <div className={`${PANEL} mt-2 flex flex-wrap items-center gap-2 p-2`}>
         <div className="relative w-full min-w-0 sm:flex-1">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint">
             <SearchIcon />
@@ -509,15 +513,16 @@ export function DeckWorkspace({
           ))}
         </div>
 
-        <LinkButton href={`/decks/${deck.id}/study`}>Study</LinkButton>
-        <LinkButton href={`/review?free=1&topic=${deck.id}`}>Practice</LinkButton>
-
+        {/*
+          Study и Practice отсюда убраны. Это экран правки, и учебные
+          действия в нём предлагали выйти из работы посреди работы. Живут они
+          там, где набор выбирают: на плитке и в её меню.
+        */}
         <Button tone="primary" onClick={save} loading={saving} disabled={uploading}>
           {!saving && <CheckIcon />}
           {saving ? "Saving…" : dirty.size > 0 ? `Save ${dirty.size}` : orderDirty ? "Save order" : "Save cards"}
         </Button>
-        </div>
-      </DeckHeader>
+      </div>
 
       <div className="flex min-w-0 flex-col gap-4">
       {status && (
@@ -760,14 +765,11 @@ function DeckHeader({
   onCancel,
   onChange,
   onSave,
-  children,
 }: {
   deck: Deck;
   count: number;
   userId: string;
   className?: string;
-  /** Ряд управления. Живёт в шапке, потому что относится к этому же набору. */
-  children?: React.ReactNode;
   editing: Deck | null;
   onEdit: () => void;
   onCancel: () => void;
@@ -875,7 +877,6 @@ function DeckHeader({
           </div>
         </>
       )}
-      {children}
     </header>
   );
 }
