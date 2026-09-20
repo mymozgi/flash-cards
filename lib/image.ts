@@ -108,3 +108,41 @@ export function formatBytes(bytes: number): string {
     ? `${Math.round(bytes / 1024)} KB`
     : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
+
+/**
+ * Подпись пропорции для сведений об изображении: «2:3», «16:9».
+ *
+ * Считать через НОД бесполезно: 250×385 даст «50:77» — формально верно и
+ * ничего не сообщает. Человеку нужно не точное отношение, а ближайший
+ * знакомый формат, и только если картинка правда на него похожа.
+ *
+ * Не похожа ни на один — подписи нет вовсе. Соврать здесь хуже, чем
+ * промолчать: по этой подписи выбирают формат карточки.
+ */
+const KNOWN_RATIOS: [string, number][] = [
+  ["1:1", 1],
+  ["2:3", 2 / 3],
+  ["3:2", 3 / 2],
+  ["3:4", 3 / 4],
+  ["4:3", 4 / 3],
+  ["9:16", 9 / 16],
+  ["16:9", 16 / 9],
+];
+
+/** Допуск 3%: 250×385 это 0,649 против 0,667 у 2:3 — разница 2,7%. */
+const RATIO_TOLERANCE = 0.03;
+
+export function ratioLabel(width: number, height: number): string | null {
+  if (!Number.isFinite(width) || !Number.isFinite(height)) return null;
+  if (width <= 0 || height <= 0) return null;
+
+  const actual = width / height;
+  let best: { label: string; off: number } | null = null;
+
+  for (const [label, value] of KNOWN_RATIOS) {
+    const off = Math.abs(actual - value) / value;
+    if (off <= RATIO_TOLERANCE && (!best || off < best.off)) best = { label, off };
+  }
+
+  return best?.label ?? null;
+}

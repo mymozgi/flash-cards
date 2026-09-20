@@ -336,7 +336,7 @@ export async function mediaForCards(cardIds: string[]): Promise<Map<string, Medi
   const supabase = await createClient();
   const { data } = await supabase
     .from("media")
-    .select("id,card_id,side,storage_path,thumb_path,width,height,caption,position")
+    .select("id,card_id,side,storage_path,thumb_path,width,height,bytes,caption,position")
     .in("card_id", cardIds)
     .order("position");
 
@@ -348,6 +348,7 @@ export async function mediaForCards(cardIds: string[]): Promise<Map<string, Medi
     thumb_path: string;
     width: number;
     height: number;
+    bytes: number | null;
     caption: string | null;
     position: number;
   }[]) {
@@ -359,6 +360,7 @@ export async function mediaForCards(cardIds: string[]): Promise<Map<string, Medi
       thumbUrl: publicUrl(row.thumb_path),
       width: row.width,
       height: row.height,
+      bytes: row.bytes ?? 0,
       caption: row.caption,
       position: row.position,
     });

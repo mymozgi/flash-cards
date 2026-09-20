@@ -291,6 +291,41 @@ export function DeckWorkspace({
     }
   };
 
+  /**
+   * Замена изображения на месте: новое встаёт в ту же позицию, старое
+   * помечается к уборке. Удалить и добавить заново не то же самое — так
+   * изображение уехало бы в конец списка, а порядок здесь виден на карточке.
+   */
+  const replaceImage = async (
+    card: DeckCard,
+    side: "front" | "back",
+    index: number,
+    file: File,
+  ) => {
+    const key = side === "front" ? "frontImages" : "backImages";
+    const old = card[key][index];
+    if (!old) return;
+
+    setUploading(true);
+    try {
+      const fresh = await uploadImage(userId, card.id, file);
+      update(card.id, {
+        [key]: card[key].map((img, i) => (i === index ? fresh : img)),
+      } as Partial<DeckCard>);
+      void discardUpload(old);
+    } catch (e) {
+      setStatus({
+        kind: "error",
+        text:
+          e instanceof ImageError || e instanceof Error
+            ? e.message
+            : "Could not replace the image",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const patchImages = (card: DeckCard, side: "front" | "back", next: EditorImage[]) => {
     const key = side === "front" ? "frontImages" : "backImages";
     update(card.id, { [key]: next } as Partial<DeckCard>);
@@ -559,6 +594,7 @@ export function DeckWorkspace({
                   onDelete={drop}
                   onAddImages={addImages}
                   onPatchImages={patchImages}
+                  onReplaceImage={replaceImage}
                 />
               </div>
             ))}
@@ -822,10 +858,20 @@ function DeckHeader({
  * нужно, их в карточке и так достаточно. Первой подписи отступ не достаётся —
  * над ней уже поле контейнера.
  */
-function Label({ children }: { children: React.ReactNode }) {
+function Label({
+  children,
+  required,
+  hint,
+}: {
+  children: React.ReactNode;
+  required?: boolean;
+  hint?: React.ReactNode;
+}) {
   return (
     <div className="mt-6 first:mt-0">
-      <FieldLabel>{children}</FieldLabel>
+      <FieldLabel required={required} hint={hint}>
+        {children}
+      </FieldLabel>
     </div>
   );
 }
@@ -846,6 +892,7 @@ function CardBlock({
   onDelete,
   onAddImages,
   onPatchImages,
+  onReplaceImage,
 }: {
   card: DeckCard;
   index: number;
@@ -865,6 +912,7 @@ function CardBlock({
   onDelete: (card: DeckCard) => void;
   onAddImages: (card: DeckCard, side: "front" | "back", files: File[]) => void;
   onPatchImages: (card: DeckCard, side: "front" | "back", next: EditorImage[]) => void;
+  onReplaceImage: (card: DeckCard, side: "front" | "back", index: number, file: File) => void;
 }) {
   return (
     /*
@@ -1046,7 +1094,7 @@ function CardBlock({
         </>
       )}
 
-      <Label>Question</Label>
+      <Label required>Question</Label>
       <textarea
         value={card.term}
         onChange={(e) => onUpdate(card.id, { term: e.target.value })}
@@ -1064,13 +1112,7 @@ function CardBlock({
             onPatchImages(card, "front", card.frontImages.filter((_, k) => k !== i));
             void discardUpload(image);
           }}
-          onCaption={(i, caption) =>
-            onPatchImages(
-              card,
-              "front",
-              card.frontImages.map((img, k) => (k === i ? { ...img, caption } : img)),
-            )
-          }
+          onReplace={(i, file) => onReplaceImage(card, "front", i, file)}
           onMove={(i, delta) => {
             const next = [...card.frontImages];
             const target = i + delta;
@@ -1111,7 +1153,7 @@ function CardBlock({
         </>
       ) : (
         <>
-          <Label>Answer</Label>
+          <Label required>Answer</Label>
           <textarea
             value={card.options[card.correctIndex] ?? ""}
             onChange={(e) => onOption(card, card.correctIndex, e.target.value)}
@@ -1131,13 +1173,7 @@ function CardBlock({
             onPatchImages(card, "back", card.backImages.filter((_, k) => k !== i));
             void discardUpload(image);
           }}
-          onCaption={(i, caption) =>
-            onPatchImages(
-              card,
-              "back",
-              card.backImages.map((img, k) => (k === i ? { ...img, caption } : img)),
-            )
-          }
+          onReplace={(i, file) => onReplaceImage(card, "back", i, file)}
           onMove={(i, delta) => {
             const next = [...card.backImages];
             const target = i + delta;
@@ -1148,31 +1184,29 @@ function CardBlock({
         />
       </div>
 
-      <Label>Example (optional)</Label>
+      <Label hint="A concrete case that makes the idea easier to hold on to.">Example</Label>
       <input
         value={card.example}
         onChange={(e) => onUpdate(card.id, { example: e.target.value })}
-        placeholder="Example…"
         className={FIELD}
       />
 
-      <Label>Note — shown only after the answer</Label>
+      <Label hint="Shown only after the answer. Mnemonics, counter-examples, anything that would give the answer away too early.">Note</Label>
       <textarea
         value={card.note}
         onChange={(e) => onUpdate(card.id, { note: e.target.value })}
         rows={2}
-        placeholder="Mnemonic, counter-example…"
         className={`${FIELD} resize-y`}
       />
 
-      <Label>Source — where this came from</Label>
+      <Label hint="Where this knowledge came from: a book, an article, a video. http and https links only.">Source</Label>
       {/* Ссылка, а не текст: у источника есть адрес, и половина смысла поля
           в том, чтобы вернуться к нему одним нажатием. Схему можно не писать,
           допишется https:// */}
       <input
         value={card.source}
         onChange={(e) => onUpdate(card.id, { source: e.target.value })}
-        placeholder="goodreads.com/book/… · a chapter, an article, a video"
+        placeholder="goodreads.com/book/…"
         inputMode="url"
         className={FIELD}
       />

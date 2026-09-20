@@ -104,7 +104,9 @@ export default async function DeckPage(props: { params: Promise<{ id: string }> 
           thumbUrl: m.thumbUrl,
           width: m.width,
           height: m.height,
-          bytes: 0,
+          // прежде здесь стоял ноль, и в сведениях у каждой картинки после
+          // перезагрузки значилось «0 KB»
+          bytes: m.bytes,
           caption: m.caption ?? "",
         }));
 

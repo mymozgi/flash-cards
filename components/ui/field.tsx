@@ -5,6 +5,8 @@
  * где-то серая заливка с рамкой по фокусу, где-то постоянная рамка.
  * Здесь один вид и одно место, где его менять.
  */
+
+import { Hint } from "./hint";
 /**
  * Граница видима всегда, а не только в фокусе: заливка #f1f3f5 даёт контраст
  * 1,03 с фоном страницы и 1,11 с белой панелью — поле неотличимо от воздуха.
@@ -42,8 +44,42 @@ export const cellInputClass =
   "w-full rounded-md border border-transparent bg-transparent px-2.5 py-1.5 text-sm " +
   "hover:border-line focus:border-accent focus:bg-surface";
 
-export function Label({ children }: { children: React.ReactNode }) {
-  return <span className="block pb-2 text-sm font-semibold text-ink">{children}</span>;
+/**
+ * Подпись поля.
+ *
+ * Отвечает на один вопрос — «что это за поле». Обязательность помечается
+ * звёздочкой, а не словом «(required)»; необязательность не помечается вовсе,
+ * потому что помечать нечего: поле без звёздочки и есть необязательное.
+ *
+ * Звёздочка сама по себе для скринридера — просто символ, поэтому рядом
+ * лежит скрытое слово. Цветом одним обходиться нельзя по той же причине.
+ *
+ * Пояснение уходит в `hint` и всплывает по наведению или фокусу. В подписи
+ * ему не место: его читают один раз, а занимает оно место всегда.
+ */
+export function Label({
+  children,
+  required = false,
+  hint,
+}: {
+  children: React.ReactNode;
+  required?: boolean;
+  hint?: React.ReactNode;
+}) {
+  return (
+    <span className="flex items-center gap-1.5 pb-2 text-sm font-semibold text-ink">
+      {children}
+      {required && (
+        <>
+          <span aria-hidden className="text-rust">
+            *
+          </span>
+          <span className="sr-only">(required)</span>
+        </>
+      )}
+      {hint && <Hint>{hint}</Hint>}
+    </span>
+  );
 }
 
 /**

@@ -1,26 +1,47 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { MAX_IMAGES_PER_SIDE, formatBytes } from "@/lib/image";
+import {
+  MAX_IMAGES_PER_SIDE,
+  MAX_SOURCE_BYTES,
+  formatBytes,
+  ratioLabel,
+} from "@/lib/image";
 import { CloseIcon, ImageIcon, PlusIcon } from "@/components/icons";
 import type { EditorImage } from "@/lib/types";
 
+/**
+ * Изображения одной стороны карточки.
+ *
+ * Подписи к изображению здесь нет. Она занимала целое поле ввода в каждой
+ * строке и почти никогда не заполнялась: на карточке изображение и есть
+ * содержание, называть его отдельно нечем.
+ *
+ * Осталось то, чем изображением управляют: превью, размеры, пропорция, вес,
+ * замена и удаление. Имени файла среди них нет и быть не может — при загрузке
+ * файл пережимается в WebP и получает случайное имя, исходное никуда не
+ * записывается.
+ */
 export function ImageStrip({
   images,
   busy,
   onAdd,
   onRemove,
-  onCaption,
+  onReplace,
   onMove,
 }: {
   images: EditorImage[];
   busy: boolean;
   onAdd: (files: File[]) => void;
   onRemove: (index: number) => void;
-  onCaption: (index: number, caption: string) => void;
+  /** Замена на месте: позиция и порядок сохраняются. */
+  onReplace: (index: number, file: File) => void;
   onMove: (index: number, delta: number) => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
+  const swap = useRef<HTMLInputElement>(null);
+  /** Какую строку меняем. Один скрытый input на весь список, а не на строку. */
+  const replacing = useRef<number | null>(null);
   const [dragging, setDragging] = useState(false);
   const full = images.length >= MAX_IMAGES_PER_SIDE;
 
@@ -48,58 +69,78 @@ export function ImageStrip({
     >
       {images.length > 0 && (
         <ul className="mb-2 flex flex-col gap-2">
-          {images.map((image, index) => (
-            <li key={image.storagePath} className="flex items-start gap-2">
-              {/* обычный img, а не next/image: файл уже сжат на клиенте,
-                  а оптимизация картинок на Vercel Hobby лимитирована */}
-              <img
-                src={image.thumbUrl}
-                alt=""
-                width={64}
-                height={64}
-                className="size-16 shrink-0 rounded border border-line object-cover"
-              />
-              <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <input
-                  value={image.caption}
-                  onChange={(e) => onCaption(index, e.target.value)}
-                  placeholder="Caption — optional"
-                  className="w-full rounded-md border-control border-field-line bg-surface px-2.5 py-1.5 text-xs"
+          {images.map((image, index) => {
+            const ratio = ratioLabel(image.width, image.height);
+            return (
+              <li key={image.storagePath} className="flex items-center gap-3">
+                {/* обычный img, а не next/image: файл уже сжат на клиенте,
+                    а оптимизация картинок на Vercel Hobby лимитирована */}
+                <img
+                  src={image.thumbUrl}
+                  alt=""
+                  width={56}
+                  height={56}
+                  className="size-14 shrink-0 rounded border border-line object-cover"
                 />
-                <span className="font-mono text-2xs text-faint">
-                  {image.width}×{image.height} · {formatBytes(image.bytes)}
-                </span>
-              </div>
-              <div className="flex shrink-0 flex-col gap-0.5 text-xs">
-                <button
-                  type="button"
-                  onClick={() => onMove(index, -1)}
-                  disabled={index === 0}
-                  aria-label="Move up"
-                  className="px-1.5 text-faint hover:text-ink disabled:opacity-30"
-                >
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onMove(index, 1)}
-                  disabled={index === images.length - 1}
-                  aria-label="Move down"
-                  className="px-1.5 text-faint hover:text-ink disabled:opacity-30"
-                >
-                  ↓
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onRemove(index)}
-                  aria-label="Remove image"
-                  className="px-1.5 text-faint hover:text-rust"
-                >
-                  <CloseIcon className="size-3.5" />
-                </button>
-              </div>
-            </li>
-          ))}
+
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                  <span className="font-mono text-2xs text-faint">
+                    {image.width}×{image.height} px
+                    {ratio && ` · ${ratio}`}
+                    {/* Ноль означает «размер неизвестен», а не пустой файл:
+                        у старых записей его могло не быть. Показывать «0 KB»
+                        значило бы утверждать то, чего мы не знаем. */}
+                    {image.bytes > 0 && ` · ${formatBytes(image.bytes)}`}
+                  </span>
+                  <span className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => {
+                        replacing.current = index;
+                        swap.current?.click();
+                      }}
+                      className="text-accent hover:underline disabled:opacity-40"
+                    >
+                      Replace
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onRemove(index)}
+                      className="inline-flex items-center gap-1 text-faint hover:text-rust"
+                    >
+                      <CloseIcon className="size-3" />
+                      Remove
+                    </button>
+                  </span>
+                </div>
+
+                {/* Порядок нужен, только когда изображений правда несколько */}
+                {images.length > 1 && (
+                  <div className="flex shrink-0 flex-col gap-0.5 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => onMove(index, -1)}
+                      disabled={index === 0}
+                      aria-label="Move up"
+                      className="px-1.5 text-faint hover:text-ink disabled:opacity-30"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onMove(index, 1)}
+                      disabled={index === images.length - 1}
+                      aria-label="Move down"
+                      className="px-1.5 text-faint hover:text-ink disabled:opacity-30"
+                    >
+                      ↓
+                    </button>
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
 
@@ -111,6 +152,19 @@ export function ImageStrip({
         hidden
         onChange={(e) => pick(e.target.files)}
       />
+      <input
+        ref={swap}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          const at = replacing.current;
+          replacing.current = null;
+          e.target.value = "";
+          if (file && at !== null) onReplace(at, file);
+        }}
+      />
 
       {images.length === 0 ? (
         /* Пустая зона — сама себе кнопка: попасть в область проще, чем
@@ -119,7 +173,7 @@ export function ImageStrip({
           type="button"
           onClick={() => input.current?.click()}
           disabled={busy}
-          className="flex min-h-28 w-full flex-col items-center justify-center gap-1.5 px-4 py-6 text-center disabled:opacity-60"
+          className="flex min-h-32 w-full flex-col items-center justify-center gap-1.5 px-4 py-6 text-center disabled:opacity-60"
         >
           <ImageIcon className="size-7 text-faint" />
           <span className="text-sm font-medium text-accent">
@@ -127,6 +181,10 @@ export function ImageStrip({
           </span>
           <span className="text-2xs text-faint">
             or drop a file here, or paste from the clipboard
+          </span>
+          {/* Ограничения названы до загрузки, а не в отказе после неё */}
+          <span className="mt-1 font-mono text-2xs text-faint">
+            up to {formatBytes(MAX_SOURCE_BYTES)} · JPG, PNG, WebP, GIF
           </span>
         </button>
       ) : (
@@ -147,7 +205,6 @@ export function ImageStrip({
           </span>
         </div>
       )}
-
     </div>
   );
 }

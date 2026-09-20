@@ -109,6 +109,8 @@ export type MediaItem = {
   thumbUrl: string;
   width: number;
   height: number;
+  /** Размер файла. Ноль означает «неизвестен», а не пустой файл. */
+  bytes: number;
   caption: string | null;
   position: number;
 };
