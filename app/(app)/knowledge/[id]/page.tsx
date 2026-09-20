@@ -1,15 +1,27 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getKnowledgeTree } from "@/lib/knowledge";
+import { getDeckSummaries } from "@/lib/data";
 import { LinkButton } from "@/components/ui/button";
 import { panelClass } from "@/components/ui/panel";
-import { CategoryCard } from "../category-card";
+import { DeckCard } from "@/components/deck-card";
 
 export default async function CategoryPage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;
-  const tree = await getKnowledgeTree({ includeArchived: true });
+  const [tree, summaries] = await Promise.all([
+    getKnowledgeTree({ includeArchived: true }),
+    getDeckSummaries(),
+  ]);
   const node = tree.flat.find((n) => n.id === id);
   if (!node) notFound();
+
+  /*
+    Внутри категории лежат НАБОРЫ, и рисовать их надо плиткой набора, а не
+    плиткой категории. Прежде здесь стояла вторая CategoryCard: набор
+    показывался папкой, у которой внутри ноль папок, — то есть содержимое
+    выдавалось за контейнер.
+  */
+  const sets = summaries.filter((deck) => deck.ancestors.includes(id));
 
   const tint = node.color || "var(--accent)";
   const trail = node.path.split(" / ").slice(0, -1);
@@ -42,8 +54,8 @@ export default async function CategoryPage(props: { params: Promise<{ id: string
             {node.cards === 1 ? "card" : "cards"} in this branch
           </span>
           <span className="label-micro">
-            <span className="tabular-nums">{node.descendants}</span>{" "}
-            {node.descendants === 1 ? "subcategory" : "subcategories"}
+            <span className="tabular-nums">{sets.length}</span>{" "}
+            {sets.length === 1 ? "set" : "sets"}
           </span>
         </p>
 
@@ -60,26 +72,28 @@ export default async function CategoryPage(props: { params: Promise<{ id: string
 
       <section className="mt-6">
         <h2 className="text-lg font-semibold tracking-tight">
-          {node.children.length > 0
-            ? `Subcategories · ${node.children.length}`
-            : "No subcategories yet"}
+          {sets.length > 0 ? `Sets · ${sets.length}` : "No sets yet"}
         </h2>
 
-        {node.children.length > 0 ? (
-          <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {node.children.map((child) => (
-              <li key={child.id}>
-                {/* Без меню: правка живёт на экране категорий, где рядом
-                    дерево и подтверждения. Кнопка-заглушка была бы хуже
-                    её отсутствия. */}
-                <CategoryCard node={child} />
+        {sets.length > 0 ? (
+          <ul className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {sets.map((deck) => (
+              <li key={deck.id}>
+                <DeckCard deck={deck} />
               </li>
             ))}
           </ul>
         ) : (
-          <p className="mt-3 rounded-xl border border-line bg-surface py-12 text-center text-sm text-muted">
-            Nesting arrives with the structure editor. For now this category holds cards directly.
-          </p>
+          /* Пустая категория — начало, а не поломка. Говорим, чем наполнить,
+             и куда за этим идти: создание набора живёт в меню категории. */
+          <div className="mt-3 rounded-xl border border-line bg-surface px-5 py-12 text-center">
+            <p className="text-sm text-muted">
+              A category holds flashcard sets. This one is empty so far.
+            </p>
+            <LinkButton href="/knowledge" tone="soft" className="mt-4">
+              Add a set from the category menu
+            </LinkButton>
+          </div>
         )}
       </section>
     </>

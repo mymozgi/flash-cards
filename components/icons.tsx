@@ -45,6 +45,16 @@ export const GridIcon = (p: IconProps) => (
   </Svg>
 );
 
+/* Карта знаний: три узла и связи между ними — то, что она и рисует. */
+export const MapIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="8" cy="3" r="1.75" />
+    <circle cx="3.5" cy="12.5" r="1.75" />
+    <circle cx="12.5" cy="12.5" r="1.75" />
+    <path d="M7 4.4 4.6 10.9M9 4.4l2.4 6.5" />
+  </Svg>
+);
+
 export const TableIcon = (p: IconProps) => (
   <Svg {...p}>
     <rect x="2" y="3" width="12" height="10" rx="1.5" />

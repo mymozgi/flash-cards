@@ -120,7 +120,7 @@ export function KnowledgeIndex({
         ? "It is empty — nothing else goes with it."
         : `It holds ${node.cards} ${node.cards === 1 ? "card" : "cards"}` +
           (node.descendants > 0
-            ? ` and ${node.descendants} ${node.descendants === 1 ? "subcategory" : "subcategories"}`
+            ? ` and ${node.descendants} ${node.descendants === 1 ? "set" : "sets"}`
             : "") +
           `. Move them ${where}, or delete the branch. Cards are never deleted here — deleting a branch only takes them out of it.`,
       actions: empty
@@ -141,7 +141,6 @@ export function KnowledgeIndex({
     if (action === "study") router.push(`/review?free=1&topic=${node.id}`);
     if (action === "rename") void rename(node);
     if (action === "edit") setEditing({ node, parentId: node.parentId });
-    if (action === "subcategory") setEditing({ node: null, parentId: node.id, kind: "area" });
     if (action === "group") setEditing({ node: null, parentId: node.id, kind: "deck" });
     if (action === "delete") void drop(node);
     if (action === "archive") {
@@ -369,6 +368,7 @@ export function KnowledgeIndex({
                 node={node}
                 counts={countsReady}
                 onOpenMenu={(at) => setMenu({ node, at })}
+                onEdit={() => setEditing({ node, parentId: node.parentId })}
               />
             </li>
           ))}

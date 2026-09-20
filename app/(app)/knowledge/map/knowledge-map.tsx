@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Background,
   BackgroundVariant,
@@ -104,6 +105,32 @@ function Canvas({
     },
     [flow, placed, moved],
   );
+
+  /*
+    Приход с плитки категории: «?focus=<id>» наводит карту на этот узел и
+    открывает его панель. Без этого кнопка «Map» обещала бы показать
+    категорию, а показывала бы всю карту целиком, где её ещё надо найти.
+
+    Наводим ровно один раз: дальше человек двигает карту сам, и повторное
+    центрирование отбирало бы у него управление.
+  */
+  const params = useSearchParams();
+  const wanted = params.get("focus");
+  const centred = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!wanted || centred.current === wanted) return;
+    if (!placed.some((node) => node.id === wanted)) return;
+    centred.current = wanted;
+    /*
+      Через кадр, а не сразу: наведение меняет и состояние React, и вьюпорт
+      React Flow. Синхронно из эффекта это каскадный рендер, который ловит
+      правило react-hooks/set-state-in-effect, — а лишний кадр здесь ещё и
+      кстати, к нему узлы уже измерены.
+    */
+    const frame = requestAnimationFrame(() => focus(wanted));
+    return () => cancelAnimationFrame(frame);
+  }, [wanted, placed, focus]);
 
   const onNodeClick: NodeMouseHandler = useCallback((_, node) => {
     setPicked(node.data as unknown as GraphNode);

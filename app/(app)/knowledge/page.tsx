@@ -3,7 +3,7 @@ import { KnowledgeIndex } from "./knowledge-index";
 
 export const metadata = {
   title: "Categories — Memorizer",
-  description: "Your own structure: categories, subcategories and where each card lives.",
+  description: "Your own structure: categories, the sets inside them, and where each card lives.",
 };
 
 export default async function KnowledgePage() {

@@ -17,7 +17,6 @@ export type MenuAction =
   | "open"
   | "rename"
   | "edit"
-  | "subcategory"
   | "group"
   | "study"
   | "cards"
@@ -37,8 +36,13 @@ const GROUPS: { items: { action: MenuAction; label: string; danger?: boolean }[]
     items: [
       { action: "rename", label: "Rename" },
       { action: "edit", label: "Edit details…" },
-      { action: "subcategory", label: "Create subcategory" },
-      { action: "group", label: "Create flashcard group" },
+      /*
+        Пункта «Create subcategory» здесь нет и быть не может. Форма дерева
+        закреплена триггером `topics_two_levels`: категория внутри категории
+        запрещена базой. Пункт меню, который база отвергнет, — обещание,
+        которого интерфейс не сдержит.
+      */
+      { action: "group", label: "Create flashcard set" },
     ],
   },
   {
