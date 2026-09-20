@@ -74,12 +74,18 @@ export default async function CategoryPage(props: { params: Promise<{ id: string
           <LinkButton href={`/review?free=1&topic=${node.id}`} tone="soft">
             Practice this category
           </LinkButton>
-          <LinkButton href="#sets">Manage sets</LinkButton>
+          {/*
+            Настоящий адрес, а не якорь. Якорь вёл на секцию прямо под
+            шапкой: на обычном экране прокручивать некуда, и нажатие
+            выглядело как ничто. Здесь список наборов открывается уже
+            суженным до этой категории.
+          */}
+          <LinkButton href={`/decks?category=${node.id}`}>Manage sets</LinkButton>
           <LinkButton href={`/library?topic=${node.id}`}>Browse in library</LinkButton>
         </div>
       </header>
 
-      <section id="sets" className="mt-6 scroll-mt-4">
+      <section className="mt-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold tracking-tight">
             {sets.length > 0 ? `Sets · ${sets.length}` : "No sets yet"}

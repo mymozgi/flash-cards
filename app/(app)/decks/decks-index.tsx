@@ -24,18 +24,21 @@ export function DecksIndex({
   dueCount,
   openCreate,
   readOnly = false,
+  initialBranch = null,
 }: {
   decks: DeckSummary[];
   dueCount: number;
   openCreate: boolean;
   /** Гостевой режим: всё, что меняет данные, не показываем вовсе. */
   readOnly?: boolean;
+  /** Категория из адреса: список открывается уже суженным до её наборов. */
+  initialBranch?: string | null;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<Sort>("recent");
   /** null — «все категории». Иначе id узла, чью ветку показываем. */
-  const [branch, setBranch] = useState<string | null>(null);
+  const [branch, setBranch] = useState<string | null>(initialBranch);
   const [onlyUnfinished, setOnlyUnfinished] = useState(false);
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
