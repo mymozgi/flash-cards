@@ -45,7 +45,7 @@ Code map:
 | `lib/fsrs.ts` | Wrapper over ts-fsrs: DB row ↔ FSRS card mapping, interval previews |
 | `lib/session.ts` | Review queue rules: returning a failed card, skipping, the progress denominator |
 | `lib/swipe.ts` | Horizontal gesture parsing: threshold by width fraction and by velocity |
-| `lib/import-format.ts` | CSV/JSON detection and folding JSON into the wizard's table |
+| `lib/import-format.ts` | CSV/JSON detection, folding JSON into the wizard's table, and where imported cards land |
 | `lib/knowledge.ts` | The knowledge tree: reading `topics` with icon, archive and branch size |
 | `lib/url.ts` | User link parsing: http(s) only, otherwise `null` |
 | `lib/schema.ts` | Columns that may not exist: a query retried without them |
@@ -58,7 +58,7 @@ Code map:
 | `app/(app)/review/` | The session screen and the grade/undo actions |
 | `app/(app)/decks/[id]/` | The only card editor: the deck workspace |
 | `app/(app)/library/` | Search across all cards and bulk operations |
-| `components/card-renderer.tsx` | The one place the card canvas is drawn |
+| `components/card-renderer.tsx` | The one place the card canvas is drawn, and `cardFrameStyle` — the one place its frame is measured |
 | `tests/` | Vitest: pure logic — FSRS, Markdown, normalisation, day boundaries |
 | `lib/image.ts` | Client-side compression: 1600 px, WebP q=0.82, 320 px thumbnail |
 | `lib/upload.ts` | Uploading to Storage straight from the browser, marking orphans |
@@ -96,10 +96,18 @@ the primitive rather than beside it.
 | Shadow | `shadow-card` rests on the background, `shadow-raised` lifts, `shadow-overlay` floats above everything |
 | Radius | controls `rounded-lg`, panels `rounded-xl`, pills `rounded-full` |
 
-Button sizes: `sm` 40 px, `md` 48 px, `lg` 56 px, `icon` — a 48 px square for a
-single icon with no label. The minimum touch target on a phone is 44 px, and
-`md` clears it with room to spare. Use `sm` only where no other button sits
-next to it.
+Button and field heights come from the `--control-sm | --control-md |
+--control-lg` tokens: `sm` 44 px, `md` 52 px, `lg` 60 px, `icon` — a 52 px
+square for a single icon with no label. The minimum touch target on a phone is
+44 px, so the scale never goes below it and `md` clears it with room to spare.
+A button and an input on the same row match in height because both read the
+same token — do not set a height beside them.
+
+The type scale and the spacing step are tokens too: `--text-2xs … --text-3xl`
+and `--spacing`. `--spacing` feeds every `gap-*`, `p-*` and `m-*` in the app,
+so "give it more air" is one line there, never a sweep replacing `gap-2` with
+`gap-3`. `--text-base` must stay at or above 16 px: inputs use it, and Safari
+on iPhone zooms the page on focus below sixteen.
 
 The border colour of a field and of an outlined button is the same,
 `--field-line`, for the same reason: WCAG 1.4.11 requires 3:1 from the border
@@ -137,6 +145,9 @@ instance. Red (`rust`) is reserved for genuine failures.
 - **Tree relationship rules live in `lib/knowledge-tree.ts` and are covered by tests.** A copy of those rules inside a component had already diverged from the database — it allowed a parent to be placed next to its own descendant.
 - **Optional data must not be mandatory for a query.** A new column in a `SELECT` is a condition for the whole query: until the migration is applied, PostgREST rejects it entirely. Paid for by taking down the review queue over one line showing a source link. Helpers are in `lib/schema.ts`.
 - **A card's Source is the `cards.link_url` column.** It survived the removal of the Link property (migration 0009 was cancelled) and came back meaning "where this knowledge came from". The link goes into an `href`, so the scheme is checked both in the database and in `safeUrl()` — http(s) only.
+- **The frame of a card is measured by `cardFrameStyle`, and nowhere else.** `aspect-ratio` together with `max-height` does NOT preserve the ratio: at a given width the height ceiling simply crops it, and a 2:3 card comes out landscape. The width has to be computed from the allowed height. The rule existed but lived in the review screen, so the second caller — deck browsing — never got it and passed `maxHeight` straight into the broken path.
+- **Scrolling wraps centring, not the other way round.** `items-center` on a scrollable box centres while the content fits, but once it overflows the top escapes past the edge and cannot be scrolled to: overflow at the start of the axis gets no scrollbar. The scroll container stays plain, and a `min-h-full` row inside it does the centring.
+- **A category for an import is created by `createImportCategory`, not `resolveTopicPath`.** That helper gives the last path segment the kind `deck`, because for a path the last segment is the group of cards. For a one-word category name that is exactly backwards.
 - There are no native `prompt()`, `confirm()` or `alert()` calls in the code: the browser is entitled not to show them, and inside an embedded viewer the call silently returns `null`. Dialogs are `useConfirm` and `usePrompt`.
 
 ## Review agents

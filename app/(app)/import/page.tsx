@@ -1,7 +1,23 @@
 import { ImportWizard } from "./import-wizard";
 import { buttonClass } from "@/components/ui/button";
+import { getTopicTree } from "@/lib/data";
 
-export default function ImportPage() {
+export default async function ImportPage() {
+  /*
+    Только верхний уровень: по форме дерева категория — это узел без родителя,
+    и именно из них выбирают, куда лягут карточки. Набор в список не попадает —
+    выбирают категорию, а тему внутри неё даёт сам файл.
+  */
+  const categories = (await getTopicTree())
+    .filter((node) => node.depth === 0)
+    .map((node) => ({
+      id: node.id,
+      name: node.name,
+      path: node.path,
+      icon: node.icon ?? undefined,
+      color: node.color ?? undefined,
+    }));
+
   return (
     <>
       <header className="border-b border-line-strong pb-4">
@@ -12,7 +28,7 @@ export default function ImportPage() {
           can be undone within 24 hours.
         </p>
       </header>
-      <ImportWizard />
+      <ImportWizard categories={categories} />
 
       <section className="mt-12 border-t border-line pt-6">
         <h2 className="label-micro">Export</h2>

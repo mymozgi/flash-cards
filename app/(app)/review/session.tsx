@@ -7,7 +7,7 @@ import { fromFsrsCard, previewIntervals, RATINGS, scheduler, toFsrsCard } from "
 import { renderMarkdown } from "@/lib/markdown";
 import { hostLabel, safeUrl } from "@/lib/url";
 import type { QueueCard } from "@/lib/types";
-import { ASPECT, ASPECT_RATIO, CardRenderer } from "@/components/card-renderer";
+import { CardRenderer, cardFrameStyle } from "@/components/card-renderer";
 import { Button, LinkButton } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Classification } from "@/components/ui/classification";
@@ -335,10 +335,7 @@ export function ReviewSession({
             }
           }}
           className="mx-auto max-w-2xl shrink-0 cursor-pointer"
-          style={{
-            aspectRatio: ASPECT[current.card.shape],
-            width: `min(100%, calc(${CARD_MAX_HEIGHT} * ${ASPECT_RATIO[current.card.shape]}))`,
-          }}
+          style={cardFrameStyle(current.card.shape, CARD_MAX_HEIGHT)}
         >
           <div className="flip-inner" data-flipped={revealed}>
             {/* обе грани рисует тот же компонент, что и предпросмотр в редакторе */}

@@ -32,6 +32,25 @@ export const ASPECT_RATIO: Record<CardShape, number> = {
   portrait: 2 / 3,
 };
 
+/**
+ * Рамка карточки: пропорция плюс, если задан потолок высоты, ширина,
+ * вычисленная из него.
+ *
+ * Правило было, но лежало в экране повторения, а не здесь — и второй
+ * вызывающий, просмотр набора, о нём не знал: он передавал `maxHeight`, тот
+ * ложился в CSS `max-height`, и карточка 2:3 выходила пейзажем. Считать
+ * рамку должен тот, кто её рисует, иначе каждый новый экран повторяет ошибку
+ * заново.
+ */
+export function cardFrameStyle(shape: CardShape, maxHeight?: string) {
+  return {
+    aspectRatio: ASPECT[shape],
+    // min(100%, …): на узком экране ширина упирается в родителя, и высота
+    // уходит ниже потолка сама — обрезать её не требуется.
+    ...(maxHeight ? { width: `min(100%, calc(${maxHeight} * ${ASPECT_RATIO[shape]}))` } : null),
+  };
+}
+
 export const SHAPE_OPTIONS: { key: CardShape; label: string; ratio: string; box: string }[] = [
   { key: "square", label: "Square", ratio: "1:1", box: "h-6 w-6" },
   { key: "landscape", label: "Landscape", ratio: "3:2", box: "h-5 w-7" },
@@ -67,6 +86,7 @@ export function CardRenderer({
   /** уже отрендеренный Markdown */
   html: string;
   images: CardImage[];
+  /** Потолок высоты. Ширина считается из него, пропорция не страдает. */
   maxHeight?: string;
   onImageClick?: (index: number) => void;
   /** пропорции задаёт родитель — например грань переворачивающейся карточки */
@@ -80,7 +100,7 @@ export function CardRenderer({
   return (
     <div
       className={`relative overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_1px_2px_rgba(17,24,39,.06),0_12px_28px_-18px_rgba(17,24,39,.45)] ${className}`}
-      style={fill ? undefined : { aspectRatio: ASPECT[shape], maxHeight }}
+      style={fill ? undefined : cardFrameStyle(shape, maxHeight)}
     >
       {layout === "full_image" && hasImage ? (
         <>
@@ -110,17 +130,32 @@ export function CardRenderer({
             className={sideways ? "h-1/2 w-full sm:h-full sm:w-1/2" : "h-1/2 w-full"}
             onClick={onImageClick}
           />
-          <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto p-4 text-center sm:p-5">
-            <div className="prose-card w-full [&_ul]:inline-block [&_ul]:text-left [&_ol]:inline-block [&_ol]:text-left" dangerouslySetInnerHTML={{ __html: html }} />
-            {image?.caption && <p className="mt-2 text-xs text-faint">{image.caption}</p>}
+          {/* прокрутка снаружи, центрирование внутри — см. ветку без изображения */}
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            <div className="flex min-h-full flex-col items-center justify-center p-4 text-center sm:p-5">
+              <div className="prose-card w-full [&_ul]:inline-block [&_ul]:text-left [&_ol]:inline-block [&_ol]:text-left" dangerouslySetInnerHTML={{ __html: html }} />
+              {image?.caption && <p className="mt-2 text-xs text-faint">{image.caption}</p>}
+            </div>
           </div>
         </div>
       ) : (
-        <div className="flex size-full items-center justify-center overflow-y-auto p-5 sm:p-7">
-          <div
-            className="prose-card w-full text-center text-lg sm:text-xl [&_ul]:inline-block [&_ul]:text-left [&_ol]:inline-block [&_ol]:text-left"
-            dangerouslySetInnerHTML={{ __html: html }}
-          />
+        /*
+          Прокрутка снаружи, центрирование внутри — и именно в таком порядке.
+          `items-center` на самой прокручиваемой области центрирует, пока текст
+          помещается, но стоит ему перерасти рамку, как верх уезжает за край и
+          доскроллить до него нельзя: у переполнения в начале оси нет полосы.
+          Длинный ответ на карточке 2:3 попадал в это всегда.
+
+          `min-h-full` на внутреннем ряду даёт то же центрирование короткого
+          текста и честную прокрутку длинного.
+        */
+        <div className="size-full overflow-y-auto overscroll-contain">
+          <div className="flex min-h-full items-center justify-center p-5 sm:p-7">
+            <div
+              className="prose-card w-full text-center text-lg sm:text-xl [&_ul]:inline-block [&_ul]:text-left [&_ol]:inline-block [&_ol]:text-left"
+              dangerouslySetInnerHTML={{ __html: html }}
+            />
+          </div>
         </div>
       )}
     </div>

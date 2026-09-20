@@ -17,7 +17,7 @@
  * поле и кнопка выстраиваются по одной линии без подгонки на месте.
  */
 export const inputClass =
-  "w-full min-h-12 rounded-lg border-control border-field-line bg-surface px-3.5 py-3 " +
+  "w-full min-h-[var(--control-md)] rounded-lg border-control border-field-line bg-surface px-3.5 py-3 " +
   "text-base text-ink placeholder:text-faint transition-colors " +
   "hover:border-ink focus:border-accent focus-visible:outline-2 focus-visible:outline-offset-1 " +
   "focus-visible:outline-accent disabled:opacity-55";

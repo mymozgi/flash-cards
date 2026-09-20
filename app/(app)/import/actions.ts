@@ -6,6 +6,7 @@ import {
   normalizeFront,
   resolveTopicPath,
 } from "@/lib/cards";
+import { createCategory } from "../knowledge/actions";
 
 export type ImportRow = {
   /** номер строки в исходном файле — попадает в отчёт об ошибках */
@@ -232,4 +233,24 @@ export async function undoImport(batchId: string): Promise<{ ok: boolean; error?
 
   revalidatePath("/", "layout");
   return { ok: true };
+}
+
+/**
+ * Создание категории прямо из мастера импорта.
+ *
+ * Именно `createCategory` с родом `area`, а не `resolveTopicPath`: тот для
+ * односегментного пути ставит `deck`, потому что считает последний сегмент
+ * набором. Для импорта это было бы ровно наоборот тому, что просили — выбрать
+ * КАТЕГОРИЮ, в которую лягут наборы из файла.
+ */
+export async function createImportCategory(
+  name: string,
+): Promise<{ id?: string; error?: string }> {
+  const clean = name.trim();
+  if (!clean) return { error: "Enter a name for the category" };
+  // «/» — разделитель пути в импорте; внутри имени он разорвал бы адрес темы
+  if (clean.includes("/")) return { error: "A category name cannot contain “/”" };
+
+  const res = await createCategory({ name: clean, kind: "area" });
+  return res.ok ? { id: res.id } : { error: res.error };
 }

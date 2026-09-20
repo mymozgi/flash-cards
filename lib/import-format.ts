@@ -8,6 +8,8 @@
  * колонок, поиск дублей и предпросмотр не пришлось трогать вовсе.
  */
 
+import { splitTopicPath } from "./knowledge-tree";
+
 /** Колонки, которые понимает мастер импорта. */
 export const CANONICAL_COLUMNS = [
   "front",
@@ -124,4 +126,54 @@ export function parseJson(text: string): Table {
 export function preview(text: string, limit = 80): string {
   const flat = text.replace(/\s+/g, " ").trim();
   return flat.length > limit ? `${flat.slice(0, limit)}…` : flat;
+}
+
+/* ────────────────────────────── куда кладём ────────────────────────────── */
+
+/**
+ * Откуда берётся категория для импортируемых карточек.
+ *
+ * `file` — путь берётся из файла как есть; `single` — всё уходит в одну
+ * выбранную категорию, а из файла остаётся только имя темы внутри неё.
+ */
+export type DestinationMode = "file" | "single";
+
+/**
+ * Куда попадёт строка.
+ *
+ * Правило чистое и живёт здесь, а не в мастере, по той же причине, что и
+ * остальные правила проекта: увидеть, куда лягут карточки, нужно ДО записи,
+ * а проверить это можно только тестом.
+ *
+ * В режиме `single` категория из файла заменяется выбранной намеренно — в том
+ * и смысл выбора. Имя темы при этом сохраняется: терять его значило бы свалить
+ * весь файл в одну кучу.
+ */
+export function importDestination(
+  topic: string,
+  mode: DestinationMode,
+  category: string | null,
+  /** Тема для строк, у которых её нет: карточка не может лежать в категории. */
+  fallbackDeck: string,
+): string {
+  const own = topic.trim();
+  if (mode === "file" || !category) return own;
+
+  const { topic: deck } = splitTopicPath(own);
+  const name = deck ?? fallbackDeck.trim();
+  return name ? `${category} / ${name}` : category;
+}
+
+/**
+ * Есть ли в самом файле категории. Если нет, выбор «оставить как в файле»
+ * предлагать не за чем: он оставил бы темы в корне, без категории вовсе.
+ */
+export function fileHasCategories(topics: string[]): boolean {
+  return topics.some((t) => splitTopicPath(t).category !== null);
+}
+
+/** Имя набора по умолчанию — из имени файла, без расширения и мусора. */
+export function deckNameFromFile(filename: string): string {
+  const base = filename.replace(/\.[a-z0-9]+$/i, "").replace(/[-_]+/g, " ").trim();
+  return base || "Imported";
 }

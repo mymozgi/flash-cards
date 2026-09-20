@@ -6,13 +6,19 @@ import Papa from "papaparse";
 import { useMemo, useState } from "react";
 import { renderMarkdown } from "@/lib/markdown";
 import {
+  deckNameFromFile,
+  fileHasCategories,
+  importDestination,
   ImportFormatError,
   parseJson,
   preview as echo,
   sniffFormat,
+  type DestinationMode,
   type Table,
 } from "@/lib/import-format";
+import { useCategoryPicker, type PickableCategory } from "@/components/ui/category-picker";
 import {
+  createImportCategory,
   findDuplicates,
   finishImport,
   importRows,
@@ -27,8 +33,8 @@ const CHUNK = 100;
 const PREVIEW = 20;
 const TRUTHY = new Set(["1", "true", "yes", "y", "да"]);
 
-const PASTE_EXAMPLE = `front,back,topic,tags
-mitochondrion,powerhouse of the cell,Biology / Cells,biology organelles`;
+const PASTE_EXAMPLE = `front,back,topic,note
+mitochondrion,powerhouse of the cell,Biology / Cells,makes ATP`;
 
 type Field =
   | "front"
@@ -63,12 +69,14 @@ const ALIASES: Record<Field, string[]> = {
   choice3: ["choice3", "wrong3", "distractor3", "option3"],
 };
 
-type Step = "file" | "map" | "preview" | "running" | "done";
+export type ImportCategory = PickableCategory & { name: string };
+
+type Step = "file" | "map" | "where" | "preview" | "running" | "done";
 /** Откуда взялись данные: файл с диска или вставленный текст. */
 type Source = "file" | "paste";
 type Row = Record<string, string>;
 
-export function ImportWizard() {
+export function ImportWizard({ categories }: { categories: ImportCategory[] }) {
   const [step, setStep] = useState<Step>("file");
   const [source, setSource] = useState<Source>("file");
   /** Данные пришли из собственной выгрузки: колонки уже канонические. */
@@ -79,6 +87,15 @@ export function ImportWizard() {
   const [rows, setRows] = useState<Row[]>([]);
   const [mapping, setMapping] = useState<Record<Field, string>>({} as Record<Field, string>);
   const [strategy, setStrategy] = useState<DuplicateStrategy>("skip");
+  /*
+    Куда лягут карточки. Раньше этот вопрос вообще не задавался: адресом была
+    колонка `topic`, и файл без неё молча создавал карточки нигде. Теперь
+    назначение выбирают до записи и видят в предпросмотре.
+  */
+  const [destMode, setDestMode] = useState<DestinationMode>("file");
+  const [category, setCategory] = useState<{ id: string; name: string } | null>(null);
+  /** Набор для строк без темы: карточка не может лежать прямо в категории. */
+  const [fallbackDeck, setFallbackDeck] = useState("Imported");
   const [duplicates, setDuplicates] = useState<Set<string>>(new Set());
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -88,6 +105,37 @@ export function ImportWizard() {
     skipped: number;
     errors: { line: number; reason: string }[];
   } | null>(null);
+
+  /*
+    Категория, созданная прямо в мастере, в списке с сервера отсутствует:
+    страница не перерисовывалась. Держим такие рядом, иначе выбор сразу после
+    создания не нашёл бы имени и сбросился бы в «не выбрано».
+  */
+  const [minted, setMinted] = useState<ImportCategory[]>([]);
+  const pickable = useMemo(() => [...categories, ...minted], [categories, minted]);
+
+  const { ask: pickCategory, dialog: pickerDialog } = useCategoryPicker(
+    pickable,
+    // Именно создание КАТЕГОРИИ: действие мастера ставит род `area`
+    async (name: string) => {
+      const res = await createImportCategory(name);
+      const clean = name.trim();
+      if (res.id) setMinted((prev) => [...prev, { id: res.id as string, name: clean, path: clean }]);
+      return res;
+    },
+  );
+
+  const chooseCategory = async () => {
+    const id = await pickCategory({
+      title: "Where do these cards go?",
+      description: "Pick the category. The topic inside it comes from the file.",
+      confirmLabel: "Use this category",
+      current: category?.id ?? null,
+    });
+    if (id === undefined) return; // передумали
+    const hit = pickable.find((c) => c.id === id);
+    setCategory(hit ? { id: hit.id, name: hit.name } : null);
+  };
 
   /**
    * Приёмка разобранной таблицы. Одна на все источники: и файл, и вставка, и
@@ -105,6 +153,7 @@ export function ImportWizard() {
       if (hit) guess[key] = hit;
     }
     setFilename(label);
+    setFallbackDeck(deckNameFromFile(label));
     setFromExport(table.fromExport);
     setHeaders(table.headers);
     setRows(table.rows.slice(0, MAX_ROWS));
@@ -170,7 +219,12 @@ export function ImportWizard() {
     line: index + 2, // +1 за заголовок, +1 за нумерацию с единицы
     front: raw[mapping.front] ?? "",
     back: raw[mapping.back] ?? "",
-    topic: mapping.topic ? (raw[mapping.topic] ?? "") : "",
+    topic: importDestination(
+      mapping.topic ? (raw[mapping.topic] ?? "") : "",
+      destMode,
+      category?.name ?? null,
+      fallbackDeck,
+    ),
     note: mapping.note ? (raw[mapping.note] ?? "") : "",
     reversed: mapping.reversed ? TRUTHY.has((raw[mapping.reversed] ?? "").trim().toLowerCase()) : false,
     choices: [mapping.choice1, mapping.choice2, mapping.choice3]
@@ -181,8 +235,33 @@ export function ImportWizard() {
   const prepared = useMemo(
     () => (mapping.front && mapping.back ? rows.map(toRow) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [rows, mapping],
+    [rows, mapping, destMode, category, fallbackDeck],
   );
+
+  /** Пути из самого файла — до подстановки категории. На них и решают. */
+  const fileTopics = useMemo(() => {
+    if (!mapping.topic) return [];
+    return rows.map((raw) => (raw[mapping.topic] ?? "").trim());
+  }, [rows, mapping.topic]);
+
+  const hasOwnCategories = useMemo(() => fileHasCategories(fileTopics), [fileTopics]);
+  const rowsWithoutTopic = useMemo(
+    () => fileTopics.filter((t) => !t).length + (mapping.topic ? 0 : rows.length),
+    [fileTopics, mapping.topic, rows.length],
+  );
+
+  /** Куда в итоге лягут карточки: готовые пути со счётчиком. */
+  const destinations = useMemo(() => {
+    const tally = new Map<string, number>();
+    for (const row of prepared) {
+      const key = row.topic.trim() || "— no category —";
+      tally.set(key, (tally.get(key) ?? 0) + 1);
+    }
+    return [...tally.entries()].sort((a, b) => b[1] - a[1]);
+  }, [prepared]);
+
+  /** Нельзя идти дальше, пока не ясно, куда класть. */
+  const destinationReady = destMode === "file" ? hasOwnCategories : category !== null;
 
   const invalid = prepared.filter((r) => !r.front.trim() || !r.back.trim()).length;
   const normalize = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
@@ -191,6 +270,17 @@ export function ImportWizard() {
     const set = new Set(prepared.map((r) => r.topic.trim()).filter(Boolean));
     return [...set];
   }, [prepared]);
+
+  /*
+    Режим по умолчанию выставляется здесь, а не эффектом: это следствие
+    действия пользователя, а не состояния. Файл со своими категориями их и
+    сохраняет; плоский файл требует выбрать категорию явно.
+  */
+  const goWhere = () => {
+    setError(null);
+    setDestMode(hasOwnCategories ? "file" : "single");
+    setStep("where");
+  };
 
   const goPreview = async () => {
     setError(null);
@@ -256,6 +346,7 @@ export function ImportWizard() {
 
   return (
     <div className="mt-6">
+      {pickerDialog}
       <Steps current={step} />
 
       {error && (
@@ -389,11 +480,138 @@ export function ImportWizard() {
             ))}
           </ul>
           <div className="mt-5 flex gap-2">
-            <Button tone="primary" onClick={goPreview} disabled={!mapping.front || !mapping.back}>
-              Preview
+            <Button tone="primary" onClick={goWhere} disabled={!mapping.front || !mapping.back}>
+              Next
             </Button>
             <Button onClick={() => setStep("file")}>Back</Button>
           </div>
+        </div>
+      )}
+
+      {step === "where" && (
+        <div className="mt-5">
+          <p className="text-sm text-muted">
+            A card lives inside a topic, and a topic lives inside a category. Choose which category
+            these {prepared.length} cards land in.
+          </p>
+
+          <div className="mt-4 flex flex-col gap-3">
+            {/* Свои категории предлагаем, только если они в файле правда есть:
+                иначе выбор оставил бы темы в корне, без категории вовсе. */}
+            <label
+              className={`flex gap-3 rounded-xl border-control p-4 ${
+                destMode === "file"
+                  ? "border-accent bg-accent-soft"
+                  : "border-field-line bg-surface"
+              } ${hasOwnCategories ? "cursor-pointer" : "cursor-not-allowed opacity-55"}`}
+            >
+              <input
+                type="radio"
+                name="dest"
+                className="mt-1 accent-[var(--accent)]"
+                checked={destMode === "file"}
+                disabled={!hasOwnCategories}
+                onChange={() => setDestMode("file")}
+              />
+              <span className="min-w-0">
+                <span className="block font-semibold">Keep the categories from the file</span>
+                <span className="mt-1 block text-sm text-muted">
+                  {hasOwnCategories
+                    ? "The topic column already carries a “Category / Topic” path. Missing ones are created."
+                    : "Not available: no row in this file names a category."}
+                </span>
+              </span>
+            </label>
+
+            <label
+              className={`flex gap-3 rounded-xl border-control p-4 ${
+                destMode === "single"
+                  ? "border-accent bg-accent-soft"
+                  : "border-field-line bg-surface"
+              } cursor-pointer`}
+            >
+              <input
+                type="radio"
+                name="dest"
+                className="mt-1 accent-[var(--accent)]"
+                checked={destMode === "single"}
+                onChange={() => setDestMode("single")}
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold">Put everything in one category</span>
+                <span className="mt-1 block text-sm text-muted">
+                  Topic names from the file are kept; only the category is replaced.
+                </span>
+
+                {destMode === "single" && (
+                  <span className="mt-3 flex flex-wrap items-center gap-2">
+                    <Button size="sm" onClick={chooseCategory}>
+                      {category ? "Change category" : "Choose category"}
+                    </Button>
+                    <span className="text-sm">
+                      {category ? (
+                        <b className="font-semibold text-accent">{category.name}</b>
+                      ) : (
+                        <span className="text-faint">nothing chosen yet</span>
+                      )}
+                    </span>
+                  </span>
+                )}
+              </span>
+            </label>
+          </div>
+
+          {/* Строки без темы: класть карточку прямо в категорию база не даст */}
+          {destMode === "single" && rowsWithoutTopic > 0 && (
+            <div className="mt-4 rounded-xl border-control border-field-line bg-surface p-4">
+              <label htmlFor="fallback-deck" className="block text-sm font-semibold">
+                {rowsWithoutTopic} {rowsWithoutTopic === 1 ? "row has" : "rows have"} no topic
+              </label>
+              <p className="mt-1 text-sm text-muted">
+                A card cannot sit in a category directly, so those go into a topic of this name.
+              </p>
+              <input
+                id="fallback-deck"
+                value={fallbackDeck}
+                onChange={(e) => setFallbackDeck(e.target.value)}
+                className={`${inputClass} mt-2`}
+              />
+            </div>
+          )}
+
+          {/* Итог до записи: видно каждый адрес и сколько карточек в него идёт */}
+          {destinationReady && (
+            <div className="mt-5">
+              <h3 className="label-micro">
+                {destinations.length} {destinations.length === 1 ? "destination" : "destinations"}
+              </h3>
+              <ul className="mt-2 divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+                {destinations.slice(0, 12).map(([path, count]) => (
+                  <li key={path} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                    <span className="min-w-0 truncate">{path}</span>
+                    <span className="shrink-0 tabular-nums text-muted">{count}</span>
+                  </li>
+                ))}
+              </ul>
+              {destinations.length > 12 && (
+                <p className="mt-2 text-xs text-faint">
+                  and {destinations.length - 12} more
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="mt-5 flex gap-2">
+            <Button tone="primary" onClick={goPreview} disabled={!destinationReady}>
+              Preview
+            </Button>
+            <Button onClick={() => setStep("map")}>Back</Button>
+          </div>
+          {!destinationReady && (
+            <p className="mt-2 text-sm text-muted">
+              Choose a category before going on — that is where these cards will live.
+            </p>
+          )}
         </div>
       )}
 
@@ -467,7 +685,7 @@ export function ImportWizard() {
             <Button tone="primary" onClick={run}>
               Import {prepared.length - (strategy === "skip" ? dupCount : 0) - invalid} cards
             </Button>
-            <Button onClick={() => setStep("map")}>Back</Button>
+            <Button onClick={() => setStep("where")}>Back</Button>
           </div>
         </div>
       )}
@@ -492,6 +710,28 @@ export function ImportWizard() {
       {step === "done" && report && (
         <div className="mt-6">
           <h2 className="font-display text-2xl font-semibold">Import finished</h2>
+
+          {/* Главное в итоге — не число, а адрес: куда это всё легло. Без него
+              «12 cards imported» оставляет искать их по всему приложению. */}
+          {report.created > 0 && (
+            <p className="mt-2 text-base">
+              <b className="font-semibold tabular-nums">{report.created}</b>{" "}
+              {report.created === 1 ? "card" : "cards"} went into{" "}
+              {destinations.length === 1 ? (
+                <b className="font-semibold text-accent">{destinations[0][0]}</b>
+              ) : (
+                <>
+                  <b className="font-semibold text-accent">{destinations.length} topics</b>
+                  {category && (
+                    <>
+                      {" "}inside <b className="font-semibold text-accent">{category.name}</b>
+                    </>
+                  )}
+                </>
+              )}
+            </p>
+          )}
+
           <dl className="mt-4 grid grid-cols-3 gap-px overflow-hidden rounded border border-line bg-line">
             {[
               { label: "Created", value: report.created },
@@ -505,9 +745,25 @@ export function ImportWizard() {
             ))}
           </dl>
 
+          {report.created > 0 && destinations.length > 1 && (
+            <ul className="mt-4 divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+              {destinations.slice(0, 12).map(([path, count]) => (
+                <li key={path} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                  <span className="min-w-0 truncate">{path}</span>
+                  <span className="shrink-0 tabular-nums text-muted">{count}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+
           <div className="mt-5 flex flex-wrap gap-2">
-            <LinkButton href="/library" tone="primary">
-              Open library
+            {/* Ведём в саму категорию, когда она известна: там карточки и лежат.
+                Библиотека — запасной адрес, когда категорий в импорте несколько. */}
+            <LinkButton
+              href={destMode === "single" && category ? `/knowledge/${category.id}` : "/library"}
+              tone="primary"
+            >
+              View cards
             </LinkButton>
             {report.errors.length > 0 && (
               <Button onClick={downloadErrors}>Download error report</Button>
@@ -526,10 +782,11 @@ export function ImportWizard() {
 }
 
 function Steps({ current }: { current: Step }) {
-  const order: Step[] = ["file", "map", "preview", "done"];
+  const order: Step[] = ["file", "map", "where", "preview", "done"];
   const labels: Record<Step, string> = {
     file: "File",
     map: "Columns",
+    where: "Category",
     preview: "Preview",
     running: "Preview",
     done: "Result",
