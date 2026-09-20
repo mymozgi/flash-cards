@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { renderMarkdown } from "@/lib/markdown";
 import {
   CARD_MAX_HEIGHT,
@@ -15,6 +16,7 @@ import {
 import { ArrowLeftIcon, ArrowRightIcon, CloseIcon, GridIcon } from "@/components/icons";
 import { AXIS_SLOP, followX, swipeVerdict } from "@/lib/swipe";
 import { hostLabel, safeUrl } from "@/lib/url";
+import { originHref, parseOrigin } from "@/lib/back";
 import { Lightbox } from "@/components/lightbox";
 import { Button, LinkButton } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -42,11 +44,15 @@ export function StudyDeck({
   deckName,
   cards,
   deckId,
+  from,
 }: {
   deckName: string;
   cards: StudyCard[];
   deckId: string;
+  /** Откуда пришли. Выход возвращает туда же, вместе с прокруткой. */
+  from?: string;
 }) {
+  const router = useRouter();
   const [order, setOrder] = useState(() => cards.map((_, i) => i));
   const [at, setAt] = useState(0);
   const [dir, setDir] = useState<"next" | "prev">("next");
@@ -55,6 +61,15 @@ export function StudyDeck({
   // ключ перезапускает анимацию: без него повторный переход не проигрывается.
   // Это состояние, а не ref: ref нельзя читать во время отрисовки.
   const [step, setStep] = useState(0);
+
+  /*
+    Куда ведёт выход. Происхождение приходит параметром и проверяется тем же
+    белым списком, что и везде: значение из адресной строки уходит в href.
+  */
+  const origin = useMemo(() => parseOrigin(from), [from]);
+  const back = origin ? originHref(origin) : `/decks/${deckId}`;
+  const backLabel = origin ? "Back" : deckName;
+  const canGoBack = origin !== null;
 
   const card = cards[order[at]];
   const total = order.length;
@@ -170,9 +185,28 @@ export function StudyDeck({
       {zoomed && <Lightbox image={{ url: zoomed }} onClose={() => setZoomed(null)} />}
 
       <div className="flex items-center justify-between gap-3">
-        <Link href={`/decks/${deckId}`} className="flex items-center gap-2 text-sm text-muted hover:text-ink">
+        {/*
+          Выход шагает назад по истории, а не переходит по ссылке. Разница
+          не в адресе, а в прокрутке: браузер при возврате восстанавливает
+          место в списке, а переход по ссылке открывает его сверху. Уйти
+          посмотреть карточку и вернуться к началу длинного списка — это
+          потерять место, на котором работали.
+
+          Сам href при этом настоящий: правая кнопка, средняя кнопка и
+          скринридер получают адрес, а не пустую заглушку.
+        */}
+        <Link
+          href={back}
+          onClick={(event) => {
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+            if (!canGoBack) return;
+            event.preventDefault();
+            router.back();
+          }}
+          className="flex items-center gap-2 text-sm text-muted hover:text-ink"
+        >
           <CloseIcon />
-          <span className="truncate">{deckName}</span>
+          <span className="truncate">{backLabel}</span>
         </Link>
         <Button size="sm" onClick={shuffle} aria-pressed={shuffled}>
           <GridIcon className="size-3.5" />

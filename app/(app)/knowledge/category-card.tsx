@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { KnowledgeNode } from "@/lib/knowledge";
 import { Button, LinkButton } from "@/components/ui/button";
-import { ListIcon, MapIcon, MoreIcon, PencilIcon } from "@/components/icons";
+import { ListIcon, MoreIcon, PencilIcon } from "@/components/icons";
 
 /** Сколько наборов показать в предпросмотре. Дальше — «View all». */
 const PREVIEW = 3;
@@ -164,16 +164,19 @@ export function CategoryCard({
 
       {/* ── действия ──────────────────────────────────────────── */}
       <div className="mt-auto flex items-stretch gap-2 pt-4">
-        <LinkButton href={`/knowledge/${node.id}`} tone="soft" className="min-w-0 flex-1">
-          <span className="truncate">{isLooseTopic ? "Open topic" : "Open category"}</span>
-        </LinkButton>
+        {/*
+          Одно главное действие вместо трёх равноправных. Карта убрана: она
+          отвечает на вопрос «как всё устроено целиком», и задают его не с
+          плитки одной категории, а из общего вида — ссылка на карту там и
+          осталась.
+        */}
         <LinkButton
-          href={`/knowledge/map?focus=${node.id}`}
-          size="icon"
-          aria-label={`Show ${node.name} on the map`}
-          title="Show on the map"
+          href={`/knowledge/${node.id}`}
+          tone="primary"
+          size="lg"
+          className="min-w-0 flex-1"
         >
-          <MapIcon />
+          <span className="truncate">{isLooseTopic ? "Open topic" : "Open category"}</span>
         </LinkButton>
         {onEdit && (
           <Button

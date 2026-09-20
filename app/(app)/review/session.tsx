@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Grade } from "ts-fsrs";
-import { fromFsrsCard, previewIntervals, RATINGS, scheduler, toFsrsCard } from "@/lib/fsrs";
+import { fromFsrsCard, scheduler, toFsrsCard } from "@/lib/fsrs";
 import { renderMarkdown } from "@/lib/markdown";
 import { hostLabel, safeUrl } from "@/lib/url";
 import type { QueueCard } from "@/lib/types";
@@ -55,11 +54,6 @@ export function ReviewSession({
     shownAt.current = Date.now();
   }, [current?.card.id, revealed]);
 
-  const previews = useMemo(
-    () => (current ? previewIntervals(current.scheduling, requestRetention) : null),
-    [current, requestRetention],
-  );
-
   /** Полосу нужно не только видеть: без этого скринридер скажет «графика». */
   const progressLabel = useMemo(
     () =>
@@ -102,6 +96,16 @@ export function ReviewSession({
     }
   }, [queue]);
 
+  /**
+   * Применение оценки. Сейчас ничем не вызывается: кнопки оценок убраны по
+   * решению владельца продукта.
+   *
+   * Оставлено намеренно и на виду, а не удалено. Это единственная точка,
+   * через которую карточка двигается по расписанию: вместе с ней пришлось бы
+   * выкинуть обёртку над FSRS, правила очереди и запись истории — то есть
+   * весь механизм, который в том же решении велено было сохранить. Вернуть
+   * оценки — значит снова позвать эту функцию из разметки, и больше ничего.
+   */
   const grade = useCallback(
     (rating: Grade) => {
       if (!current) return;
@@ -194,17 +198,15 @@ export function ReviewSession({
         skip();
         return;
       }
-      if (revealed) {
-        const rating = RATINGS.find((r) => r.key === event.key);
-        if (rating) {
-          event.preventDefault();
-          grade(rating.grade);
-        }
-      }
+      // Клавиши 1–4 больше не оценивают: кнопок нет, и невидимая оценка
+      // по случайному нажатию хуже видимой кнопки.
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [grade, revealed, skip, undo]);
+  }, [revealed, skip, undo]);
+
+  // Ссылка на неиспользуемый сейчас механизм: см. комментарий у `grade`.
+  void grade;
 
   /*
     Свайпа здесь больше нет, и это осознанный отказ от §11 спеки.
@@ -253,7 +255,7 @@ export function ReviewSession({
           </LinkButton>
           {done > 0 && (
             <Button size="lg" onClick={() => void undo()}>
-              Undo last grade
+              Back to the last card
             </Button>
           )}
         </div>
@@ -262,7 +264,14 @@ export function ReviewSession({
   }
 
   return (
-    <div className="flex min-h-[calc(100dvh-8rem)] flex-col">
+    /*
+      svh, а не dvh. Динамическая высота меняется вместе с адресной строкой
+      браузера, и в её наибольшем значении столбец оказывался выше экрана —
+      под содержимым появлялась пустая полоса, в которую можно прокрутить и
+      ничего там не найти. svh берёт наименьшую высоту, и такой полосы нет
+      ни в одном состоянии браузера.
+    */
+    <div className="flex min-h-[calc(100svh-8rem)] flex-col">
       <div className="flex items-center justify-between gap-3 pb-2.5">
         <div className="flex min-w-0 items-center gap-2">
           {/*
@@ -380,48 +389,24 @@ export function ReviewSession({
 
       </div>
 
-      <div className="sticky bottom-4 flex flex-col gap-2 sm:bottom-6">
-        {/*
-          Ряд оценок присутствует всегда, до переворота он лишь невидим.
-          Причина не в красоте: появляясь, он отбирал высоту у полотна, и
-          карточка прыгала прямо в момент переворота. `visibility: hidden`
-          заодно убирает кнопки из обхода по Tab, так что скрытое остаётся
-          недостижимым и для клавиатуры.
-        */}
-        <div
-          aria-hidden={!revealed}
-          className={`grid grid-cols-2 gap-2 sm:grid-cols-4 ${revealed ? "" : "invisible"}`}
-        >
-            {RATINGS.map((rating) => (
-              <button
-                key={rating.grade}
-                type="button"
-                onClick={() => grade(rating.grade)}
-                className="min-h-14 rounded-lg border-control border-field-line bg-surface px-2 py-2 text-sm font-semibold hover:border-accent hover:text-accent"
-              >
-                <span className="block">{rating.label}</span>
-                <span className="block font-mono text-2xs font-normal tabular-nums text-faint">
-                  {previews?.[rating.grade]}
-                </span>
-              </button>
-            ))}
-        </div>
+      {/*
+        Оценок здесь больше нет — решение владельца продукта. Кнопки убраны
+        из интерфейса, но расписание, FSRS и история повторений остались в
+        базе нетронутыми: в том же задании сказано не менять модель данных
+        без нужды, и так решение обратимо одной правкой этого блока.
 
-        {/*
-          Переворот перестал быть плитой во всю ширину: он занимает столько,
-          сколько занимает его подпись. По бокам — шаг назад и шаг вперёд.
-          «Предыдущей карточки» в повторении не существует, очередь
-          односторонняя, поэтому стрелка назад делает единственное честное:
-          отменяет последнюю оценку. Стрелка вперёд откладывает карточку в
-          конец очереди, не оценивая её.
-        */}
+        Следствие назвать надо прямо: пока оценок нет, карточка не двигается
+        по расписанию. Очередь «на сегодня» не убывает, прогресс усвоения не
+        растёт, и экран стал перелистыванием того, что подошло к сроку.
+      */}
+      <div className="sticky bottom-4 flex flex-col gap-2 sm:bottom-6">
         <div className="flex items-center justify-center gap-2">
           <Button
             size="icon"
             onClick={() => void undo()}
             disabled={done === 0}
-            aria-label="Back — undo the last grade"
-            title="Undo the last grade"
+            aria-label="Back — previous card"
+            title="Previous card"
           >
             <ArrowLeftIcon />
           </Button>
@@ -433,21 +418,11 @@ export function ReviewSession({
             size="icon"
             onClick={skip}
             disabled={queue.length < 2}
-            aria-label="Skip — move this card to the end without grading"
-            title="Skip without grading"
+            aria-label="Next card"
+            title="Next card"
           >
             <ArrowRightIcon />
           </Button>
-        </div>
-
-        <div className="flex justify-end text-sm text-faint">
-          {/* Правка живёт в конструкторе колоды: другого редактора больше нет */}
-          <Link
-            href={current.card.topic_id ? `/decks/${current.card.topic_id}` : "/library"}
-            className="py-2 hover:text-ink"
-          >
-            Edit
-          </Link>
         </div>
       </div>
     </div>

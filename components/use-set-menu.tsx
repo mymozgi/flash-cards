@@ -51,6 +51,10 @@ export function useSetMenu(
 
     switch (action) {
       case "open":
+        // «Открыть» — значит посмотреть содержимое, как и нажатие по плитке.
+        // Пустой набор смотреть нечем, поэтому он открывается в правке.
+        router.push(open_(deck.total > 0 ? `/decks/${deck.id}/study` : `/decks/${deck.id}`));
+        return;
       case "cards":
       case "edit":
         // Правка набора живёт в его же шапке: отдельная форма означала бы
@@ -61,7 +65,7 @@ export function useSetMenu(
         router.push(`/review?free=1&topic=${deck.id}`);
         return;
       case "browse":
-        router.push(`/decks/${deck.id}/study`);
+        router.push(open_(`/decks/${deck.id}/study`));
         return;
       case "duplicate":
         startTransition(async () => {

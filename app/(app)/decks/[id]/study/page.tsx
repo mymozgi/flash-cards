@@ -16,8 +16,11 @@ type Row = {
   image_position: ImagePosition;
 };
 
-export default async function StudyPage(props: { params: Promise<{ id: string }> }) {
-  const { id } = await props.params;
+export default async function StudyPage(props: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ from?: string }>;
+}) {
+  const [{ id }, query] = await Promise.all([props.params, props.searchParams]);
   const supabase = await createClient();
 
   const [{ data: topic }, { data: rows }] = await Promise.all([
@@ -57,5 +60,12 @@ export default async function StudyPage(props: { params: Promise<{ id: string }>
     };
   });
 
-  return <StudyDeck deckId={topic.id as string} deckName={topic.name as string} cards={cards} />;
+  return (
+    <StudyDeck
+      deckId={topic.id as string}
+      deckName={topic.name as string}
+      cards={cards}
+      from={query.from}
+    />
+  );
 }

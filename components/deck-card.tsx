@@ -59,7 +59,19 @@ export function DeckCard({
 }) {
   const ratio = deck.total === 0 ? 0 : Math.round((deck.memorized / deck.total) * 100);
   const tint = deck.color || "var(--accent)";
-  const open = from ? withOrigin(`/decks/${deck.id}`, from) : `/decks/${deck.id}`;
+  const withFrom = (href: string) => (from ? withOrigin(href, from) : href);
+
+  /*
+    Нажатие по плитке ведёт в ИЗУЧЕНИЕ, а не в правку. Набор открывают,
+    чтобы его посмотреть; правка — отдельное намерение, и живёт она в меню.
+    Прежде плитка вела в конструктор, и человек попадал в форму там, где
+    ждал содержимого.
+
+    У пустого набора смотреть нечего, поэтому он и открывается там, где его
+    наполняют.
+  */
+  const open = withFrom(deck.total > 0 ? `/decks/${deck.id}/study` : `/decks/${deck.id}`);
+  const edit = withFrom(`/decks/${deck.id}`);
 
   return (
     /*
@@ -226,13 +238,13 @@ export function DeckCard({
       */}
       <div className="relative z-10 mt-4 flex items-stretch gap-2">
         {readOnly ? (
-          <LinkButton href={`/decks/${deck.id}/study`} tone="soft" className="flex-1">
+          <LinkButton href={open} tone="soft" className="flex-1">
             Browse cards
           </LinkButton>
         ) : deck.total === 0 ? (
           /* Практиковать нечего. Единственное осмысленное действие у пустого
              набора — наполнить его, и оно же главное. */
-          <LinkButton href={open} tone="primary" className="flex-1">
+          <LinkButton href={edit} tone="primary" className="flex-1">
             <PlusIcon />
             Add cards
           </LinkButton>
