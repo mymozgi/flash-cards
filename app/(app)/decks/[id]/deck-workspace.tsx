@@ -49,6 +49,27 @@ import {
 } from "@/components/icons";
 
 const OPTION_SLOTS = 5;
+
+/**
+ * Примеры в пустых полях.
+ *
+ * Показывают, КАК выглядит хорошая запись, а не повторяют подпись: текст
+ * «Example…» под подписью «Example» не сообщает ничего и только заполняет
+ * собой место.
+ *
+ * Приставка «e.g.» не для красоты: без неё серый пример читают как уже
+ * заполненное поле и ищут, где его стереть.
+ *
+ * Набор один на редактор и на табличный вид. Разойдясь, две копии учили бы
+ * разному в двух видах одного и того же экрана.
+ */
+const PLACEHOLDER = {
+  deckName: "e.g. Electricity basics",
+  question: "e.g. What does RMS voltage mean?",
+  answer: "e.g. The DC voltage that delivers the same power",
+  example: "e.g. 230 V mains peaks at about 325 V",
+  note: "e.g. peak = RMS × √2",
+} as const;
 const VIEWS = [
   { key: "list", label: "List", Icon: ListIcon },
   { key: "grid", label: "Grid", Icon: GridIcon },
@@ -758,6 +779,7 @@ function DeckHeader({
             value={editing.name}
             onChange={(e) => onChange({ name: e.target.value })}
             aria-label="Deck name"
+            placeholder={PLACEHOLDER.deckName}
             className={`${FIELD} text-2xl font-semibold`}
           />
           <textarea
@@ -1099,6 +1121,7 @@ function CardBlock({
         value={card.term}
         onChange={(e) => onUpdate(card.id, { term: e.target.value })}
         rows={compact ? 2 : 3}
+        placeholder={PLACEHOLDER.question}
         className={`${FIELD} resize-y`}
       />
 
@@ -1158,6 +1181,7 @@ function CardBlock({
             value={card.options[card.correctIndex] ?? ""}
             onChange={(e) => onOption(card, card.correctIndex, e.target.value)}
             rows={compact ? 2 : 3}
+            placeholder={PLACEHOLDER.answer}
             className={`${FIELD} resize-y`}
           />
         </>
@@ -1188,6 +1212,7 @@ function CardBlock({
       <input
         value={card.example}
         onChange={(e) => onUpdate(card.id, { example: e.target.value })}
+        placeholder={PLACEHOLDER.example}
         className={FIELD}
       />
 
@@ -1196,6 +1221,7 @@ function CardBlock({
         value={card.note}
         onChange={(e) => onUpdate(card.id, { note: e.target.value })}
         rows={2}
+        placeholder={PLACEHOLDER.note}
         className={`${FIELD} resize-y`}
       />
 
@@ -1298,6 +1324,7 @@ function Spreadsheet({
                       value={card.term}
                       onChange={(e) => onUpdate(card.id, { term: e.target.value })}
                       rows={2}
+                      placeholder={PLACEHOLDER.question}
                       className={`${CELL_FIELD} resize-y`}
                     />
                   </td>
@@ -1308,6 +1335,7 @@ function Spreadsheet({
                       value={card.options[card.correctIndex] ?? ""}
                       onChange={(e) => onOption(card, card.correctIndex, e.target.value)}
                       rows={2}
+                      placeholder={PLACEHOLDER.answer}
                       className={`${CELL_FIELD} resize-y`}
                     />
                   </td>
@@ -1317,7 +1345,7 @@ function Spreadsheet({
                     <input
                       value={card.example}
                       onChange={(e) => onUpdate(card.id, { example: e.target.value })}
-                      placeholder="Example…"
+                      placeholder={PLACEHOLDER.example}
                       className={CELL_FIELD}
                     />
                   </td>
