@@ -83,7 +83,7 @@ the primitive rather than beside it.
 
 | Role | What to use |
 |---|---|
-| Button | `Button` / `LinkButton`: tone `primary · soft · secondary · ghost · danger`, size `sm · md · lg · icon` |
+| Button | `Button` / `LinkButton`: tone `primary · soft · secondary · ghost · success · danger`, size `sm · md · lg · icon` |
 | Input | `inputClass`, dropdown `selectClass`, in a table `cellInputClass` |
 | Label and hint | `Field`, `Label` |
 | Surface | `Panel`, `panelClass`, `raisedClass`, `insetClass` |
@@ -123,7 +123,14 @@ Input font size is 16 px. Not for looks: Safari on iPhone zooms the page when
 focusing a field smaller than sixteen, and the user cannot zoom back out.
 
 Amber means "not an error, but not normal either" — a suspended card, for
-instance. Red (`rust`) is reserved for genuine failures.
+instance. Red (`rust`) is reserved for genuine failures. Green (`ok`, the
+`success` button tone) means one thing only: there is something unsaved. The
+colour is the state — a dark, disabled Save button says "everything is
+written" without a word of text — so it is never used decoratively.
+
+The green was measured, not picked: the familiar `#16a34a` gives 3.30 against
+white text where 4.5 is required. `--ok` is `#15803d` in the light theme (5.02)
+and `#4ade80` with dark ink in the dark one (10.70).
 
 ## Rules specific to this project
 

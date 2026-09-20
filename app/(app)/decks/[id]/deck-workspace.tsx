@@ -410,6 +410,9 @@ export function DeckWorkspace({
     router.refresh();
   };
 
+  /** Есть ли что сохранять. Порядок карточек — такое же изменение, как текст. */
+  const unsaved = dirty.size > 0 || orderDirty;
+
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return cards;
@@ -518,10 +521,9 @@ export function DeckWorkspace({
           действия в нём предлагали выйти из работы посреди работы. Живут они
           там, где набор выбирают: на плитке и в её меню.
         */}
-        <Button tone="primary" onClick={save} loading={saving} disabled={uploading}>
-          {!saving && <CheckIcon />}
-          {saving ? "Saving…" : dirty.size > 0 ? `Save ${dirty.size}` : orderDirty ? "Save order" : "Save cards"}
-        </Button>
+        {/* Сохранение отсюда убрано: оно живёт в липкой полосе внизу, рядом
+            с добавлением карточки. В колоде на семьдесят карточек кнопка
+            наверху означала подъём через весь список ради одного нажатия. */}
       </div>
 
       <div className="flex min-w-0 flex-col gap-4">
@@ -650,12 +652,43 @@ export function DeckWorkspace({
           </p>
         )}
 
-        {/* Кнопка липнет ко дну: в длинной колоде она уезжала за экран,
-            и чтобы добавить карточку, приходилось прокручивать весь список.
-            Тень отделяет её от содержимого, под которым она проходит. */}
-        <div className="sticky bottom-4 z-10 mt-5 flex justify-center pb-[env(safe-area-inset-bottom)]">
-          <Button tone="primary" size="lg" onClick={addCard} className="px-8 shadow-raised">
+        {/*
+          Полоса действий липнет ко дну: в колоде на семьдесят карточек и
+          добавление, и сохранение оказывались за экраном, и ради одного
+          нажатия приходилось прокручивать весь список.
+
+          Два действия разведены по краям, потому что они противоположны по
+          смыслу: слева прибавить работы, справа её закрепить. Рядом их легко
+          перепутать пальцем.
+
+          Подложка размыта, а не сплошная: под полосой проходит содержимое, и
+          видеть, что там есть продолжение, полезнее, чем закрыть его наглухо.
+        */}
+        <div className="sticky bottom-0 z-10 -mx-3 mt-5 flex items-center justify-between gap-3 border-t border-line bg-surface/85 px-3 py-3 backdrop-blur-sm pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:-mx-5 sm:px-5">
+          <Button tone="primary" size="lg" onClick={addCard} className="px-6">
             <PlusIcon /> Add card
+          </Button>
+          {/*
+            Зелёный только тогда, когда есть что сохранять. Цвет и есть
+            состояние: тёмная неактивная кнопка означает «всё записано», и
+            проверять это отдельной надписью не нужно.
+          */}
+          <Button
+            tone={unsaved ? "success" : "secondary"}
+            size="lg"
+            onClick={save}
+            loading={saving}
+            disabled={uploading || !unsaved}
+            className="px-6"
+          >
+            {!saving && <CheckIcon />}
+            {saving
+              ? "Saving…"
+              : dirty.size > 0
+                ? `Save ${dirty.size}`
+                : orderDirty
+                  ? "Save order"
+                  : "Save cards"}
           </Button>
         </div>
       </section>

@@ -11,7 +11,7 @@ import Link from "next/link";
  * Состояния заданы один раз: наведение, фокус с видимым кольцом, нажатие,
  * блокировка и загрузка.
  */
-export type ButtonTone = "primary" | "soft" | "secondary" | "ghost" | "danger";
+export type ButtonTone = "primary" | "soft" | "secondary" | "ghost" | "success" | "danger";
 export type ButtonSize = "sm" | "md" | "lg" | "icon";
 
 const BASE =
@@ -36,6 +36,16 @@ const TONES: Record<ButtonTone, string> = {
   secondary:
     "border-button border-field-line bg-surface text-ink hover:bg-surface-2 active:bg-surface-2",
   ghost: "text-muted hover:bg-surface-2 hover:text-ink",
+  /**
+   * Зелёный. Единственное его применение — «есть что сохранить»: цвет здесь
+   * работает индикатором состояния, а не украшением, поэтому и тон отдельный,
+   * а не `primary` с подкрашенным фоном.
+   *
+   * Оттенок проверен, а не подобран: привычный #16a34a давал с белым текстом
+   * 3.30 при норме 4.5. Токен `--ok` даёт 5.02 в светлой теме и 10.70 в
+   * тёмной, где заливка светлая, а текст тёмный.
+   */
+  success: "bg-ok text-ok-ink hover:brightness-110 active:brightness-95",
   danger: "border-button border-field-line bg-surface text-rust hover:bg-rust-soft",
 };
 
