@@ -19,9 +19,16 @@ export default function manifest(): MetadataRoute.Manifest {
       // Android обрезает иконку под форму системы — этой оставлено поле по краям
       { src: "/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
+    /*
+      Ярлыки по долгому нажатию на иконку установленного приложения.
+      Адрес здесь обязан существовать: промахнувшийся ярлык открывает 404 из
+      системного меню, и починить это можно только переустановкой. «New card»
+      вёл на /cards/new, которого в приложении нет — карточку заводят внутри
+      набора, отдельного маршрута у неё не было никогда.
+    */
     shortcuts: [
       { name: "Review", short_name: "Review", url: "/review" },
-      { name: "New card", short_name: "New", url: "/cards/new" },
+      { name: "My flashcards", short_name: "Cards", url: "/decks" },
     ],
   };
 }

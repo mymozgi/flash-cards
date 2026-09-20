@@ -59,9 +59,38 @@ $env:KARTOTEKA_EMAIL='you@example.com'; $env:KARTOTEKA_PASSWORD='...'; npm run c
 
 ## Деплой на Vercel
 
-Импортировать репозиторий, добавить те же две переменные окружения
-(`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) и задеплоить.
+1. New Project → Import Git Repository → этот репозиторий. Framework Next.js
+   определяется сам, команды сборки менять не нужно.
+2. Environment Variables — все четыре из `.env.example`, на окружения
+   Production, Preview и Development сразу:
+
+   | Переменная | Зачем |
+   |---|---|
+   | `NEXT_PUBLIC_SUPABASE_URL` | обязательна, без неё не соберётся |
+   | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | обязательна |
+   | `SUPABASE_SERVICE_ROLE_KEY` | только для ночной уборки файлов; без неё приложение работает, а `/api/cron/sweep` отвечает отказом и объясняет причину |
+   | `CRON_SECRET` | любая случайная строка; Vercel шлёт её в заголовке `Authorization`, иначе маршрут вернёт 401 кому угодно |
+
+3. Supabase → Authentication → URL Configuration: вписать боевой адрес в
+   **Site URL** и в **Redirect URLs**. Без этого письмо подтверждения и
+   восстановление пароля уводят на `localhost`.
+4. Deploy. Крон из `vercel.json` запускается в 03:00 UTC — на Hobby это
+   ровно один запуск в сутки, больше тариф не даёт.
+
 Тариф Hobby — только некоммерческое использование.
+
+## Установка на телефон
+
+Приложение — PWA: манифест и service worker уже на месте, ставить ничего не
+нужно. После деплоя открыть боевой адрес в браузере телефона:
+
+- **iPhone, Safari** — Поделиться → «На экран «Домой»». Только Safari: из
+  Chrome на iOS установка не предлагается.
+- **Android, Chrome** — меню → «Установить приложение».
+
+Иконка запускает приложение без адресной строки, долгое нажатие даёт ярлыки
+Review и My flashcards. Работает только по HTTPS — на `localhost` с телефона
+установка не предложится.
 
 ## Клавиатура
 
