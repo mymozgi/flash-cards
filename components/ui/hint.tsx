@@ -25,19 +25,26 @@ export function Hint({ children }: { children: React.ReactNode }) {
 
   return (
     <span className="group relative inline-flex align-middle">
+      {/*
+        Видимый кружок — внутри, поле для попадания — снаружи. Раньше рамка и
+        отступ висели на одном элементе, и отступ растягивал сам кружок: он
+        выходил вдвое крупнее подписи, рядом с которой стоит.
+
+        Цель нажатия меньше 44 px намеренно: нажимать тут нечего, кнопка нужна
+        ради фокуса и наведения, а наведение ловит весь значок с полем вокруг.
+      */}
       <button
         type="button"
         aria-describedby={id}
         aria-label="What is this field for?"
-        /*
-          Цель нажатия меньше 44 px намеренно: нажимать тут нечего, кнопка
-          нужна ради фокуса и наведения. Область расширена невидимым полем,
-          чтобы курсор и палец попадали не в семь пикселей значка.
-        */
-        className="-m-2 grid size-4 place-items-center rounded-full border border-field-line p-2 text-2xs font-semibold text-faint transition-colors hover:border-accent hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        style={{ boxSizing: "content-box" }}
+        className="-m-1.5 flex p-1.5 text-faint transition-colors hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
-        ?
+        <span
+          aria-hidden
+          className="grid size-3.5 place-items-center rounded-full border border-current text-[0.5625rem] font-bold leading-none"
+        >
+          ?
+        </span>
       </button>
       <span
         id={id}

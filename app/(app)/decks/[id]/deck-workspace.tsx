@@ -57,6 +57,11 @@ const OPTION_SLOTS = 5;
  * «Example…» под подписью «Example» не сообщает ничего и только заполняет
  * собой место.
  *
+ * Пример намеренно общеизвестный и один на все поля: столицы понятны любому,
+ * и видно, как вопрос, ответ, пример и заметка складываются в одну карточку.
+ * Прежде здесь была электротехника — она объясняла поля только тому, кто и
+ * так знает, что такое RMS.
+ *
  * Приставка «e.g.» не для красоты: без неё серый пример читают как уже
  * заполненное поле и ищут, где его стереть.
  *
@@ -64,11 +69,11 @@ const OPTION_SLOTS = 5;
  * разному в двух видах одного и того же экрана.
  */
 const PLACEHOLDER = {
-  deckName: "e.g. Electricity basics",
-  question: "e.g. What does RMS voltage mean?",
-  answer: "e.g. The DC voltage that delivers the same power",
-  example: "e.g. 230 V mains peaks at about 325 V",
-  note: "e.g. peak = RMS × √2",
+  deckName: "e.g. World capitals",
+  question: "e.g. What is the capital of Japan?",
+  answer: "e.g. Tokyo",
+  example: "e.g. Tokyo has been the capital since 1868",
+  note: "e.g. Kyoto was the capital before that",
 } as const;
 const VIEWS = [
   { key: "list", label: "List", Icon: ListIcon },
