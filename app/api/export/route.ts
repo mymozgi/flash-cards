@@ -1,5 +1,6 @@
 import Papa from "papaparse";
 import { createClient, requireUser } from "@/lib/supabase/server";
+import { splitTopicPath } from "@/lib/knowledge-tree";
 
 /**
  * Выгрузка всей базы (FR-40). Данные не должны запираться в приложении:
@@ -88,6 +89,10 @@ export async function GET(request: Request) {
     rows.map((card) => ({
       front: card.front_md,
       back: card.back_md,
+      // Две колонки, как и в импорте: место карточки — категория и коллекция
+      // внутри неё. Колонка topic оставлена ради файлов, сделанных раньше.
+      category: splitTopicPath(pathOf(card.topic_id)).category ?? "",
+      area: splitTopicPath(pathOf(card.topic_id)).topic ?? "",
       topic: pathOf(card.topic_id),
       note: card.note_md ?? "",
       reversed: card.kind === "reversed_of" ? 1 : 0,

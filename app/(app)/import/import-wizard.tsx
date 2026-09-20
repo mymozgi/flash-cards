@@ -14,6 +14,7 @@ import {
   preview as echo,
   sniffFormat,
   type DestinationMode,
+  rowPath,
   type Table,
 } from "@/lib/import-format";
 import { useCategoryPicker, type PickableCategory } from "@/components/ui/category-picker";
@@ -33,12 +34,16 @@ const CHUNK = 100;
 const PREVIEW = 20;
 const TRUTHY = new Set(["1", "true", "yes", "y", "да"]);
 
-const PASTE_EXAMPLE = `front,back,topic,note
-mitochondrion,powerhouse of the cell,Biology / Cells,makes ATP`;
+const PASTE_EXAMPLE = `front,back,category,area,note
+mitochondrion,powerhouse of the cell,Biology,Cells,makes ATP
+ribosome,builds proteins,Biology,Cells,
+hippocampus,forms new memories,Medicine,Neuroanatomy,`;
 
 type Field =
   | "front"
   | "back"
+  | "category"
+  | "area"
   | "topic"
   | "note"
   | "reversed"
@@ -49,7 +54,18 @@ type Field =
 const FIELDS: { key: Field; label: string; required?: boolean; hint: string }[] = [
   { key: "front", label: "Question", required: true, hint: "front side" },
   { key: "back", label: "Answer", required: true, hint: "back side" },
-  { key: "topic", label: "Topic", hint: "path separated by /, levels are created as needed" },
+  /*
+    Место карточки — две колонки. Файл с несколькими значениями Area сам
+    разложит карточки по коллекциям: «XR / Comfort» и «XR / Hand tracking»
+    дадут две, а не одну с длинным именем.
+  */
+  { key: "category", label: "Category", hint: "top level — XR, UX, Medicine" },
+  { key: "area", label: "Area", hint: "the collection inside it — Hand tracking" },
+  {
+    key: "topic",
+    label: "Category / Area in one column",
+    hint: "older files and exports; ignored when Area is mapped",
+  },
   { key: "note", label: "Note", hint: "shown after the answer" },
   { key: "reversed", label: "Reversed", hint: "1 / true / yes — also create the reverse card" },
   { key: "choice1", label: "Wrong answer 1", hint: "for multiple choice" },
@@ -61,7 +77,9 @@ const FIELDS: { key: Field; label: string; required?: boolean; hint: string }[] 
 const ALIASES: Record<Field, string[]> = {
   front: ["front", "question", "term", "word", "prompt", "q", "вопрос", "термин"],
   back: ["back", "answer", "definition", "translation", "meaning", "a", "ответ", "перевод"],
-  topic: ["topic", "deck", "category", "subject", "тема", "категория"],
+  category: ["category", "area1", "group", "subject", "категория"],
+  area: ["area", "collection", "set", "deck", "sub", "коллекция", "набор"],
+  topic: ["topic", "path", "тема"],
   note: ["note", "notes", "comment", "hint", "source", "заметка"],
   reversed: ["reversed", "reverse", "both", "bidirectional", "обратная"],
   choice1: ["choice1", "wrong1", "distractor1", "option1"],
@@ -220,7 +238,11 @@ export function ImportWizard({ categories }: { categories: ImportCategory[] }) {
     front: raw[mapping.front] ?? "",
     back: raw[mapping.back] ?? "",
     topic: importDestination(
-      mapping.topic ? (raw[mapping.topic] ?? "") : "",
+      rowPath(
+        mapping.category ? (raw[mapping.category] ?? "") : "",
+        mapping.area ? (raw[mapping.area] ?? "") : "",
+        mapping.topic ? (raw[mapping.topic] ?? "") : "",
+      ),
       destMode,
       category?.name ?? null,
       fallbackDeck,
@@ -238,16 +260,22 @@ export function ImportWizard({ categories }: { categories: ImportCategory[] }) {
     [rows, mapping, destMode, category, fallbackDeck],
   );
 
-  /** Пути из самого файла — до подстановки категории. На них и решают. */
+  /** Адреса из самого файла — до подстановки категории. На них и решают. */
   const fileTopics = useMemo(() => {
-    if (!mapping.topic) return [];
-    return rows.map((raw) => (raw[mapping.topic] ?? "").trim());
-  }, [rows, mapping.topic]);
+    if (!mapping.category && !mapping.area && !mapping.topic) return [];
+    return rows.map((raw) =>
+      rowPath(
+        mapping.category ? (raw[mapping.category] ?? "") : "",
+        mapping.area ? (raw[mapping.area] ?? "") : "",
+        mapping.topic ? (raw[mapping.topic] ?? "") : "",
+      ),
+    );
+  }, [rows, mapping.category, mapping.area, mapping.topic]);
 
   const hasOwnCategories = useMemo(() => fileHasCategories(fileTopics), [fileTopics]);
   const rowsWithoutTopic = useMemo(
-    () => fileTopics.filter((t) => !t).length + (mapping.topic ? 0 : rows.length),
-    [fileTopics, mapping.topic, rows.length],
+    () => (fileTopics.length === 0 ? rows.length : fileTopics.filter((t) => !t).length),
+    [fileTopics, rows.length],
   );
 
   /** Куда в итоге лягут карточки: готовые пути со счётчиком. */

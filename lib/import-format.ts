@@ -10,10 +10,23 @@
 
 import { splitTopicPath } from "./knowledge-tree";
 
-/** Колонки, которые понимает мастер импорта. */
+/**
+ * Колонки, которые понимает мастер импорта.
+ *
+ * Место карточки описывают две колонки, а не одна: `category` — верхний
+ * уровень, `area` — коллекция внутри него. Так файл сам раскладывает карточки
+ * по коллекциям, и «XR / Comfort» с «XR / Hand tracking» в одном файле дают
+ * две коллекции, а не одну с длинным именем.
+ *
+ * `topic` оставлена и понимается по-прежнему: там лежит тот же адрес одной
+ * строкой, «Category / Area». Старые выгрузки должны читаться обратно —
+ * резервная копия, которую нельзя восстановить, копией не является.
+ */
 export const CANONICAL_COLUMNS = [
   "front",
   "back",
+  "category",
+  "area",
   "topic",
   "note",
   "reversed",
@@ -56,9 +69,17 @@ function isExportCard(value: unknown): boolean {
 /** Карточка собственной выгрузки — в канонические колонки мастера. */
 function fromExportCard(card: Record<string, unknown>): Record<string, string> {
   const distractors = Array.isArray(card.distractors) ? card.distractors : [];
+  /*
+    В выгрузке адрес лежит одной строкой. Разбираем его на пару колонок тем
+    же правилом, что и всё остальное приложение, — иначе своя же выгрузка
+    читалась бы обратно по запасному пути, а не по основному.
+  */
+  const place = splitTopicPath(cell(card.topic_path));
   return {
     front: cell(card.front_md),
     back: cell(card.back_md),
+    category: place.category ?? "",
+    area: place.topic ?? "",
     topic: cell(card.topic_path),
     note: cell(card.note_md),
     reversed: card.kind === "reversed_of" ? "1" : "0",
@@ -149,6 +170,33 @@ export type DestinationMode = "file" | "single";
  * и смысл выбора. Имя темы при этом сохраняется: терять его значило бы свалить
  * весь файл в одну кучу.
  */
+/**
+ * Две колонки — в один адрес.
+ *
+ * Пустая категория законна: коллекция без категории — переходное состояние,
+ * которое база разрешает. Пустая area означает, что раскладку задаёт не эта
+ * пара колонок, и адрес придёт из `topic`.
+ */
+export function combinePath(category: string, area: string): string {
+  const parts = [category.trim(), area.trim()].filter(Boolean);
+  return parts.join(" / ");
+}
+
+/**
+ * Адрес строки до выбора назначения: пара колонок, если она заполнена, иначе
+ * старая колонка с путём. Приоритет у пары — она точнее: в ней разделитель не
+ * может случайно оказаться внутри имени.
+ */
+export function rowPath(category: string, area: string, topic: string): string {
+  /*
+    Решает наличие КОЛЛЕКЦИИ, а не категории. Одна категория адреса не
+    задаёт: карточка живёт в коллекции, и «XR» без неё завело бы набор с
+    именем категории прямо в корне — ровно то, чего быть не должно.
+  */
+  if (!area.trim()) return topic.trim();
+  return combinePath(category, area);
+}
+
 export function importDestination(
   topic: string,
   mode: DestinationMode,

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  combinePath,
   deckNameFromFile,
   fileHasCategories,
   importDestination,
+  rowPath,
 } from "@/lib/import-format";
 
 /*
@@ -71,5 +73,49 @@ describe("deckNameFromFile", () => {
   it("на пустом имени даёт осмысленный запасной вариант", () => {
     expect(deckNameFromFile("")).toBe("Imported");
     expect(deckNameFromFile(".csv")).toBe("Imported");
+  });
+});
+
+describe("combinePath и rowPath", () => {
+  it("две колонки складываются в адрес", () => {
+    expect(combinePath("XR", "Comfort & Ergonomics")).toBe("XR / Comfort & Ergonomics");
+  });
+
+  it("коллекция без категории законна", () => {
+    // Набор часто делают раньше, чем занимаются раскладкой.
+    expect(combinePath("", "Hand tracking")).toBe("Hand tracking");
+    expect(combinePath("   ", "Hand tracking")).toBe("Hand tracking");
+  });
+
+  it("пустая пара не даёт адреса", () => {
+    expect(combinePath("", "")).toBe("");
+  });
+
+  it("пара колонок сильнее старой колонки с путём", () => {
+    // В паре разделитель не может случайно оказаться внутри имени.
+    expect(rowPath("XR", "Comfort", "Psychology / Bias")).toBe("XR / Comfort");
+  });
+
+  it("без пары адрес берётся из колонки с путём — старые выгрузки читаются", () => {
+    expect(rowPath("", "", "Psychology / Bias")).toBe("Psychology / Bias");
+  });
+
+  it("одна категория без коллекции не перебивает путь", () => {
+    // Категория без area раскладку не задаёт: карточке нужна коллекция.
+    expect(rowPath("XR", "", "Psychology / Bias")).toBe("Psychology / Bias");
+  });
+
+  it("разные area в одном файле дают разные коллекции", () => {
+    const rows = [
+      rowPath("XR", "Comfort & Ergonomics", ""),
+      rowPath("XR", "Hand tracking", ""),
+      rowPath("UX", "UX Fundamentals", ""),
+    ];
+    expect(rows).toEqual([
+      "XR / Comfort & Ergonomics",
+      "XR / Hand tracking",
+      "UX / UX Fundamentals",
+    ]);
+    expect(new Set(rows).size).toBe(3);
   });
 });

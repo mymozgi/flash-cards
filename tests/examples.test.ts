@@ -4,6 +4,7 @@ import { join } from "node:path";
 import Papa from "papaparse";
 import { CANONICAL_COLUMNS } from "@/lib/import-format";
 import { splitTopicPath } from "@/lib/knowledge-tree";
+import { rowPath } from "@/lib/import-format";
 import { normalizeFront } from "@/lib/cards";
 import { renderMarkdown } from "@/lib/markdown";
 
@@ -47,8 +48,14 @@ describe.each(files)("%s", (name) => {
     expect(unknown).toEqual([]);
   });
 
-  it("у каждой строки есть вопрос, ответ и тема", () => {
-    const broken = rows.filter((r) => !r.front?.trim() || !r.back?.trim() || !r.topic?.trim());
+  /** Адрес строки — тем же правилом, что и в мастере импорта. */
+  const placeOf = (r: Record<string, string>) =>
+    rowPath(r.category ?? "", r.area ?? "", r.topic ?? "");
+
+  it("у каждой строки есть вопрос, ответ и место", () => {
+    const broken = rows.filter(
+      (r) => !r.front?.trim() || !r.back?.trim() || !placeOf(r),
+    );
     expect(broken).toEqual([]);
   });
 
@@ -56,7 +63,7 @@ describe.each(files)("%s", (name) => {
     // Односегментный путь создал бы тему без категории: законно в базе, но в
     // примере это просто забытая категория.
     const flat = rows
-      .map((r) => r.topic.trim())
+      .map(placeOf)
       .filter((path) => {
         const { category, topic } = splitTopicPath(path);
         return !category || !topic;
@@ -66,7 +73,7 @@ describe.each(files)("%s", (name) => {
 
   it("имя категории не содержит разделитель пути", () => {
     // Защита от «XR / VR / AR»: слэш внутри имени разрывает путь.
-    const deep = rows.map((r) => r.topic.split("/").length).filter((n) => n !== 2);
+    const deep = rows.map((r) => placeOf(r).split("/").length).filter((n) => n !== 2);
     expect(deep).toEqual([]);
   });
 
