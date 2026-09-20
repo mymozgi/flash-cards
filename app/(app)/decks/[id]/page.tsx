@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient, requireUser } from "@/lib/supabase/server";
-import { mediaForCards } from "@/lib/data";
+import { getTopicTree, mediaForCards } from "@/lib/data";
+import { isStudySet, kindInEffect } from "@/lib/knowledge-tree";
 import { publicUrl } from "@/lib/storage";
 import { withSource } from "@/lib/schema";
 import type { DeckCard } from "./deck-workspace";
@@ -54,10 +55,42 @@ export default async function DeckPage(props: { params: Promise<{ id: string }> 
       .order("created_at"),
   ]);
 
-  const [user, media] = await Promise.all([
+  const [user, media, tree] = await Promise.all([
     requireUser(),
     mediaForCards(((rows ?? []) as unknown as CardRow[]).map((r) => r.id)),
+    getTopicTree(),
   ]);
+
+  /*
+    Куда можно перенести карточки.
+
+    Только наборы, не категории: карточка в категории лежать не может, это
+    проверяет триггер `cards_topic_kind`. Предложить категорию значило бы
+    предложить действие, которое база отвергнет, — а интерфейс не должен
+    обещать того, чего не будет.
+
+    Текущий набор тоже убран: перенос в себя не перенос.
+
+    Род читается через те же помощники, что и весь остальной код. Читать
+    `kind` буквально нельзя: до миграции 0021 он у всех узлов `area`, и такой
+    список оказался бы пустым.
+  */
+  const split = kindInEffect(tree.map((node) => node.kind));
+  const childrenOf = new Set(tree.map((node) => node.parent_id).filter(Boolean));
+  const destinations = tree
+    .filter((node) => node.id !== id)
+    .filter((node) =>
+      isStudySet({
+        ownCards: node.cardCount,
+        hasChildren: childrenOf.has(node.id),
+        kind: split ? node.kind : null,
+      }),
+    )
+    .map((node) => ({
+      id: node.id,
+      path: node.path,
+      color: node.color ?? undefined,
+    }));
 
   const cards: DeckCard[] = ((rows ?? []) as unknown as CardRow[]).map((row) => {
     const attached = media.get(row.id) ?? [];
@@ -117,6 +150,7 @@ export default async function DeckPage(props: { params: Promise<{ id: string }> 
           }}
           initialCards={cards}
           userId={user.id}
+          destinations={destinations}
         />
       </div>
     </>

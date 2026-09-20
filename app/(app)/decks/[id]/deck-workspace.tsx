@@ -25,6 +25,13 @@ import { Button, LinkButton } from "@/components/ui/button";
 import { cellInputClass, inputClass } from "@/components/ui/field";
 import { panelClass } from "@/components/ui/panel";
 import { useConfirm } from "@/components/ui/confirm";
+/*
+  Перенос карточек и выбор категории берутся готовыми, а не пишутся заново.
+  Действие на сервере одно на всё приложение: разойдясь, две реализации
+  «переложить карточку» дали бы две истории повторений одного знания.
+*/
+import { bulkUpdate, createCategoryFromPath } from "../../library/actions";
+import { useCategoryPicker, type PickableCategory } from "@/components/ui/category-picker";
 import { useReorder } from "@/components/use-reorder";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -86,10 +93,13 @@ export function DeckWorkspace({
   deck,
   initialCards,
   userId,
+  destinations,
 }: {
   deck: Deck;
   initialCards: DeckCard[];
   userId: string;
+  /** Куда можно перенести карточки. Текущий набор сюда не попадает. */
+  destinations: PickableCategory[];
 }) {
   const router = useRouter();
   const [cards, setCards] = useState(initialCards);
@@ -98,6 +108,8 @@ export function DeckWorkspace({
   const [query, setQuery] = useState("");
   const [columns, setColumns] = useState<Set<Column>>(new Set(COLUMNS.map((c) => c.key)));
   const [status, setStatus] = useState<{ kind: "error" | "ok"; text: string } | null>(null);
+  /** Отмеченные карточки. Пустой набор — панель переноса скрыта. */
+  const [picked, setPicked] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [details, setDetails] = useState<Deck | null>(null);
   const [orderDirty, setOrderDirty] = useState(false);
@@ -175,10 +187,83 @@ export function DeckWorkspace({
       next.delete(card.id);
       return next;
     });
+    // иначе счётчик «N selected» считал бы удалённую, а перенос отправил бы
+    // на сервер идентификатор, которого там уже нет
+    setPicked((prev) => {
+      if (!prev.has(card.id)) return prev;
+      const next = new Set(prev);
+      next.delete(card.id);
+      return next;
+    });
     if (!card.isNew) {
       const res = await removeCard(card.id);
       if (!res.ok) setStatus({ kind: "error", text: res.error ?? "Could not delete the card" });
     }
+  };
+
+  const togglePicked = (id: string) =>
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  /*
+    Создание набора на лету идёт через `createCategoryFromPath`, и здесь это
+    ровно то, что нужно: для односегментного имени он ставит род `deck`. В
+    мастере импорта тот же вызов был бы ошибкой — там выбирают КАТЕГОРИЮ, —
+    а карточке нужен именно набор.
+  */
+  const { ask: pickDestination, dialog: destinationDialog } = useCategoryPicker(
+    destinations,
+    createCategoryFromPath,
+  );
+
+  const movePicked = async () => {
+    const ids = [...picked];
+    if (ids.length === 0) return;
+
+    /*
+      Несохранённая правка при переносе пропала бы молча: карточка уезжает из
+      списка, а её изменения живут только здесь, в состоянии страницы.
+      Поэтому не переносим, а говорим, что мешает, — кнопка сохранения стоит
+      рядом и показывает то же число.
+    */
+    const unsaved = ids.filter((id) => dirty.has(id)).length;
+    if (unsaved > 0) {
+      setStatus({
+        kind: "error",
+        text: `Save first: ${unsaved} of the selected ${
+          unsaved === 1 ? "card has unsaved changes" : "cards have unsaved changes"
+        }, and moving would discard them.`,
+      });
+      return;
+    }
+
+    const topicId = await pickDestination({
+      title: `Move ${ids.length} ${ids.length === 1 ? "card" : "cards"}`,
+      description:
+        "Pick the set they move into, or create a new one. Their review history is untouched.",
+      confirmLabel: "Move",
+    });
+    // undefined — передумали. null здесь не бывает: allowNone не предлагается,
+    // карточке нужно место, а «нигде» местом не является.
+    if (topicId === undefined || topicId === null) return;
+
+    const res = await bulkUpdate({ action: "move_topic", cardIds: ids, topicId });
+    if (!res.ok) {
+      setStatus({ kind: "error", text: res.error ?? "Could not move the cards" });
+      return;
+    }
+
+    setCards((prev) => prev.filter((card) => !picked.has(card.id)));
+    setPicked(new Set());
+    setStatus({
+      kind: "ok",
+      text: `Moved ${ids.length} ${ids.length === 1 ? "card" : "cards"} out of this set`,
+    });
+    router.refresh();
   };
 
   const addImages = async (card: DeckCard, side: "front" | "back", files: File[]) => {
@@ -296,6 +381,7 @@ export function DeckWorkspace({
     */
     <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_23rem]">
       {dialog}
+      {destinationDialog}
       <DeckHeader
         className="lg:sticky lg:top-4 lg:col-start-2 lg:row-start-1"
         deck={deck}
@@ -396,6 +482,25 @@ export function DeckWorkspace({
         </div>
 
 
+        {/*
+          Панель появляется только когда что-то отмечено, и липнет к верху:
+          в колоде на семьдесят карточек отметить нижние и потерять кнопку
+          переноса за экраном — то же, что не иметь её вовсе.
+        */}
+        {picked.size > 0 && (
+          <div className={`${PANEL} sticky top-4 z-10 flex flex-wrap items-center gap-2 p-2`}>
+            <span className="px-2 text-sm font-semibold tabular-nums">
+              {picked.size} selected
+            </span>
+            <Button size="sm" tone="primary" onClick={movePicked}>
+              Move to another set…
+            </Button>
+            <Button size="sm" tone="ghost" onClick={() => setPicked(new Set())}>
+              Clear
+            </Button>
+          </div>
+        )}
+
         {view === "sheet" ? (
           <Spreadsheet
             cards={visible}
@@ -428,6 +533,8 @@ export function DeckWorkspace({
                 <CardBlock
                   card={card}
                   index={index + 1}
+                  picked={picked.has(card.id)}
+                  onTogglePicked={() => togglePicked(card.id)}
                   compact={view === "grid"}
                   collapsed={collapsed.has(card.id)}
                   onToggleCollapse={() => toggleCollapsed(card.id)}
@@ -694,6 +801,8 @@ function Label({ children }: { children: React.ReactNode }) {
 function CardBlock({
   card,
   index,
+  picked,
+  onTogglePicked,
   compact,
   collapsed,
   onToggleCollapse,
@@ -708,6 +817,9 @@ function CardBlock({
 }: {
   card: DeckCard;
   index: number;
+  /** Карточка отмечена для переноса. */
+  picked: boolean;
+  onTogglePicked: () => void;
   compact: boolean;
   collapsed: boolean;
   onToggleCollapse: () => void;
@@ -725,11 +837,26 @@ function CardBlock({
   return (
     <article
       className={`rounded-xl border p-4 transition-shadow ${
-        lifted ? "border-accent bg-surface shadow-raised" : "border-line"
+        lifted
+          ? "border-accent bg-surface shadow-raised"
+          : picked
+            ? "border-accent bg-accent-soft"
+            : "border-line"
       }`}
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
+          {/* Флажок перед ручкой переноса: сначала «какие», потом «куда».
+              Новую карточку отмечать нечем — на сервере её ещё нет. */}
+          {!card.isNew && (
+            <input
+              type="checkbox"
+              checked={picked}
+              onChange={onTogglePicked}
+              aria-label={`Select ${card.term || "this untitled card"}`}
+              className="size-4 shrink-0 accent-[var(--accent)]"
+            />
+          )}
           {grip && (
             <span
               {...grip}
