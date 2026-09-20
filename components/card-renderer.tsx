@@ -113,8 +113,18 @@ export function CardRenderer({
       {layout === "full_image" && hasImage ? (
         <>
           <Picture image={image} className="absolute inset-0 size-full" onClick={onImageClick} />
-          {/* затемнение снизу: без него белый текст теряется на светлой картинке */}
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/45 to-transparent p-4 sm:p-5">
+          {/*
+            Затемнение снизу: без него белый текст теряется на светлой
+            картинке.
+
+            Считано, а не подобрано. Худший случай — белое место снимка, и
+            тогда видимый фон равен самой вуали. Прежняя средняя точка 45%
+            давала контраст 3.36 при норме 4.5, а выше неё вуаль сходила на
+            нет вовсе — текст сидел ровно в этой слабой зоне. Теперь низ 92%
+            (18.4), середина 78% (11.6), и прозрачным градиент становится
+            выше текста за счёт верхнего поля.
+          */}
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/92 via-black/78 to-transparent px-4 pb-4 pt-12 sm:px-5 sm:pb-5">
             <div
               className="prose-card max-h-[45%] overflow-y-auto text-center text-white [&_a]:text-white [&_ul]:inline-block [&_ul]:text-left [&_ol]:inline-block [&_ol]:text-left"
               dangerouslySetInnerHTML={{ __html: html }}
