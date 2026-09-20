@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LinkButton } from "@/components/ui/button";
+import { Button, LinkButton } from "@/components/ui/button";
 import { Badge } from "@/components/ui/panel";
 import { PencilIcon, PlusIcon, TrashIcon } from "@/components/icons";
 import { Progress } from "@/components/ui/progress";
@@ -38,6 +38,7 @@ export function DeckCard({
   selecting = false,
   selected = false,
   onToggle,
+  onDelete,
 }: {
   deck: DeckSummary;
   /** Гостевой режим: тренировка пишет оценки, правка меняет данные — обе скрыты. */
@@ -47,6 +48,9 @@ export function DeckCard({
      передать нельзя, туда уезжают только серверные действия. */
   selecting?: boolean;
   selected?: boolean;
+  /* Без обработчика кнопки удаления нет. Кнопка, которая ничего не делает,
+     хуже её отсутствия — а удалять набор осмысленно не на каждом экране. */
+  onDelete?: () => void;
   onToggle?: () => void;
 }) {
   const ratio = deck.total === 0 ? 0 : Math.round((deck.memorized / deck.total) * 100);
@@ -226,6 +230,21 @@ export function DeckCard({
               <PencilIcon />
             </LinkButton>
           </>
+        )}
+        {/* Удаление стоит последним и отделено от остальных: рядом с ними
+            промах пальцем стоил бы набора. Тон danger — тот же, что у
+            всякого разрушительного действия в приложении. */}
+        {!readOnly && onDelete && (
+          <Button
+            size="icon"
+            tone="danger"
+            onClick={onDelete}
+            aria-label={`Delete ${deck.name}`}
+            title="Delete set"
+            className="ml-1"
+          >
+            <TrashIcon />
+          </Button>
         )}
       </div>
     </div>

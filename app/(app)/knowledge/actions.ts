@@ -257,3 +257,46 @@ export async function removeCategory(
   revalidatePath("/", "layout");
   return { ok: true };
 }
+
+/**
+ * Удаление набора вместе с его карточками.
+ *
+ * Карточки уходят в корзину, а не уничтожаются. Так поступает всё остальное
+ * приложение: удаление карточки из конструктора и массовое удаление в
+ * библиотеке дают те же тридцать дней на возврат. Сделать здесь исключение
+ * значило бы, что одно нажатие безвозвратно стирает историю повторений,
+ * накопленную месяцами, — и стирает её тише, чем удаление одной карточки.
+ *
+ * `removeCategory` для этого не годится: там `cascade` сносит только узел, а
+ * карточки по `on delete set null` остаются без набора и всплывают в
+ * библиотеке как ничьи. Для категории это верно — её содержимое переживает
+ * её. Для набора это оставляло бы после удаления мусор.
+ */
+export async function removeSet(id: string): Promise<NodeResult> {
+  const user = await requireUser();
+  const supabase = await createClient();
+
+  const { data: node } = await supabase
+    .from("topics")
+    .select("id")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!node) return { ok: false, error: "Set not found" };
+
+  // Сначала карточки: если уборка не удастся, набор останется на месте и
+  // будет видно, что именно не получилось
+  const { error: trashed } = await supabase
+    .from("cards")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("topic_id", id)
+    .eq("user_id", user.id)
+    .is("deleted_at", null);
+  if (trashed) return { ok: false, error: explain(trashed) };
+
+  const { error } = await supabase.from("topics").delete().eq("id", id).eq("user_id", user.id);
+  if (error) return { ok: false, error: explain(error) };
+
+  revalidatePath("/", "layout");
+  return { ok: true };
+}

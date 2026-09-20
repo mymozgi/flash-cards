@@ -4,7 +4,7 @@ import { getKnowledgeTree } from "@/lib/knowledge";
 import { getDeckSummaries } from "@/lib/data";
 import { LinkButton } from "@/components/ui/button";
 import { panelClass } from "@/components/ui/panel";
-import { DeckCard } from "@/components/deck-card";
+import { CategorySets } from "../category-sets";
 import { NewSetButton } from "../new-set-button";
 
 export default async function CategoryPage(props: { params: Promise<{ id: string }> }) {
@@ -83,13 +83,7 @@ export default async function CategoryPage(props: { params: Promise<{ id: string
         </div>
 
         {sets.length > 0 ? (
-          <ul className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {sets.map((deck) => (
-              <li key={deck.id}>
-                <DeckCard deck={deck} />
-              </li>
-            ))}
-          </ul>
+          <CategorySets sets={sets} />
         ) : (
           /* Пустая категория — начало, а не поломка. Говорим, чем наполнить,
              и куда за этим идти: создание набора живёт в меню категории. */
