@@ -75,12 +75,11 @@ export default async function CategoryPage(props: { params: Promise<{ id: string
             Practice this category
           </LinkButton>
           {/*
-            Настоящий адрес, а не якорь. Якорь вёл на секцию прямо под
-            шапкой: на обычном экране прокручивать некуда, и нажатие
-            выглядело как ничто. Здесь список наборов открывается уже
-            суженным до этой категории.
+            Отдельной кнопки «Manage sets» здесь нет. Наборами управляют в
+            самой секции наборов ниже: там они и лежат, там же выбор,
+            меню и удаление. Кнопка вела бы на список тех же наборов —
+            отдельный режим ради действий, которые доступны на месте.
           */}
-          <LinkButton href={`/decks?category=${node.id}`}>Manage sets</LinkButton>
           <LinkButton href={`/library?topic=${node.id}`}>Browse in library</LinkButton>
         </div>
       </header>
@@ -96,20 +95,9 @@ export default async function CategoryPage(props: { params: Promise<{ id: string
           <NewSetButton categoryId={node.id} categoryPath={node.path} />
         </div>
 
-        {sets.length > 0 ? (
-          <CategorySets sets={sets} />
-        ) : (
-          /* Пустая категория — начало, а не поломка. Говорим, чем наполнить,
-             и куда за этим идти: создание набора живёт в меню категории. */
-          /* Пустая категория — начало, а не поломка. Действие рядом, в
-             заголовке раздела, поэтому здесь только объяснение. */
-          <div className="mt-3 rounded-xl border border-dashed border-line px-5 py-12 text-center">
-            <p className="text-sm text-muted">
-              A category holds flashcard sets. Create one above — it can sit empty
-              until you have cards for it.
-            </p>
-          </div>
-        )}
+        {/* Пустое состояние живёт внутри: после удаления последнего набора
+            секция должна сама стать пустой, а не ждать другой ветки. */}
+        <CategorySets sets={sets} categoryId={node.id} categoryPath={node.path} />
       </section>
     </>
   );

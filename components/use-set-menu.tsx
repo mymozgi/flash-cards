@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { PopMenu, type PopMenuGroup } from "@/components/ui/pop-menu";
 import { useDeleteSet } from "@/components/use-delete-set";
-import { updateCategory } from "@/app/(app)/knowledge/actions";
+import { duplicateSet, updateCategory } from "@/app/(app)/knowledge/actions";
 import type { DeckSummary } from "@/lib/types";
 
 type SetAction =
@@ -13,6 +13,7 @@ type SetAction =
   | "practice"
   | "browse"
   | "cards"
+  | "duplicate"
   | "archive"
   | "delete";
 
@@ -58,6 +59,17 @@ export function useSetMenu() {
       case "browse":
         router.push(`/decks/${deck.id}/study`);
         return;
+      case "duplicate":
+        startTransition(async () => {
+          const res = await duplicateSet(deck.id);
+          if (!res.ok) {
+            setError(res.error ?? "Could not duplicate the set");
+            return;
+          }
+          setError(null);
+          router.refresh();
+        });
+        return;
       case "archive":
         startTransition(async () => {
           const res = await updateCategory(deck.id, { archived: true });
@@ -93,6 +105,16 @@ export function useSetMenu() {
       items: [
         { action: "edit", label: "Edit set" },
         { action: "cards", label: deck.total > 0 ? "Move cards" : "Add cards" },
+        /*
+          Дублируется оболочка: имя, описание, цвет, иконка и та же
+          категория. Карточки НЕ копируются, и подпись говорит об этом
+          прямо — иначе человек ждал бы копию содержимого.
+
+          Копий карточек в этом проекте не создают никогда: две копии
+          одного знания дают две истории повторений, и обе врут — учат
+          одно, а расписание считает, что двое.
+        */
+        { action: "duplicate", label: "Duplicate (empty copy)" },
       ],
     },
     {

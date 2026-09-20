@@ -59,6 +59,7 @@ export async function createCategory(input: {
   parentId?: string | null;
   icon?: string;
   color?: string;
+  description?: string;
   kind?: "area" | "deck";
 }): Promise<NodeResult & { id?: string }> {
   const user = await requireUser();
@@ -72,6 +73,7 @@ export async function createCategory(input: {
     name,
     icon: input.icon || null,
     color: input.color || null,
+    description: input.description || null,
   };
 
   let attempt = await supabase
@@ -307,4 +309,97 @@ export async function removeSet(id: string): Promise<NodeResult> {
 
   revalidatePath("/", "layout");
   return { ok: true };
+}
+
+/**
+ * Удаление нескольких наборов разом. НЕОБРАТИМО, как и одиночное.
+ *
+ * Одним запросом на всё, а не циклом из `removeSet`: цикл делал бы столько
+ * же обращений к базе, сколько наборов, и при отказе на середине оставлял бы
+ * половину удалённой — без возможности сказать, какую именно.
+ *
+ * Категории не трогаются: удаляются только перечисленные узлы. Соседние
+ * наборы тоже — фильтр по списку идентификаторов, а не по родителю.
+ */
+export async function removeSets(ids: string[]): Promise<NodeResult> {
+  const user = await requireUser();
+  if (ids.length === 0) return { ok: true };
+
+  const supabase = await createClient();
+
+  // Сначала карточки: иначе они пережили бы свои наборы и всплыли ничьими
+  const { error: wiped } = await supabase
+    .from("cards")
+    .delete()
+    .in("topic_id", ids)
+    .eq("user_id", user.id);
+  if (wiped) return { ok: false, error: explain(wiped) };
+
+  const { error } = await supabase
+    .from("topics")
+    .delete()
+    .in("id", ids)
+    .eq("user_id", user.id);
+  if (error) return { ok: false, error: explain(error) };
+
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/** Архивация нескольких наборов. Обратима — это не удаление. */
+export async function archiveSets(ids: string[]): Promise<NodeResult> {
+  const user = await requireUser();
+  if (ids.length === 0) return { ok: true };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("topics")
+    .update({ archived_at: new Date().toISOString() })
+    .in("id", ids)
+    .eq("user_id", user.id);
+  if (error) return { ok: false, error: explain(error) };
+
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/**
+ * Дублирование набора — БЕЗ карточек.
+ *
+ * Копируется оболочка: имя с пометкой, описание, цвет, иконка, та же
+ * категория. Карточки не копируются, и это не упущение, а правило проекта:
+ * две копии одного знания дают две истории повторений, и обе врут — человек
+ * учит одно, а расписание считает, что он учит двое.
+ *
+ * Полезно это ровно там, где дублирование и просят: завести соседний набор
+ * той же формы и разложить по нему карточки переносом, а не копией.
+ */
+export async function duplicateSet(id: string): Promise<NodeResult & { id?: string }> {
+  const user = await requireUser();
+  const supabase = await createClient();
+
+  const { data: node } = await supabase
+    .from("topics")
+    .select("name,parent_id,description,color,icon")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!node) return { ok: false, error: "Set not found" };
+
+  const source = node as {
+    name: string;
+    parent_id: string | null;
+    description: string | null;
+    color: string | null;
+    icon: string | null;
+  };
+
+  return createCategory({
+    name: `${source.name} (copy)`,
+    parentId: source.parent_id,
+    description: source.description ?? undefined,
+    color: source.color ?? undefined,
+    icon: source.icon ?? undefined,
+    kind: "deck",
+  });
 }

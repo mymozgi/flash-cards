@@ -27,7 +27,12 @@ export type ConfirmAction<T extends string = string> = {
 
 export type ConfirmOptions<T extends string = string> = {
   title: string;
-  description?: string;
+  /*
+    Не только строка: у массового удаления объём выражается списком, а не
+    предложением. «Три набора и 22 карточки» человек читает как число, а
+    перечисление имён — как то, с чем он сейчас расстанется.
+  */
+  description?: React.ReactNode;
   /** Подпись основной кнопки, когда выбор бинарный. */
   confirmLabel?: string;
   cancelLabel?: string;
@@ -86,7 +91,7 @@ export function useConfirm<T extends string = string>() {
         <div className="p-5">
           <h2 className="text-lg font-semibold tracking-tight">{options.title}</h2>
           {options.description && (
-            <p className="mt-2 text-sm text-muted">{options.description}</p>
+            <div className="mt-2 text-sm text-muted">{options.description}</div>
           )}
 
           <div className="mt-5 flex flex-wrap justify-end gap-2">
