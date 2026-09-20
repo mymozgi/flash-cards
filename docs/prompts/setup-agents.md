@@ -63,13 +63,39 @@ tools: Read, Grep, Glob, Bash        # a reviewer needs no more
 Writing tools (`Write`, `Edit`) go only to agents whose role is to create files.
 A reviewing agent advises; the main session edits, so the diff stays visible.
 
-The body is a checklist with EXAMPLES FROM THIS PROJECT and numbers where they
-exist. "Check the contrast" is useless. "WCAG requires 3:1, `--line` gives 1.24,
-here is the formula" works.
+The body follows one shape, and every agent file uses it:
 
-The last section is how to answer. A finding is a fact, its cost, and the fix.
-Explicitly allow "nothing to report": an agent obliged to find something starts
-inventing.
+```
+# <Name>
+
+## Mission            one sentence, then "CLAUDE.md is normative"
+## Owns               what this agent judges
+## Does NOT own       what it must hand to another agent, named
+## Why this agent exists
+## <its checklist>
+## Definition of done
+## How to answer
+```
+
+`Owns` / `Does NOT own` is the part that keeps two agents from giving
+diverging advice. Where two agents read the same files, both files must state
+the line between them in the same words — `design-system` decides what value,
+`frontend` decides how the box behaves with it.
+
+`Why this agent exists` is a table of COMMITS, with the hash and what broke.
+An agent with no such table has no evidence behind it and should not have been
+created (step 2).
+
+The checklist carries EXAMPLES FROM THIS PROJECT and numbers where they exist.
+"Check the contrast" is useless. "WCAG requires 3:1, `--line` gives 1.24, here
+is the formula" works.
+
+`How to answer`: a finding is a fact, its cost, and the fix. Explicitly allow
+"nothing to report" — an agent obliged to find something starts inventing.
+
+Do NOT add `Tech Stack`, `Coding Rules` or `Permissions` sections. `CLAUDE.md`
+already carries them and is loaded into every agent session; a second copy is
+the same mistake as two implementations of one function.
 
 ## Step 5. Verify
 
