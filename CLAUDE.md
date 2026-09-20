@@ -159,6 +159,8 @@ implementations of one function.
 
 | Agent | When to call it | The breakage it stands against |
 |---|---|---|
+| `product` | Before building anything new; any added screen, menu entry or setting | Tags and Tree were built, carried for weeks and then deleted — 1743 lines in one commit, for a feature neither the schedule nor the queue ever read |
+| `frontend` | Any change to size, aspect ratio, overflow, scrolling, flex/grid, or a component's re-render | Seven commits fixed the same class: unequal tile heights, cropped covers, a 2:3 card rendering landscape, stack layers sized to the wrong box |
 | `architect` | A new entity, column, or a second way to do the same thing | Path parsing existed twice and diverged; one node was called topic, deck, set and category |
 | `migration` | Every migration and every query against a new column | `link_url` took down the queue; the default `area` kind hid every set; 0022 failed on a guard from 0021 |
 | `design-system` | Any visual change | Twelve button padding variants; a control border at 1.24 contrast against a 3:1 requirement |
@@ -177,11 +179,20 @@ goes to `scientist`, and the 0.90 retention target never goes to `researcher`.
 Of the seven, `scientist` has the narrowest use — call it rarely, but do not
 change the scheduler's numbers without it.
 
-There are deliberately no separate `ui`, `frontend`, `backend`, `devops` or
-`security` agents. UI and the visual half of UX inspect the same files; split
-across two agents they would diverge in their advice. The infrastructure here
-is Vercel and Supabase with no custom configuration, and RLS is reviewed by
-`migration` together with the schema.
+`frontend` and `design-system` both read stylesheets, and the line between
+them is drawn on purpose: `design-system` decides **what value** — token,
+colour, size, contrast — and `frontend` decides **how the box behaves with
+it**. Neither judges the other's half. Without that line they would give
+diverging advice, which is the disease agents are meant to cure.
+
+There are deliberately no separate `ui`, `backend`, `devops`, `security` or
+`analytics` agents. UI and the visual half of UX inspect the same files; split
+across two agents they would diverge in their advice. Backend work here is
+server actions over Supabase — its failures have been schema failures, and
+those go to `migration`, or entity failures, which go to `architect`. The
+infrastructure is Vercel and Supabase with no custom configuration, and RLS is
+reviewed by `migration` together with the schema. There is no analytics in the
+product and none planned, so an agent for it would review nothing.
 
 To rebuild the set once the project changes: `docs/prompts/setup-agents.md`.
 

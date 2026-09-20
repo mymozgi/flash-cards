@@ -27,8 +27,13 @@ Text needs 4.5:1. A control border or an icon needs 3:1. Check BOTH themes.
 **Colour is never the only signal.** A label, an icon or a shape must sit
 beside it.
 
-**Touch target.** 44 px minimum; in this project `md` is 48 px. An icon with no
-label is a square `size="icon"`, never smaller.
+**Touch target.** 44 px minimum. Heights come from the `--control-*` tokens —
+`sm` 44, `md` 52, `lg` 60 — and a button and a field on one row match because
+both read the same token. An icon with no label is a square `size="icon"`.
+
+**Scale, not class strings.** The type scale, `--spacing` and `--control-*`
+are tokens: "make it roomier" is a change there, never a sweep replacing
+`gap-2` with `gap-3` across the app.
 
 **Input font size is 16 px.** Not taste: Safari on iPhone zooms the page when
 focusing a smaller field, and the user cannot zoom back out.
