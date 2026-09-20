@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { BackLink } from "@/components/back-link";
+import { resolveBack } from "@/lib/back-server";
 import { createClient, currentUser } from "@/lib/supabase/server";
 import { getTopicTree } from "@/lib/data";
 import { publicUrl } from "@/lib/storage";
@@ -9,11 +11,20 @@ import { inputClass } from "@/components/ui/field";
 const PAGE_SIZE = 100;
 
 export default async function LibraryPage(props: {
-  searchParams: Promise<{ topic?: string; q?: string }>;
+  searchParams: Promise<{ topic?: string; q?: string; from?: string }>;
 }) {
   const params = await props.searchParams;
   const supabase = await createClient();
-  const [topics, user] = await Promise.all([getTopicTree(), currentUser()]);
+  const [topics, user, back] = await Promise.all([
+    getTopicTree(),
+    currentUser(),
+    /*
+      Библиотеку открывают и из категории, и из набора, и из меню. Ссылка
+      «назад» обязана вести туда, откуда пришли: без этого выход из
+      библиотеки всегда высаживал в один и тот же список.
+    */
+    resolveBack(params.from, { href: "/decks", label: "All sets" }),
+  ]);
 
   // фильтр по теме включает всех её потомков
   let topicIds: string[] | null = null;
@@ -78,7 +89,8 @@ export default async function LibraryPage(props: {
 
   return (
     <>
-      <header className="border-b border-line-strong pb-4">
+      <BackLink href={back.href} label={back.label} />
+      <header className="mt-3 border-b border-line-strong pb-4">
         <h1 className="font-display text-3xl font-semibold tracking-tight">Library</h1>
         <form className="mt-4 flex gap-2">
           {params.topic && <input type="hidden" name="topic" value={params.topic} />}

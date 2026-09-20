@@ -1,17 +1,22 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
+import { BackLink } from "@/components/back-link";
+import { resolveBack } from "@/lib/back-server";
 import { getKnowledgeTree } from "@/lib/knowledge";
 import { getDeckSummaries } from "@/lib/data";
+import { withOrigin } from "@/lib/back";
 import { LinkButton } from "@/components/ui/button";
 import { panelClass } from "@/components/ui/panel";
 import { CategorySets } from "../category-sets";
-import { NewSetButton } from "../new-set-button";
 
-export default async function CategoryPage(props: { params: Promise<{ id: string }> }) {
-  const { id } = await props.params;
-  const [tree, summaries] = await Promise.all([
+export default async function CategoryPage(props: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ from?: string }>;
+}) {
+  const [{ id }, query] = await Promise.all([props.params, props.searchParams]);
+  const [tree, summaries, back] = await Promise.all([
     getKnowledgeTree({ includeArchived: true }),
     getDeckSummaries(),
+    resolveBack(query.from, { href: "/knowledge", label: "Knowledge" }),
   ]);
   const node = tree.flat.find((n) => n.id === id);
   if (!node) notFound();
@@ -29,9 +34,7 @@ export default async function CategoryPage(props: { params: Promise<{ id: string
 
   return (
     <>
-      <Link href="/knowledge" className="text-sm text-faint hover:text-ink">
-        ← Knowledge
-      </Link>
+      <BackLink href={back.href} label={back.label} />
 
       <header className={`${panelClass} mt-3 p-5 sm:p-6`}>
         <div className="flex items-start gap-4">
@@ -80,23 +83,16 @@ export default async function CategoryPage(props: { params: Promise<{ id: string
             меню и удаление. Кнопка вела бы на список тех же наборов —
             отдельный режим ради действий, которые доступны на месте.
           */}
-          <LinkButton href={`/library?topic=${node.id}`}>Browse in library</LinkButton>
+          <LinkButton href={withOrigin(`/library?topic=${node.id}`, `/knowledge/${node.id}`)}>
+            Browse in library
+          </LinkButton>
         </div>
       </header>
 
       <section className="mt-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold tracking-tight">
-            {sets.length > 0 ? `Sets · ${sets.length}` : "No sets yet"}
-          </h2>
-          {/* Создание набора стоит там, где на наборы смотрят. Прежде оно
-              жило только в меню на экране категорий: чтобы завести набор в
-              этой категории, надо было с неё уйти. */}
-          <NewSetButton categoryId={node.id} categoryPath={node.path} />
-        </div>
-
-        {/* Пустое состояние живёт внутри: после удаления последнего набора
-            секция должна сама стать пустой, а не ждать другой ветки. */}
+        {/* Заголовок секции, кнопка выбора и создание набора живут внутри:
+            выбор — это состояние, и делить заголовок между сервером и
+            клиентом ради одной кнопки незачем. */}
         <CategorySets sets={sets} categoryId={node.id} categoryPath={node.path} />
       </section>
     </>

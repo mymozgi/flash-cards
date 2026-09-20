@@ -29,9 +29,15 @@ export function CategorySets({
   categoryId: string;
   categoryPath: string;
 }) {
-  const menu = useSetMenu();
+  const menu = useSetMenu(`/knowledge/${categoryId}`);
   const { ask, dialog } = useConfirm();
   const { show, toast } = useToast();
+  /*
+    Выбор включается кнопкой, а не висит всегда. Флажок на каждой плитке
+    постоянно — это шум ради действия, которое делают редко; к тому же он
+    отбирает у плитки главное её свойство: нажатие открывает набор.
+  */
+  const [selecting, setSelecting] = useState(false);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [busy, startTransition] = useTransition();
@@ -47,6 +53,11 @@ export function CategorySets({
       else next.add(id);
       return next;
     });
+
+  const stopSelecting = () => {
+    setSelecting(false);
+    setPicked(new Set());
+  };
 
   const removeChosen = async () => {
     if (chosen.length === 0) return;
@@ -100,7 +111,7 @@ export function CategorySets({
               cards === 1 ? "flashcard" : "flashcards"
             } were deleted.`,
       );
-      setPicked(new Set());
+      stopSelecting();
       // Счётчики категории пересчитывает сервер: вторая арифметика на
       // клиенте разошлась бы с первой на первом же особом случае
       router.refresh();
@@ -117,14 +128,37 @@ export function CategorySets({
       }
       setError(null);
       show(`${chosen.length} ${chosen.length === 1 ? "set" : "sets"} archived.`);
-      setPicked(new Set());
+      stopSelecting();
       router.refresh();
     });
   };
 
+  /*
+    Заголовок секции живёт здесь, вместе со списком. Кнопка выбора — часть
+    этого заголовка, а состояние выбора лежит в этом компоненте: разнеси их
+    по серверной странице и клиентскому списку, и пришлось бы поднимать
+    состояние наверх ради одной кнопки.
+  */
+  const heading = (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <h2 className="text-lg font-semibold tracking-tight">
+        {sets.length > 0 ? `Sets · ${sets.length}` : "No sets yet"}
+      </h2>
+      <div className="flex items-center gap-2">
+        {sets.length > 0 && !selecting && (
+          <Button size="sm" onClick={() => setSelecting(true)}>
+            Select
+          </Button>
+        )}
+        <NewSetButton categoryId={categoryId} categoryPath={categoryPath} />
+      </div>
+    </div>
+  );
+
   if (sets.length === 0) {
     return (
       <>
+        {heading}
         {/* Пустая категория — начало, а не поломка, и пустое место здесь
             ничего не объясняет. Действие стоит прямо в нём. */}
         <div className="mt-3 rounded-xl border border-dashed border-line px-5 py-12 text-center">
@@ -133,9 +167,6 @@ export function CategorySets({
             A set is a collection of cards you study together. Create one — it can
             sit empty until you have cards for it.
           </p>
-          <div className="mt-4 flex justify-center">
-            <NewSetButton categoryId={categoryId} categoryPath={categoryPath} />
-          </div>
         </div>
       </>
     );
@@ -143,6 +174,7 @@ export function CategorySets({
 
   return (
     <>
+      {heading}
       {menu.menu}
       {dialog}
       {toast}
@@ -154,24 +186,41 @@ export function CategorySets({
         </p>
       )}
 
-      {/* Панель появляется по выбору и исчезает вместе с ним: постоянная
-          полоса действий над списком отнимала бы место у самого списка. */}
-      {picked.size > 0 && (
+      {/* Панель живёт только в режиме выбора: постоянная полоса действий
+          над списком отнимала бы место у самого списка. */}
+      {selecting && (
         <div className={`${panelClass} mt-3 flex flex-wrap items-center gap-2 p-2`}>
           <span className="px-2 text-sm font-semibold tabular-nums">
-            {picked.size} {picked.size === 1 ? "set" : "sets"} selected
-            <span className="ml-2 font-normal text-muted">
-              {cards} {cards === 1 ? "card" : "cards"}
-            </span>
+            {picked.size === 0 ? (
+              "Nothing selected"
+            ) : (
+              <>
+                {picked.size} selected
+                <span className="ml-2 font-normal text-muted">
+                  {cards} {cards === 1 ? "card" : "cards"}
+                </span>
+              </>
+            )}
           </span>
-          <Button size="sm" tone="danger" onClick={removeChosen}>
-            Delete {picked.size === 1 ? "set" : "sets"}
+          <Button
+            size="sm"
+            onClick={() =>
+              setPicked(
+                picked.size === sets.length ? new Set() : new Set(sets.map((d) => d.id)),
+              )
+            }
+          >
+            {picked.size === sets.length ? "Clear all" : "Select all"}
           </Button>
-          <Button size="sm" onClick={archiveChosen}>
+          {/* Действия без выбора ничего не сделают, поэтому и не предлагаются */}
+          <Button size="sm" tone="danger" onClick={removeChosen} disabled={picked.size === 0}>
+            Delete
+          </Button>
+          <Button size="sm" onClick={archiveChosen} disabled={picked.size === 0}>
             Archive
           </Button>
-          <Button size="sm" tone="ghost" onClick={() => setPicked(new Set())}>
-            Cancel selection
+          <Button size="sm" tone="ghost" className="ml-auto" onClick={stopSelecting}>
+            Cancel
           </Button>
         </div>
       )}
@@ -185,7 +234,8 @@ export function CategorySets({
           <li key={deck.id}>
             <DeckCard
               deck={deck}
-              selecting
+              from={`/knowledge/${categoryId}`}
+              selecting={selecting}
               selected={picked.has(deck.id)}
               onToggle={() => toggle(deck.id)}
               onOpenMenu={(at) => menu.open(deck, at)}

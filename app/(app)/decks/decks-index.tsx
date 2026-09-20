@@ -50,7 +50,7 @@ export function DecksIndex({
   /* Тот же хук, что и на экране категории: действия над набором, доступные
      лишь с одного экрана, на телефоне равны отсутствующим — эту беду в
      проекте уже проходили с удалением категории. */
-  const setMenu = useSetMenu();
+  const setMenu = useSetMenu("/decks");
 
   /**
    * Категории для фильтра — корни, у которых действительно что-то есть.
@@ -303,6 +303,7 @@ export function DecksIndex({
             <li key={deck.id}>
               <DeckCard
                 deck={deck}
+                from="/decks"
                 readOnly={readOnly}
                 onOpenMenu={selecting ? undefined : (at) => setMenu.open(deck, at)}
                 selecting={selecting}

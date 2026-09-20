@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
+import { BackLink } from "@/components/back-link";
+import { resolveBack } from "@/lib/back-server";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import { getTopicTree, mediaForCards } from "@/lib/data";
 import { isStudySet, kindInEffect } from "@/lib/knowledge-tree";
@@ -26,8 +27,11 @@ type CardRow = {
   distractors: string[] | null;
 };
 
-export default async function DeckPage(props: { params: Promise<{ id: string }> }) {
-  const { id } = await props.params;
+export default async function DeckPage(props: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ from?: string }>;
+}) {
+  const [{ id }, query] = await Promise.all([props.params, props.searchParams]);
   const supabase = await createClient();
 
   const { data: topic } = await supabase
@@ -55,7 +59,8 @@ export default async function DeckPage(props: { params: Promise<{ id: string }> 
       .order("created_at"),
   ]);
 
-  const [user, media, tree] = await Promise.all([
+  const [back, user, media, tree] = await Promise.all([
+    resolveBack(query.from, { href: "/decks", label: "All sets" }),
     requireUser(),
     mediaForCards(((rows ?? []) as unknown as CardRow[]).map((r) => r.id)),
     getTopicTree(),
@@ -136,9 +141,9 @@ export default async function DeckPage(props: { params: Promise<{ id: string }> 
 
   return (
     <>
-      <Link href="/topics" className="text-sm text-faint hover:text-ink">
-        ← All decks
-      </Link>
+      {/* Возврат туда, откуда пришли, а не всегда в общий список: набор
+          чаще открывают из его категории, и «All decks» уводил из неё. */}
+      <BackLink href={back.href} label={back.label} />
       <div className="mt-3">
         <DeckWorkspace
           deck={{

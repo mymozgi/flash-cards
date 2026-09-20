@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { PopMenu, type PopMenuGroup } from "@/components/ui/pop-menu";
 import { useDeleteSet } from "@/components/use-delete-set";
 import { duplicateSet, updateCategory } from "@/app/(app)/knowledge/actions";
+import { withOrigin } from "@/lib/back";
 import type { DeckSummary } from "@/lib/types";
 
 type SetAction =
@@ -28,7 +29,12 @@ type SetAction =
  * «Move cards» — исключение только на вид: это не правка карточек, а вход в
  * то место, где их отмечают и переносят пачкой.
  */
-export function useSetMenu() {
+export function useSetMenu(
+  /** Откуда открыто меню: набор вернёт человека сюда же. */
+  from?: string,
+) {
+  const open_ = (href: string) => (from ? withOrigin(href, from) : href);
+
   const [at, setAt] = useState<{ deck: DeckSummary; x: number; y: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, startTransition] = useTransition();
@@ -46,12 +52,10 @@ export function useSetMenu() {
     switch (action) {
       case "open":
       case "cards":
-        router.push(`/decks/${deck.id}`);
-        return;
       case "edit":
         // Правка набора живёт в его же шапке: отдельная форма означала бы
         // второе место, где задают имя, описание и обложку
-        router.push(`/decks/${deck.id}`);
+        router.push(open_(`/decks/${deck.id}`));
         return;
       case "practice":
         router.push(`/review?free=1&topic=${deck.id}`);
