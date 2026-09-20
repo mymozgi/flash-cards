@@ -5,6 +5,7 @@ import { getDeckSummaries } from "@/lib/data";
 import { LinkButton } from "@/components/ui/button";
 import { panelClass } from "@/components/ui/panel";
 import { DeckCard } from "@/components/deck-card";
+import { NewSetButton } from "../new-set-button";
 
 export default async function CategoryPage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;
@@ -71,9 +72,15 @@ export default async function CategoryPage(props: { params: Promise<{ id: string
       </header>
 
       <section className="mt-6">
-        <h2 className="text-lg font-semibold tracking-tight">
-          {sets.length > 0 ? `Sets · ${sets.length}` : "No sets yet"}
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold tracking-tight">
+            {sets.length > 0 ? `Sets · ${sets.length}` : "No sets yet"}
+          </h2>
+          {/* Создание набора стоит там, где на наборы смотрят. Прежде оно
+              жило только в меню на экране категорий: чтобы завести набор в
+              этой категории, надо было с неё уйти. */}
+          <NewSetButton categoryId={node.id} categoryPath={node.path} />
+        </div>
 
         {sets.length > 0 ? (
           <ul className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -86,13 +93,13 @@ export default async function CategoryPage(props: { params: Promise<{ id: string
         ) : (
           /* Пустая категория — начало, а не поломка. Говорим, чем наполнить,
              и куда за этим идти: создание набора живёт в меню категории. */
-          <div className="mt-3 rounded-xl border border-line bg-surface px-5 py-12 text-center">
+          /* Пустая категория — начало, а не поломка. Действие рядом, в
+             заголовке раздела, поэтому здесь только объяснение. */
+          <div className="mt-3 rounded-xl border border-dashed border-line px-5 py-12 text-center">
             <p className="text-sm text-muted">
-              A category holds flashcard sets. This one is empty so far.
+              A category holds flashcard sets. Create one above — it can sit empty
+              until you have cards for it.
             </p>
-            <LinkButton href="/knowledge" tone="soft" className="mt-4">
-              Add a set from the category menu
-            </LinkButton>
           </div>
         )}
       </section>

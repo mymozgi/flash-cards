@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { LinkButton } from "@/components/ui/button";
 import { Badge } from "@/components/ui/panel";
-import { PencilIcon, TrashIcon } from "@/components/icons";
+import { PencilIcon, PlusIcon, TrashIcon } from "@/components/icons";
 import { Progress } from "@/components/ui/progress";
 import { COVER_ASPECT } from "@/lib/image";
 import type { DeckSummary } from "@/lib/types";
@@ -154,20 +154,31 @@ export function DeckCard({
         </p>
       </Link>
 
-      <div className="mt-5">
-        <div className="flex items-baseline justify-between">
-          <span className="label-micro">Cards memorized</span>
-          <span className="text-xs font-semibold tabular-nums text-muted">
-            {deck.memorized}/{deck.total}
-          </span>
+      {/*
+        Пустой набор — не поломка, а начало: структуру заводят раньше, чем
+        наполняют. Полоса прогресса 0 из 0 ему ничего не сообщает, поэтому
+        вместо неё сказано прямо, чего не хватает.
+      */}
+      {deck.total === 0 ? (
+        <p className="mt-5 rounded-lg border border-dashed border-line px-3 py-4 text-center text-xs text-faint">
+          No cards in this set yet
+        </p>
+      ) : (
+        <div className="mt-5">
+          <div className="flex items-baseline justify-between">
+            <span className="label-micro">Cards memorized</span>
+            <span className="text-xs font-semibold tabular-nums text-muted">
+              {deck.memorized}/{deck.total}
+            </span>
+          </div>
+          <Progress
+            value={deck.memorized}
+            max={deck.total}
+            label={`${ratio}% memorized in ${deck.name}`}
+            className="mt-1.5"
+          />
         </div>
-        <Progress
-          value={deck.memorized}
-          max={deck.total}
-          label={`${ratio}% memorized in ${deck.name}`}
-          className="mt-1.5"
-        />
-      </div>
+      )}
 
       {/* mt-auto прижимает подвал ко дну: плитки в ряду тянутся до общей
           высоты, и без этого кнопки вставали бы на разных уровнях. */}
@@ -188,6 +199,13 @@ export function DeckCard({
         {readOnly ? (
           <LinkButton href={`/decks/${deck.id}/study`} tone="soft" className="flex-1">
             Browse cards
+          </LinkButton>
+        ) : deck.total === 0 ? (
+          /* Практиковать нечего, листать нечего. Единственное осмысленное
+             действие у пустого набора — наполнить его, и оно же главное. */
+          <LinkButton href={`/decks/${deck.id}`} tone="primary" className="flex-1">
+            <PlusIcon />
+            Add cards
           </LinkButton>
         ) : (
           <>
