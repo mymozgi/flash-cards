@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, LinkButton, buttonClass } from "@/components/ui/button";
-import { inputClass, selectClass } from "@/components/ui/field";
+import { inputClass, selectClass, Label as FieldLabel } from "@/components/ui/field";
 import Papa from "papaparse";
 import { useMemo, useState } from "react";
 import { renderMarkdown } from "@/lib/markdown";
@@ -32,59 +32,71 @@ import {
 const MAX_ROWS = 2000;
 const CHUNK = 100;
 const PREVIEW = 20;
-const TRUTHY = new Set(["1", "true", "yes", "y", "да"]);
 
 const PASTE_EXAMPLE = `front,back,category,area,note
 mitochondrion,powerhouse of the cell,Biology,Cells,makes ATP
 ribosome,builds proteins,Biology,Cells,
 hippocampus,forms new memories,Medicine,Neuroanatomy,`;
 
-type Field =
-  | "front"
-  | "back"
-  | "category"
-  | "area"
-  | "topic"
-  | "note"
-  | "reversed"
-  | "choice1"
-  | "choice2"
-  | "choice3";
+type Field = "front" | "back" | "category" | "area" | "note" | "example" | "source" | "sourceUrl";
 
-const FIELDS: { key: Field; label: string; required?: boolean; hint: string }[] = [
-  { key: "front", label: "Question", required: true, hint: "front side" },
-  { key: "back", label: "Answer", required: true, hint: "back side" },
-  /*
-    Место карточки — две колонки. Файл с несколькими значениями Area сам
-    разложит карточки по коллекциям: «XR / Comfort» и «XR / Hand tracking»
-    дадут две, а не одну с длинным именем.
-  */
-  { key: "category", label: "Category", hint: "top level — XR, UX, Medicine" },
-  { key: "area", label: "Area", hint: "the collection inside it — Hand tracking" },
+/**
+ * Поля мастера — это поля ПРИЛОЖЕНИЯ, а не имена колонок в файле.
+ *
+ * В CSV колонка называется Area, в приложении это Набор; в CSV Front side, в
+ * приложении Вопрос. Перевод — работа мастера, и подпись слева обязана
+ * говорить на языке приложения, иначе человек ищет в интерфейсе «Area», а
+ * её там нет.
+ *
+ * Объяснение ушло в подсказку. Постоянная строчка «front side» под каждой
+ * подписью читается один раз, а место занимает всегда.
+ */
+const FIELDS: {
+  key: Field;
+  label: string;
+  required?: boolean;
+  hint: string;
+}[] = [
   {
-    key: "topic",
-    label: "Category / Area in one column",
-    hint: "older files and exports; ignored when Area is mapped",
+    key: "front",
+    label: "Question",
+    required: true,
+    hint: "The front of the card. Usually the CSV column named Front side.",
   },
-  { key: "note", label: "Note", hint: "shown after the answer" },
-  { key: "reversed", label: "Reversed", hint: "1 / true / yes — also create the reverse card" },
-  { key: "choice1", label: "Wrong answer 1", hint: "for multiple choice" },
-  { key: "choice2", label: "Wrong answer 2", hint: "" },
-  { key: "choice3", label: "Wrong answer 3", hint: "" },
+  {
+    key: "back",
+    label: "Answer",
+    required: true,
+    hint: "The back of the card. Usually the CSV column named Back side.",
+  },
+  {
+    key: "category",
+    label: "Category",
+    hint: "Top level. Leave it unmapped to send everything to one category you pick in the next step.",
+  },
+  {
+    key: "area",
+    label: "Set",
+    hint: "The set inside the category. In CSV this column is usually called Area — each distinct value becomes its own set.",
+  },
+  { key: "example", label: "Example", hint: "An example or a rule that makes the answer easier to hold on to." },
+  { key: "note", label: "Note", hint: "Shown only after the answer, so it cannot give it away." },
+  { key: "source", label: "Source", hint: "Readable name of where this came from: a book, a chapter, a lecture." },
+  { key: "sourceUrl", label: "Source URL", hint: "Link to the original. Only http and https links are kept." },
 ];
 
 /** Заголовки в чужих файлах называются как угодно — угадываем самые частые. */
 const ALIASES: Record<Field, string[]> = {
-  front: ["front", "question", "term", "word", "prompt", "q", "вопрос", "термин"],
-  back: ["back", "answer", "definition", "translation", "meaning", "a", "ответ", "перевод"],
-  category: ["category", "area1", "group", "subject", "категория"],
-  area: ["area", "collection", "set", "deck", "sub", "коллекция", "набор"],
-  topic: ["topic", "path", "тема"],
-  note: ["note", "notes", "comment", "hint", "source", "заметка"],
-  reversed: ["reversed", "reverse", "both", "bidirectional", "обратная"],
-  choice1: ["choice1", "wrong1", "distractor1", "option1"],
-  choice2: ["choice2", "wrong2", "distractor2", "option2"],
-  choice3: ["choice3", "wrong3", "distractor3", "option3"],
+  front: ["front", "front side", "question", "term", "word", "prompt", "q", "вопрос", "термин"],
+  back: ["back", "back side", "answer", "definition", "translation", "meaning", "a", "ответ"],
+  category: ["category", "категория"],
+  // «topic» здесь же: в прежних выгрузках так называлась колонка с путём,
+  // и чаще всего в ней лежало именно имя набора
+  area: ["area", "set", "collection", "deck", "topic", "набор", "тема"],
+  example: ["example", "example / rule", "rule", "sample", "пример"],
+  note: ["note", "notes", "comment", "hint", "заметка"],
+  source: ["source", "citation", "book", "источник"],
+  sourceUrl: ["source url", "url", "link", "href", "ссылка"],
 };
 
 export type ImportCategory = PickableCategory & { name: string };
@@ -94,7 +106,18 @@ type Step = "file" | "map" | "where" | "preview" | "running" | "done";
 type Source = "file" | "paste";
 type Row = Record<string, string>;
 
-export function ImportWizard({ categories }: { categories: ImportCategory[] }) {
+export function ImportWizard({
+  categories,
+  fixedCategoryId,
+}: {
+  categories: ImportCategory[];
+  /** Импорт запущен из категории: назначение известно и не спрашивается. */
+  fixedCategoryId?: string;
+}) {
+  const fixed = fixedCategoryId
+    ? (categories.find((c) => c.id === fixedCategoryId) ?? null)
+    : null;
+
   const [step, setStep] = useState<Step>("file");
   const [source, setSource] = useState<Source>("file");
   /** Данные пришли из собственной выгрузки: колонки уже канонические. */
@@ -110,8 +133,10 @@ export function ImportWizard({ categories }: { categories: ImportCategory[] }) {
     колонка `topic`, и файл без неё молча создавал карточки нигде. Теперь
     назначение выбирают до записи и видят в предпросмотре.
   */
-  const [destMode, setDestMode] = useState<DestinationMode>("file");
-  const [category, setCategory] = useState<{ id: string; name: string } | null>(null);
+  const [destMode, setDestMode] = useState<DestinationMode>(fixed ? "single" : "file");
+  const [category, setCategory] = useState<{ id: string; name: string } | null>(
+    fixed ? { id: fixed.id, name: fixed.name } : null,
+  );
   /** Набор для строк без темы: карточка не может лежать прямо в категории. */
   const [fallbackDeck, setFallbackDeck] = useState("Imported");
   const [duplicates, setDuplicates] = useState<Set<string>>(new Set());
@@ -241,17 +266,16 @@ export function ImportWizard({ categories }: { categories: ImportCategory[] }) {
       rowPath(
         mapping.category ? (raw[mapping.category] ?? "") : "",
         mapping.area ? (raw[mapping.area] ?? "") : "",
-        mapping.topic ? (raw[mapping.topic] ?? "") : "",
+        "",
       ),
       destMode,
       category?.name ?? null,
       fallbackDeck,
     ),
     note: mapping.note ? (raw[mapping.note] ?? "") : "",
-    reversed: mapping.reversed ? TRUTHY.has((raw[mapping.reversed] ?? "").trim().toLowerCase()) : false,
-    choices: [mapping.choice1, mapping.choice2, mapping.choice3]
-      .filter(Boolean)
-      .map((col) => raw[col] ?? ""),
+    example: mapping.example ? (raw[mapping.example] ?? "") : "",
+    source: mapping.source ? (raw[mapping.source] ?? "") : "",
+    sourceUrl: mapping.sourceUrl ? (raw[mapping.sourceUrl] ?? "") : "",
   });
 
   const prepared = useMemo(
@@ -262,15 +286,15 @@ export function ImportWizard({ categories }: { categories: ImportCategory[] }) {
 
   /** Адреса из самого файла — до подстановки категории. На них и решают. */
   const fileTopics = useMemo(() => {
-    if (!mapping.category && !mapping.area && !mapping.topic) return [];
+    if (!mapping.category && !mapping.area) return [];
     return rows.map((raw) =>
       rowPath(
         mapping.category ? (raw[mapping.category] ?? "") : "",
         mapping.area ? (raw[mapping.area] ?? "") : "",
-        mapping.topic ? (raw[mapping.topic] ?? "") : "",
+        "",
       ),
     );
-  }, [rows, mapping.category, mapping.area, mapping.topic]);
+  }, [rows, mapping.category, mapping.area]);
 
   const hasOwnCategories = useMemo(() => fileHasCategories(fileTopics), [fileTopics]);
   const rowsWithoutTopic = useMemo(
@@ -306,7 +330,8 @@ export function ImportWizard({ categories }: { categories: ImportCategory[] }) {
   */
   const goWhere = () => {
     setError(null);
-    setDestMode(hasOwnCategories ? "file" : "single");
+    // У закреплённой категории режим один: всё ложится в неё
+    if (!fixed) setDestMode(hasOwnCategories ? "file" : "single");
     setStep("where");
   };
 
@@ -486,10 +511,12 @@ export function ImportWizard({ categories }: { categories: ImportCategory[] }) {
           <ul className="mt-4 flex flex-col gap-2">
             {FIELDS.map((field) => (
               <li key={field.key} className="grid items-center gap-2 sm:grid-cols-[170px_1fr]">
-                <label htmlFor={`map-${field.key}`} className="text-sm">
-                  {field.label}
-                  {field.required && <span className="text-rust"> *</span>}
-                  {field.hint && <span className="block text-xs text-faint">{field.hint}</span>}
+                {/* Подпись примитивом дизайн-системы: звёздочка обязательности
+                    и подсказка — её свойства, а не вторая строка классов. */}
+                <label htmlFor={`map-${field.key}`}>
+                  <FieldLabel required={field.required} hint={field.hint}>
+                    {field.label}
+                  </FieldLabel>
                 </label>
                 <select
                   id={`map-${field.key}`}
@@ -519,10 +546,22 @@ export function ImportWizard({ categories }: { categories: ImportCategory[] }) {
       {step === "where" && (
         <div className="mt-5">
           <p className="text-sm text-muted">
-            A card lives inside a topic, and a topic lives inside a category. Choose which category
-            these {prepared.length} cards land in.
+            A card lives inside a set, and a set lives inside a category. This is where these{" "}
+            {prepared.length} cards land.
           </p>
 
+          {fixed ? (
+            /* Пришли из категории — назначение уже известно. Показываем его
+               как факт, а не как вопрос: выбирать тут не из чего. */
+            <div className="mt-4 rounded-xl border-control border-field-line bg-surface p-4">
+              <span className="label-micro">Category</span>
+              <p className="mt-1 text-lg font-semibold text-accent">{fixed.name}</p>
+              <p className="mt-1 text-sm text-muted">
+                Started from this category, so everything lands here. Sets come from the Set
+                column; rows without one go into “{fallbackDeck}”.
+              </p>
+            </div>
+          ) : (
           <div className="mt-4 flex flex-col gap-3">
             {/* Свои категории предлагаем, только если они в файле правда есть:
                 иначе выбор оставил бы темы в корне, без категории вовсе. */}
@@ -589,7 +628,9 @@ export function ImportWizard({ categories }: { categories: ImportCategory[] }) {
             </label>
           </div>
 
-          {/* Строки без темы: класть карточку прямо в категорию база не даст */}
+          )}
+
+          {/* Строки без набора: класть карточку прямо в категорию база не даст */}
           {destMode === "single" && rowsWithoutTopic > 0 && (
             <div className="mt-4 rounded-xl border-control border-field-line bg-surface p-4">
               <label htmlFor="fallback-deck" className="block text-sm font-semibold">
@@ -697,10 +738,8 @@ export function ImportWizard({ categories }: { categories: ImportCategory[] }) {
                   dangerouslySetInnerHTML={{ __html: renderMarkdown(row.back) }}
                 />
                 <p className="mt-1 label-micro">
-                  {row.topic || "no topic"}
-                  {row.reversed && " · reversed"}
-                  {row.choices.filter(Boolean).length > 0 &&
-                    ` · ${row.choices.filter(Boolean).length} wrong answers`}
+                  {row.topic || "no set"}
+                  {row.source && ` · ${row.source}`}
                   {duplicates.has(normalize(row.front)) && (
                     <span className="text-rust"> · duplicate</span>
                   )}
@@ -773,7 +812,7 @@ export function ImportWizard({ categories }: { categories: ImportCategory[] }) {
             ))}
           </dl>
 
-          {report.created > 0 && destinations.length > 1 && (
+          {report.created > 0 && destinations.length > 0 && (
             <ul className="mt-4 divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
               {destinations.slice(0, 12).map(([path, count]) => (
                 <li key={path} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
@@ -788,10 +827,10 @@ export function ImportWizard({ categories }: { categories: ImportCategory[] }) {
             {/* Ведём в саму категорию, когда она известна: там карточки и лежат.
                 Библиотека — запасной адрес, когда категорий в импорте несколько. */}
             <LinkButton
-              href={destMode === "single" && category ? `/knowledge/${category.id}` : "/library"}
+              href={category ? `/knowledge/${category.id}` : "/library"}
               tone="primary"
             >
-              View cards
+              {category ? `Open ${category.name}` : "Open library"}
             </LinkButton>
             {report.errors.length > 0 && (
               <Button onClick={downloadErrors}>Download error report</Button>

@@ -65,23 +65,30 @@ describe("собственная выгрузка", () => {
     const [first] = parseJson(dump).rows;
     expect(first.front).toBe("Mitochondrion");
     expect(first.back).toBe("Powerhouse of the cell");
-    expect(first.topic).toBe("Biology / Cells");
     expect(first.note).toBe("cliché but true");
-    expect(first.choice1).toBe("Ribosome");
-    expect(first.choice2).toBe("Nucleus");
-    expect(first.choice3).toBe("");
   });
 
-  it("обратная карточка помечается тем, что мастер считает истиной", () => {
-    const [, second] = parseJson(dump).rows;
-    expect(second.reversed).toBe("1");
-    expect(parseJson(dump).rows[0].reversed).toBe("0");
+  it("путь выгрузки распадается на категорию и набор", () => {
+    // В выгрузке место лежит одной строкой, а импорт работает парой колонок.
+    // Разбирает их то же правило, что и всё приложение.
+    const [first] = parseJson(dump).rows;
+    expect(first.category).toBe("Biology");
+    expect(first.area).toBe("Cells");
+  });
+
+  it("неправильных вариантов в импорте больше нет", () => {
+    // Их собирали в колонку, которую экран повторения не показывает:
+    // импортировать невидимое значит заполнять базу невидимым.
+    const [first] = parseJson(dump).rows;
+    expect(first).not.toHaveProperty("choice1");
+    expect(first).not.toHaveProperty("reversed");
   });
 
   it("пустые поля становятся пустыми строками, а не «null»", () => {
     const [, second] = parseJson(dump).rows;
     expect(second.note).toBe("");
-    expect(second.topic).toBe("");
+    expect(second.category).toBe("");
+    expect(second.area).toBe("");
   });
 });
 

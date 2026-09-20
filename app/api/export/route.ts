@@ -1,6 +1,7 @@
 import Papa from "papaparse";
 import { createClient, requireUser } from "@/lib/supabase/server";
 import { splitTopicPath } from "@/lib/knowledge-tree";
+import { withOptional } from "@/lib/schema";
 
 /**
  * Выгрузка всей базы (FR-40). Данные не должны запираться в приложении:
@@ -15,6 +16,10 @@ type CardExport = {
   front_md: string;
   back_md: string;
   note_md: string | null;
+  example_md: string | null;
+  /* Необязательные: до своих миграций их в базе нет вовсе */
+  link_url?: string | null;
+  source_label?: string | null;
   kind: string;
   distractors: string[];
   suspended: boolean;
@@ -30,8 +35,18 @@ export async function GET(request: Request) {
   const [{ data: cards }, { data: topics }] = await Promise.all([
     supabase
       .from("cards")
+      /*
+        Необязательные колонки добавляются мягко. Назвать их жёстко значило
+        бы, что до применения миграции ломается вся выгрузка — а выгрузка это
+        последнее, что можно ломать: именно к ней идут, когда всё остальное
+        сломалось.
+      */
       .select(
-        "id,topic_id,front_md,back_md,note_md,kind,distractors,suspended,created_at, scheduling(state,due,reps,lapses)",
+        withOptional(
+          "id,topic_id,front_md,back_md,note_md,example_md,kind,distractors,suspended,created_at, scheduling(state,due,reps,lapses)",
+          "link_url",
+          "source_label",
+        ),
       )
       .eq("user_id", user.id)
       .is("deleted_at", null)
@@ -89,16 +104,14 @@ export async function GET(request: Request) {
     rows.map((card) => ({
       front: card.front_md,
       back: card.back_md,
-      // Две колонки, как и в импорте: место карточки — категория и коллекция
-      // внутри неё. Колонка topic оставлена ради файлов, сделанных раньше.
+      // Ровно те же колонки, что понимает импорт: выгрузка, которую нельзя
+      // прочитать обратно, резервной копией не является
       category: splitTopicPath(pathOf(card.topic_id)).category ?? "",
       area: splitTopicPath(pathOf(card.topic_id)).topic ?? "",
-      topic: pathOf(card.topic_id),
       note: card.note_md ?? "",
-      reversed: card.kind === "reversed_of" ? 1 : 0,
-      choice1: card.distractors?.[0] ?? "",
-      choice2: card.distractors?.[1] ?? "",
-      choice3: card.distractors?.[2] ?? "",
+      example: card.example_md ?? "",
+      source: card.source_label ?? "",
+      sourceUrl: card.link_url ?? "",
     })),
   );
 

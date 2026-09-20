@@ -7,16 +7,29 @@ import {
   resolveTopicPath,
 } from "@/lib/cards";
 import { createCategory } from "../knowledge/actions";
+import { safeUrl } from "@/lib/url";
 
+/**
+ * Строка импорта — ровно то, чем карточка бывает в CSV.
+ *
+ * Обратных карточек и неправильных вариантов здесь больше нет. Обратная
+ * карточка удваивала импорт вдвое молча, а варианты ответа собирались в
+ * колонку, которую экран повторения до сих пор не показывает: импортировать
+ * то, чего не видно, значит заполнять базу невидимым.
+ */
 export type ImportRow = {
   /** номер строки в исходном файле — попадает в отчёт об ошибках */
   line: number;
   front: string;
   back: string;
+  /** Готовый адрес «Категория / Набор». Собирает его мастер. */
   topic: string;
   note: string;
-  reversed: boolean;
-  choices: string[];
+  example: string;
+  /** Читаемое имя источника: название книги, главы, лекции. */
+  source: string;
+  /** Адрес источника. Схему проверяет и база, и safeUrl(). */
+  sourceUrl: string;
 };
 
 export type DuplicateStrategy = "skip" | "update" | "create";
@@ -119,14 +132,23 @@ export async function importRows(
 
     try {
       const topicId = await resolveTopicPath(supabase, user.id, row.topic, topicCache);
-      const distractors = row.choices.map((c) => c.trim()).filter(Boolean).slice(0, 3);
+
+      /*
+        Адрес проверяется здесь же, а не только базой: строка из чужого
+        файла попадёт в href, и «javascript:…» оттуда выглядел бы обычной
+        ссылкой «Source». База отвергла бы такую строку целиком и уронила
+        бы всю карточку — а терять карточку из-за негодной ссылки незачем.
+      */
+      const url = safeUrl(row.sourceUrl) ?? null;
 
       const payload = {
         topic_id: topicId,
         front_md: front,
         back_md: back,
         note_md: row.note.trim() || null,
-        distractors,
+        example_md: row.example.trim() || null,
+        link_url: url,
+        source_label: row.source.trim() || null,
       };
 
       if (duplicateId && strategy === "update") {
@@ -147,26 +169,8 @@ export async function importRows(
         .single();
       if (error) throw new Error(error.message);
 
-      const cardId = created.id as string;
+      void created;
       result.created += 1;
-
-      if (row.reversed) {
-        const { data: reverse } = await supabase
-          .from("cards")
-          .insert({
-            user_id: user.id,
-            topic_id: topicId,
-            front_md: back,
-            back_md: front,
-            note_md: row.note.trim() || null,
-            kind: "reversed_of",
-            source_card_id: cardId,
-            import_batch_id: batchId,
-          })
-          .select("id")
-          .single();
-        if (reverse) result.created += 1;
-      }
     } catch (e) {
       result.errors.push({
         line: row.line,

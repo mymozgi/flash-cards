@@ -86,6 +86,9 @@ export default async function CategoryPage(props: {
           <LinkButton href={withOrigin(`/library?topic=${node.id}`, `/knowledge/${node.id}`)}>
             Browse in library
           </LinkButton>
+          {/* Импорт отсюда уже знает назначение: спрашивать категорию, стоя
+              внутри неё, значит задавать вопрос с одним ответом. */}
+          <LinkButton href={`/import?category=${node.id}`}>Import CSV</LinkButton>
         </div>
       </header>
 

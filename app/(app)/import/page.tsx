@@ -2,7 +2,10 @@ import { ImportWizard } from "./import-wizard";
 import { buttonClass } from "@/components/ui/button";
 import { getTopicTree } from "@/lib/data";
 
-export default async function ImportPage() {
+export default async function ImportPage(props: {
+  searchParams: Promise<{ category?: string }>;
+}) {
+  const query = await props.searchParams;
   /*
     Только верхний уровень: по форме дерева категория — это узел без родителя,
     и именно из них выбирают, куда лягут карточки. Набор в список не попадает —
@@ -28,7 +31,16 @@ export default async function ImportPage() {
           can be undone within 24 hours.
         </p>
       </header>
-      <ImportWizard categories={categories} />
+      {/* Импорт, запущенный из категории, уже знает назначение: спрашивать
+          о нём значило бы задавать вопрос с единственным ответом. */}
+      <ImportWizard
+        categories={categories}
+        fixedCategoryId={
+          query.category && categories.some((c) => c.id === query.category)
+            ? query.category
+            : undefined
+        }
+      />
 
       <section className="mt-12 border-t border-line pt-6">
         <h2 className="label-micro">Export</h2>

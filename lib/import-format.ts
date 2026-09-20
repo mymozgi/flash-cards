@@ -18,21 +18,21 @@ import { splitTopicPath } from "./knowledge-tree";
  * по коллекциям, и «XR / Comfort» с «XR / Hand tracking» в одном файле дают
  * две коллекции, а не одну с длинным именем.
  *
- * `topic` оставлена и понимается по-прежнему: там лежит тот же адрес одной
- * строкой, «Category / Area». Старые выгрузки должны читаться обратно —
- * резервная копия, которую нельзя восстановить, копией не является.
+ * Колонки `topic`, `reversed` и `choice1..3` убраны. Первая дублировала пару
+ * «category + area» одной строкой; остальные описывали то, чего экран
+ * повторения не показывает, — импортировать невидимое значит заполнять базу
+ * невидимым. Старые файлы при этом читаются: колонка «topic» опознаётся как
+ * набор по списку синонимов.
  */
 export const CANONICAL_COLUMNS = [
   "front",
   "back",
   "category",
   "area",
-  "topic",
   "note",
-  "reversed",
-  "choice1",
-  "choice2",
-  "choice3",
+  "example",
+  "source",
+  "sourceUrl",
 ] as const;
 
 export type Table = {
@@ -75,17 +75,16 @@ function fromExportCard(card: Record<string, unknown>): Record<string, string> {
     читалась бы обратно по запасному пути, а не по основному.
   */
   const place = splitTopicPath(cell(card.topic_path));
+  void distractors;
   return {
     front: cell(card.front_md),
     back: cell(card.back_md),
     category: place.category ?? "",
     area: place.topic ?? "",
-    topic: cell(card.topic_path),
     note: cell(card.note_md),
-    reversed: card.kind === "reversed_of" ? "1" : "0",
-    choice1: cell(distractors[0]),
-    choice2: cell(distractors[1]),
-    choice3: cell(distractors[2]),
+    example: cell(card.example_md),
+    source: cell(card.source_label),
+    sourceUrl: cell(card.link_url),
   };
 }
 

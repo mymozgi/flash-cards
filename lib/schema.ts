@@ -16,15 +16,28 @@ import "server-only";
  * отрицательный ответ перепроверяется на каждом запросе и сам себя лечит,
  * а положительный больше ничего не стоит.
  */
-let sourcePresent: boolean | null = null;
+const present = new Map<string, boolean>();
 
 /** `false` — точно нет; `true`/`null` — стоит попробовать. */
+export function tryColumn(name: string): boolean {
+  return present.get(name) !== false;
+}
+
+export function rememberColumn(name: string, ok: boolean): void {
+  present.set(name, ok);
+}
+
+/*
+  Прежние имена оставлены: они разошлись бы с общим правилом, если бы для
+  второй необязательной колонки завели второй флаг рядом. Здесь это те же
+  функции с подставленным именем колонки.
+*/
 export function trySourceColumn(): boolean {
-  return sourcePresent !== false;
+  return tryColumn("link_url");
 }
 
 export function rememberSourceColumn(ok: boolean): void {
-  sourcePresent = ok;
+  rememberColumn("link_url", ok);
 }
 
 /** Отказ именно из-за отсутствующей колонки, а не из-за прав или сети. */
@@ -40,5 +53,11 @@ export function isMissingColumn(error: { code?: string; message?: string } | nul
 
 /** Список колонок с необязательным Source или без него. */
 export function withSource(columns: string, extra = "link_url"): string {
-  return trySourceColumn() ? `${columns},${extra}` : columns;
+  return withOptional(columns, extra);
+}
+
+/** Список колонок плюс те необязательные, что на этот момент считаются живыми. */
+export function withOptional(columns: string, ...extras: string[]): string {
+  const keep = extras.filter((name) => tryColumn(name));
+  return keep.length > 0 ? `${columns},${keep.join(",")}` : columns;
 }
