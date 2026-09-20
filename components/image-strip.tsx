@@ -5,6 +5,7 @@ import {
   MAX_IMAGES_PER_SIDE,
   MAX_SOURCE_BYTES,
   formatBytes,
+  imagesFromClipboard,
   ratioLabel,
 } from "@/lib/image";
 import { CloseIcon, ImageIcon, PlusIcon } from "@/components/icons";
@@ -51,6 +52,26 @@ export function ImageStrip({
     if (input.current) input.current.value = "";
   };
 
+  /*
+    Вставка из буфера. Обещание «or paste from the clipboard» висело в
+    подсказке с самого начала, а обработчика не было вовсе: функция разбора
+    буфера лежала в lib/image.ts и её никто не вызывал.
+
+    Слушаем на своей области, а не на документе. Полос на странице столько
+    же, сколько сторон у карточек, и общий слушатель не смог бы решить, в
+    какую из них класть: выбирает фокус, и только он.
+
+    Отменяем событие, лишь когда картинка правда нашлась, — иначе обычная
+    вставка текста в соседнее поле перестала бы работать.
+  */
+  const paste = (event: React.ClipboardEvent) => {
+    if (busy || full) return;
+    const files = imagesFromClipboard(event.clipboardData?.items ?? null);
+    if (files.length === 0) return;
+    event.preventDefault();
+    onAdd(files);
+  };
+
   return (
     <div
       onDragOver={(e) => {
@@ -63,6 +84,7 @@ export function ImageStrip({
         setDragging(false);
         if (!full) pick(e.dataTransfer.files);
       }}
+      onPaste={paste}
       className={`rounded-lg border border-dashed transition-colors ${
         images.length > 0 ? "p-2" : "p-0"
       } ${dragging ? "border-accent bg-accent-soft" : "border-line-strong"}`}
@@ -180,7 +202,7 @@ export function ImageStrip({
             {busy ? "Uploading…" : "Add image"}
           </span>
           <span className="text-2xs text-faint">
-            or drop a file here, or paste from the clipboard
+            or drop a file here, or paste a screenshot with Ctrl/⌘+V
           </span>
           {/* Ограничения названы до загрузки, а не в отказе после неё */}
           <span className="mt-1 font-mono text-2xs text-faint">
@@ -201,7 +223,7 @@ export function ImageStrip({
           <span>
             {full
               ? `Limit: ${MAX_IMAGES_PER_SIDE} per side`
-              : "or drop a file, or paste from the clipboard"}
+              : "or drop a file, or paste with Ctrl/⌘+V"}
           </span>
         </div>
       )}

@@ -18,7 +18,13 @@ import {
 } from "@/components/card-renderer";
 import { ImageStrip } from "@/components/image-strip";
 import type { EditorImage } from "@/lib/types";
-import { COVER_ASPECT, COVER_LONG_SIDE, ImageError, MAX_IMAGES_PER_SIDE } from "@/lib/image";
+import {
+  COVER_ASPECT,
+  COVER_LONG_SIDE,
+  ImageError,
+  imagesFromClipboard,
+  MAX_IMAGES_PER_SIDE,
+} from "@/lib/image";
 import { safeUrl } from "@/lib/url";
 import { discardUpload, uploadCover, uploadImage } from "@/lib/upload";
 import { Button, LinkButton } from "@/components/ui/button";
@@ -903,6 +909,30 @@ function Label({
   );
 }
 
+/**
+ * Вставка изображения из буфера в сторону карточки.
+ *
+ * Слушаем всю сторону, а не только полосу изображений: скриншот вставляют,
+ * не отходя от поля, где печатают вопрос, и требовать сперва добраться до
+ * полосы значит требовать лишнего.
+ *
+ * `defaultPrevented` — чтобы не положить картинку дважды: сама полоса тоже
+ * умеет принимать вставку, и когда фокус внутри неё, событие сюда доходит
+ * уже обработанным.
+ *
+ * Событие отменяется, только если картинка правда нашлась. Иначе обычная
+ * вставка текста в поле перестала бы работать.
+ */
+function pasteImages(add: (files: File[]) => void) {
+  return (event: React.ClipboardEvent) => {
+    if (event.defaultPrevented) return;
+    const files = imagesFromClipboard(event.clipboardData?.items ?? null);
+    if (files.length === 0) return;
+    event.preventDefault();
+    add(files);
+  };
+}
+
 function CardBlock({
   card,
   index,
@@ -1121,6 +1151,7 @@ function CardBlock({
         </>
       )}
 
+      <div onPaste={pasteImages((files) => onAddImages(card, "front", files))}>
       <Label required>Question</Label>
       <textarea
         value={card.term}
@@ -1150,7 +1181,9 @@ function CardBlock({
           }}
         />
       </div>
+      </div>
 
+      <div onPaste={pasteImages((files) => onAddImages(card, "back", files))}>
       {card.mcq ? (
         <>
           <div className="mt-4 flex items-baseline justify-between gap-2">
@@ -1211,6 +1244,7 @@ function CardBlock({
             onPatchImages(card, "back", next);
           }}
         />
+      </div>
       </div>
 
       <Label hint="A concrete case that makes the idea easier to hold on to.">Example</Label>
